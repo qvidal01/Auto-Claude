@@ -1133,11 +1133,10 @@ export function TaskCreationWizard({
                     htmlFor="use-worktree"
                     className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                   >
-                    Use isolated workspace (recommended)
+                    {t('wizard.gitOptions.useWorktreeLabel')}
                   </Label>
                   <p className="text-xs text-muted-foreground">
-                    Creates changes in a separate git worktree for safe review before merging.
-                    Disable to build directly in your project (faster but riskier).
+                    {t('wizard.gitOptions.useWorktreeDescription')}
                   </p>
                 </div>
               </div>

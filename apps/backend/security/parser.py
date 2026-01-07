@@ -173,8 +173,10 @@ def _contains_windows_path(command_string: str) -> bool:
     """
     # Pattern matches:
     # - Drive letter paths: C:\, D:\, etc.
-    # - Backslash in paths: foo\bar (not preceded by quote which could be escape)
-    return bool(re.search(r'[A-Za-z]:\\|(?<!["\'])\\[A-Za-z]', command_string))
+    # - Backslash followed by a path component (2+ chars to avoid escape sequences like \n, \t)
+    #   The second char must be alphanumeric, underscore, or another path separator
+    #   This avoids false positives on escape sequences which are single-char after backslash
+    return bool(re.search(r'[A-Za-z]:\\|\\[A-Za-z][A-Za-z0-9_\\/]', command_string))
 
 
 def extract_commands(command_string: str) -> list[str]:
