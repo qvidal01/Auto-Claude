@@ -1,7 +1,9 @@
 name: PR Labeler
 
+# Using pull_request_target to support fork PRs with write permissions
+# SECURITY: This is safe because we only read PR metadata and don't checkout/execute PR code
 on:
-  pull_request:
+  pull_request_target:
     types: [opened, synchronize, reopened]
 
 concurrency:
@@ -16,8 +18,6 @@ jobs:
   label:
     name: Auto Label PR
     runs-on: ubuntu-latest
-    # Security: Prevent fork PRs from modifying labels (they don't have write access)
-    if: github.event.pull_request.head.repo.full_name == github.repository
     timeout-minutes: 5
 
     steps:

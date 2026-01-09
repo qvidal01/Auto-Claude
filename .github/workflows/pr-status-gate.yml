@@ -8,7 +8,9 @@ on:
   issue_comment:
     types: [created, edited]
 
-  pull_request:
+  # Using pull_request_target to support fork PRs with write permissions
+  # SECURITY: This is safe because we only read PR metadata and don't checkout/execute PR code
+  pull_request_target:
     types: [synchronize]
 
 concurrency:
@@ -502,7 +504,7 @@ jobs:
   require-re-review:
     name: Require Re-review on Push
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request' && github.event.action == 'synchronize'
+    if: github.event_name == 'pull_request_target' && github.event.action == 'synchronize'
     timeout-minutes: 5
 
     steps:
