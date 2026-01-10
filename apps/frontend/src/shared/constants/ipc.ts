@@ -357,6 +357,7 @@ export const IPC_CHANNELS = {
   GITHUB_AUTO_PR_REVIEW_START: 'github:autoPRReview:start',
   GITHUB_AUTO_PR_REVIEW_STOP: 'github:autoPRReview:stop',
   GITHUB_AUTO_PR_REVIEW_GET_STATUS: 'github:autoPRReview:getStatus',
+  GITHUB_AUTO_PR_REVIEW_GET_ALL_ACTIVE: 'github:autoPRReview:getAllActive',
   GITHUB_AUTO_PR_REVIEW_GET_CONFIG: 'github:autoPRReview:getConfig',
   GITHUB_AUTO_PR_REVIEW_SAVE_CONFIG: 'github:autoPRReview:saveConfig',
 

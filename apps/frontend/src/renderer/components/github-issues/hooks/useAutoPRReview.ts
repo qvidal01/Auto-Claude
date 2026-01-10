@@ -146,91 +146,86 @@ export function useAutoPRReview(options?: {
   const refreshStatus = useCallback(async () => {
     if (!hasAPI) return;
 
-    const reviewsToCheck = Array.from(trackedReviewsRef.current);
-    console.log('[useAutoPRReview] refreshStatus called, trackedReviews:', reviewsToCheck);
-    if (reviewsToCheck.length === 0) return;
+    console.log('[useAutoPRReview] refreshStatus called');
 
-    const updatedReviews: AutoPRReviewProgress[] = [];
-    const reviewsToRemove: string[] = [];
+    try {
+      // Fetch ALL active reviews from backend (not just tracked ones)
+      // This ensures all hook instances see the same state
+      const allActiveResult = await window.electronAPI.github.getAllActiveAutoPRReviews();
+      console.log('[useAutoPRReview] getAllActiveAutoPRReviews result:', allActiveResult.reviews.length, 'reviews');
 
-    for (const key of reviewsToCheck) {
-      const [repository, prNumberStr] = key.split('#');
-      const prNumber = parseInt(prNumberStr, 10);
+      // Also fetch specific tracked reviews (for terminal state tracking)
+      const reviewsToCheck = Array.from(trackedReviewsRef.current);
+      const reviewsToRemove: string[] = [];
 
-      if (isNaN(prNumber)) {
-        reviewsToRemove.push(key);
-        continue;
-      }
+      for (const key of reviewsToCheck) {
+        const [repository, prNumberStr] = key.split('#');
+        const prNumber = parseInt(prNumberStr, 10);
 
-      try {
-        const result = await window.electronAPI.github.getAutoPRReviewStatus({
-          repository,
-          prNumber,
-        });
-        console.log('[useAutoPRReview] getAutoPRReviewStatus result for', key, ':', result);
+        if (isNaN(prNumber)) {
+          reviewsToRemove.push(key);
+          continue;
+        }
 
-        if (result.progress) {
-          console.log('[useAutoPRReview] Adding progress to updatedReviews:', result.progress.status);
-          updatedReviews.push(result.progress);
+        // Check if this tracked review is in terminal state
+        const activeReview = allActiveResult.reviews.find(
+          r => r.repository === repository && r.prNumber === prNumber
+        );
 
-          // Only stop polling if in terminal state, but keep in UI for display
-          if (isTerminalStatus(result.progress.status)) {
-            console.log('[useAutoPRReview] Terminal status, will stop polling but keep in UI');
-            reviewsToRemove.push(key);
-          }
-        } else if (!result.isActive) {
-          // Review is no longer active and no progress - remove from tracking
-          console.log('[useAutoPRReview] Review not active and no progress, removing from tracking');
+        if (activeReview && isTerminalStatus(activeReview.status)) {
+          console.log('[useAutoPRReview] Terminal status for tracked review, will stop polling:', key);
+          reviewsToRemove.push(key);
+        } else if (!activeReview) {
+          // Review is no longer in active list - stop tracking
+          console.log('[useAutoPRReview] Tracked review no longer active, removing:', key);
           reviewsToRemove.push(key);
         }
-      } catch {
-        // Don't remove on error - might be temporary network issue
-        // Keep tracking and try again on next poll
       }
-    }
 
-    // Update tracked reviews - stop polling for terminal states
-    for (const key of reviewsToRemove) {
-      trackedReviewsRef.current.delete(key);
-    }
+      // Update tracked reviews - stop polling for terminal/inactive states
+      for (const key of reviewsToRemove) {
+        trackedReviewsRef.current.delete(key);
+      }
 
-    console.log('[useAutoPRReview] updatedReviews length:', updatedReviews.length, 'isMounted:', isMountedRef.current);
-    if (isMountedRef.current) {
-      // Merge with existing completed reviews to preserve them
-      // Only update reviews we actually fetched, keep others as-is
-      setActiveReviews(prev => {
-        // Create a map of new reviews by key
-        const newReviewsMap = new Map<string, AutoPRReviewProgress>();
-        for (const review of updatedReviews) {
-          const key = getReviewKey(review.repository, review.prNumber);
-          newReviewsMap.set(key, review);
-        }
-
-        // Keep existing completed reviews that weren't re-fetched
-        const merged: AutoPRReviewProgress[] = [];
-        for (const existing of prev) {
-          const key = getReviewKey(existing.repository, existing.prNumber);
-          if (newReviewsMap.has(key)) {
-            // Update with new data
-            merged.push(newReviewsMap.get(key)!);
-            newReviewsMap.delete(key);
-          } else if (isTerminalStatus(existing.status)) {
-            // Keep completed reviews that weren't re-fetched
-            merged.push(existing);
+      console.log('[useAutoPRReview] updatedReviews length:', allActiveResult.reviews.length, 'isMounted:', isMountedRef.current);
+      if (isMountedRef.current) {
+        // Merge backend reviews with existing completed reviews to preserve them
+        setActiveReviews(prev => {
+          // Create a map of new reviews by key
+          const newReviewsMap = new Map<string, AutoPRReviewProgress>();
+          for (const review of allActiveResult.reviews) {
+            const key = getReviewKey(review.repository, review.prNumber);
+            newReviewsMap.set(key, review);
           }
-          // In-progress reviews that weren't re-fetched are dropped (review ended)
-        }
 
-        // Add any new reviews
-        for (const review of newReviewsMap.values()) {
-          merged.push(review);
-        }
+          // Keep existing completed reviews that weren't re-fetched
+          const merged: AutoPRReviewProgress[] = [];
+          for (const existing of prev) {
+            const key = getReviewKey(existing.repository, existing.prNumber);
+            if (newReviewsMap.has(key)) {
+              // Update with new data
+              merged.push(newReviewsMap.get(key)!);
+              newReviewsMap.delete(key);
+            } else if (isTerminalStatus(existing.status)) {
+              // Keep completed reviews that weren't re-fetched
+              merged.push(existing);
+            }
+            // In-progress reviews that weren't re-fetched are dropped (review ended)
+          }
 
-        console.log('[useAutoPRReview] Merged activeReviews:', merged.length);
-        return merged;
-      });
-    } else {
-      console.log('[useAutoPRReview] Component not mounted, skipping state update');
+          // Add any new reviews
+          for (const review of newReviewsMap.values()) {
+            merged.push(review);
+          }
+
+          console.log('[useAutoPRReview] Merged activeReviews:', merged.length);
+          return merged;
+        });
+      } else {
+        console.log('[useAutoPRReview] Component not mounted, skipping state update');
+      }
+    } catch (err) {
+      console.error('[useAutoPRReview] Error refreshing status:', err);
     }
   }, [hasAPI]);
 
@@ -447,14 +442,12 @@ export function useAutoPRReview(options?: {
   useEffect(() => {
     if (!autoRefresh || !hasAPI) return;
 
-    // Initial refresh
+    // Initial refresh to get all active reviews
     refreshStatus();
 
-    // Set up polling interval
+    // Set up polling interval - always poll to catch reviews started from other hook instances
     pollIntervalRef.current = setInterval(() => {
-      if (trackedReviewsRef.current.size > 0) {
-        refreshStatus();
-      }
+      refreshStatus();
     }, pollInterval);
 
     return () => {

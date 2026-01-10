@@ -1448,6 +1448,24 @@ export function registerAutoFixHandlers(
     }
   );
 
+  // Get ALL active Auto-PR-Reviews (for PR list indicator)
+  ipcMain.handle(
+    IPC_CHANNELS.GITHUB_AUTO_PR_REVIEW_GET_ALL_ACTIVE,
+    async (): Promise<{ reviews: AutoPRReviewProgress[] }> => {
+      debugLog('getAllActiveAutoPRReviews handler called');
+
+      const reviews: AutoPRReviewProgress[] = [];
+      for (const entry of activeAutoPRReviews.values()) {
+        // Update elapsed time
+        entry.progress.elapsedMs = Date.now() - new Date(entry.progress.startedAt).getTime();
+        reviews.push(entry.progress);
+      }
+
+      debugLog('getAllActiveAutoPRReviews returning', { count: reviews.length });
+      return { reviews };
+    }
+  );
+
   debugLog('AutoFix and Auto-PR-Review handlers registered');
 }
 

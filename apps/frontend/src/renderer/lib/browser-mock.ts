@@ -231,6 +231,7 @@ const browserMockAPI: ElectronAPI = {
     startAutoPRReview: async () => ({ success: false, message: 'Not available in browser mode', error: 'Browser mock' }),
     stopAutoPRReview: async () => ({ success: false, message: 'Not available in browser mode', error: 'Browser mock' }),
     getAutoPRReviewStatus: async () => ({ isActive: false }),
+    getAllActiveAutoPRReviews: async () => ({ reviews: [] }),
     getAutoPRReviewConfig: async () => null,
     saveAutoPRReviewConfig: async () => ({ success: false, error: 'Not available in browser mode' })
   },

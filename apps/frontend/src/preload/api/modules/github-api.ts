@@ -293,6 +293,7 @@ export interface GitHubAPI {
   startAutoPRReview: (request: AutoPRReviewStartRequest) => Promise<AutoPRReviewStartResponse>;
   stopAutoPRReview: (request: AutoPRReviewStopRequest) => Promise<AutoPRReviewStopResponse>;
   getAutoPRReviewStatus: (request: AutoPRReviewStatusRequest) => Promise<AutoPRReviewStatusResponse>;
+  getAllActiveAutoPRReviews: () => Promise<{ reviews: AutoPRReviewProgress[] }>;
   getAutoPRReviewConfig: () => Promise<{ config: AutoPRReviewConfig; enabled: boolean } | null>;
   saveAutoPRReviewConfig: (args: { config: Partial<AutoPRReviewConfig>; enabled?: boolean }) => Promise<{ success: boolean; error?: string }>;
 }
@@ -854,6 +855,9 @@ export const createGitHubAPI = (): GitHubAPI => ({
 
   getAutoPRReviewStatus: (request: AutoPRReviewStatusRequest): Promise<AutoPRReviewStatusResponse> =>
     invokeIpc(IPC_CHANNELS.GITHUB_AUTO_PR_REVIEW_GET_STATUS, request),
+
+  getAllActiveAutoPRReviews: (): Promise<{ reviews: AutoPRReviewProgress[] }> =>
+    invokeIpc(IPC_CHANNELS.GITHUB_AUTO_PR_REVIEW_GET_ALL_ACTIVE),
 
   getAutoPRReviewConfig: (): Promise<{ config: AutoPRReviewConfig; enabled: boolean } | null> =>
     invokeIpc(IPC_CHANNELS.GITHUB_AUTO_PR_REVIEW_GET_CONFIG),
