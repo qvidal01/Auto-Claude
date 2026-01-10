@@ -1302,6 +1302,20 @@ Co-Authored-By: Claude <noreply@anthropic.com>
                         total_findings=len(findings),
                         unfixable_findings=unfixable_findings,
                     )
+
+                    # Emit progress event to signal awaiting changes status
+                    if on_progress:
+                        on_progress(
+                            "awaiting_changes",
+                            {
+                                "iteration": state.current_iteration,
+                                "message": f"AI review posted {unfixable_findings} finding(s) - awaiting contributor changes",
+                                "findings_count": len(findings),
+                                "unfixable_findings": unfixable_findings,
+                                "ci_passed": check_result.all_passed,
+                            },
+                        )
+
                     state.complete_iteration(
                         findings_count=len(findings),
                         fixes_applied=0,

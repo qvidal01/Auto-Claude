@@ -1235,6 +1235,7 @@ export function registerAutoFixHandlers(
                   'pushing': 'pr_fixing',
                   'pr_ready_to_merge': 'pr_ready_to_merge',
                   'needs_human_review': 'needs_human_review',
+                  'awaiting_changes': 'awaiting_changes',
                   'completed': 'completed',
                   'failed': 'failed',
                   'max_iterations': 'max_iterations',
@@ -1310,6 +1311,7 @@ export function registerAutoFixHandlers(
                   'ready_to_merge': 'pr_ready_to_merge',
                   'no_findings': 'completed',
                   'needs_human_review': 'needs_human_review',
+                  'awaiting_changes': 'awaiting_changes',
                   'max_iterations': 'max_iterations',
                   'ci_failed': 'failed',
                   'cancelled': 'cancelled',
@@ -1372,7 +1374,7 @@ export function registerAutoFixHandlers(
               // Mark as completed if not already in a terminal state
               const entry = activeAutoPRReviews.get(key);
               if (entry) {
-                const terminalStates = ['completed', 'failed', 'cancelled', 'max_iterations', 'pr_ready_to_merge', 'needs_human_review'];
+                const terminalStates = ['completed', 'failed', 'cancelled', 'max_iterations', 'pr_ready_to_merge', 'needs_human_review', 'awaiting_changes'];
                 if (!terminalStates.includes(entry.progress.status)) {
                   entry.progress.status = 'completed';
                 }

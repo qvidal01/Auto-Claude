@@ -487,6 +487,20 @@ async def cmd_auto_pr_review(args) -> int:
             )
         elif event_type == "pushing":
             emit_progress("pr_fixing", 70, "Pushing fixes to repository...")
+        elif event_type == "awaiting_changes":
+            # AI review posted findings, awaiting contributor changes
+            emit_progress(
+                "awaiting_changes",
+                90,
+                data.get(
+                    "message",
+                    "AI review posted findings - awaiting contributor changes",
+                ),
+                iteration=data.get("iteration", 0),
+                findings_count=data.get("findings_count", 0),
+                unfixable_findings=data.get("unfixable_findings", 0),
+                ci_passed=data.get("ci_passed", False),
+            )
 
     if debug:
         print("[DEBUG] Running orchestrator.run()", flush=True)
