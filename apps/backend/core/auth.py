@@ -87,6 +87,12 @@ def decrypt_token(encrypted_token: str) -> str:
     Raises:
         ValueError: If token format is invalid or decryption fails
     """
+    # Validate encrypted token format
+    if not isinstance(encrypted_token, str):
+        raise ValueError(
+            f"Invalid token type. Expected string, got: {type(encrypted_token).__name__}"
+        )
+
     if not encrypted_token.startswith("enc:"):
         raise ValueError(
             f"Invalid encrypted token format. Expected 'enc:' prefix, got: {encrypted_token[:10]}..."
@@ -97,6 +103,22 @@ def decrypt_token(encrypted_token: str) -> str:
 
     if not encrypted_data:
         raise ValueError("Empty encrypted token data after 'enc:' prefix")
+
+    # Basic validation of encrypted data format
+    # Encrypted data should be a reasonable length (at least 10 chars)
+    if len(encrypted_data) < 10:
+        raise ValueError(
+            f"Encrypted token data too short (length: {len(encrypted_data)}). "
+            "Expected at least 10 characters. The token may be corrupted."
+        )
+
+    # Check for obviously invalid characters that suggest corruption
+    # Encrypted data should be alphanumeric, +, /, or = (base64-like)
+    if not all(c.isalnum() or c in "+-_/=" for c in encrypted_data):
+        raise ValueError(
+            "Encrypted token contains invalid characters. "
+            "Expected base64-encoded data. The token may be corrupted."
+        )
 
     # Attempt platform-specific decryption
     system = platform.system()
@@ -111,10 +133,49 @@ def decrypt_token(encrypted_token: str) -> str:
         else:
             raise ValueError(f"Unsupported platform for token decryption: {system}")
 
-    except Exception as e:
-        # If decryption fails, provide helpful error message
+    except NotImplementedError as e:
+        # SDK version issue - provide specific guidance
         raise ValueError(
-            f"Failed to decrypt token: {str(e)}\n\n"
+            f"Token decryption not yet implemented: {str(e)}\n\n"
+            "This feature requires Claude Agent SDK >= 0.1.19.\n\n"
+            "To fix this issue:\n"
+            "  1. Set CLAUDE_CODE_OAUTH_TOKEN to a plaintext token (without 'enc:' prefix)\n"
+            "  2. Or upgrade Claude Agent SDK: pip install --upgrade claude-agent-sdk\n"
+            "  3. Or re-authenticate with: claude setup-token"
+        )
+    except ValueError:
+        # Re-raise ValueError as-is (already has good error message)
+        raise
+    except FileNotFoundError as e:
+        # File-related errors (missing credentials file, missing binary)
+        raise ValueError(
+            f"Failed to decrypt token - required file not found: {str(e)}\n\n"
+            "To fix this issue:\n"
+            "  1. Re-authenticate with Claude Code CLI: claude setup-token\n"
+            "  2. Or set CLAUDE_CODE_OAUTH_TOKEN to a plaintext token in your .env file"
+        )
+    except PermissionError as e:
+        # Permission errors (can't access keychain, credential manager, etc.)
+        raise ValueError(
+            f"Failed to decrypt token - permission denied: {str(e)}\n\n"
+            "To fix this issue:\n"
+            "  1. Grant keychain/credential manager access to this application\n"
+            "  2. Or set CLAUDE_CODE_OAUTH_TOKEN to a plaintext token in your .env file"
+        )
+    except subprocess.TimeoutExpired:
+        # Timeout during decryption process
+        raise ValueError(
+            "Failed to decrypt token - operation timed out.\n\n"
+            "This may indicate a problem with system keychain access.\n\n"
+            "To fix this issue:\n"
+            "  1. Re-authenticate with Claude Code CLI: claude setup-token\n"
+            "  2. Or set CLAUDE_CODE_OAUTH_TOKEN to a plaintext token in your .env file"
+        )
+    except Exception as e:
+        # Catch-all for other errors - provide helpful error message
+        error_type = type(e).__name__
+        raise ValueError(
+            f"Failed to decrypt token ({error_type}): {str(e)}\n\n"
             "To fix this issue:\n"
             "  1. Re-authenticate with Claude Code CLI: claude setup-token\n"
             "  2. Or set CLAUDE_CODE_OAUTH_TOKEN to a plaintext token in your .env file\n\n"
