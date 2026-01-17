@@ -391,6 +391,9 @@ def get_auth_token() -> str | None:
     NOTE: ANTHROPIC_API_KEY is intentionally NOT supported to prevent
     silent billing to user's API credits when OAuth is misconfigured.
 
+    If the token has an "enc:" prefix (encrypted format), it will be automatically
+    decrypted before being returned.
+
     Returns:
         Token string if found, None otherwise
     """
@@ -398,10 +401,24 @@ def get_auth_token() -> str | None:
     for var in AUTH_TOKEN_ENV_VARS:
         token = os.environ.get(var)
         if token:
+            # Decrypt if token is encrypted
+            if is_encrypted_token(token):
+                try:
+                    token = decrypt_token(token)
+                except ValueError:
+                    # Decryption failed, try next source
+                    continue
             return token
 
     # Fallback to system credential store
-    return get_token_from_keychain()
+    token = get_token_from_keychain()
+    if token and is_encrypted_token(token):
+        try:
+            token = decrypt_token(token)
+        except ValueError:
+            # Decryption failed, return None to trigger error in require_auth_token()
+            return None
+    return token
 
 
 def get_auth_token_source() -> str | None:
