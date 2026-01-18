@@ -12,7 +12,7 @@ Auto-Claude users are experiencing API 401 errors ("Invalid bearer token") becau
 
 Claude Code CLI stores OAuth tokens in an encrypted format with the prefix `enc:`:
 
-```
+```text
 enc:djEwtxMGISt3tQ...
 ```
 
@@ -24,7 +24,7 @@ This format is used when tokens are stored in:
 ### Decrypted Token Format
 
 Valid Claude OAuth tokens have the format:
-```
+```text
 sk-ant-oat01-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 ```
 

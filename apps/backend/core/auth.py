@@ -151,8 +151,7 @@ def decrypt_token(encrypted_token: str) -> str:
     # Encrypted data should be a reasonable length (at least 10 chars)
     if len(encrypted_data) < 10:
         raise ValueError(
-            f"Encrypted token data too short (length: {len(encrypted_data)}). "
-            "Expected at least 10 characters. The token may be corrupted."
+            "Encrypted token data is too short. The token may be corrupted."
         )
 
     # Check for obviously invalid characters that suggest corruption
@@ -175,17 +174,15 @@ def decrypt_token(encrypted_token: str) -> str:
             raise ValueError("Unsupported platform for token decryption")
 
     except NotImplementedError as e:
-        # SDK version issue - log warning and provide specific guidance
+        # Decryption not implemented - log warning and provide guidance
         logger.warning(
             "Token decryption failed: %s. Users must use plaintext tokens.", str(e)
         )
         raise ValueError(
-            f"Token decryption not yet implemented: {str(e)}\n\n"
-            "This feature requires Claude Agent SDK >= 0.1.19.\n\n"
+            f"Encrypted token decryption is not yet implemented: {str(e)}\n\n"
             "To fix this issue:\n"
             "  1. Set CLAUDE_CODE_OAUTH_TOKEN to a plaintext token (without 'enc:' prefix)\n"
-            "  2. Or upgrade Claude Agent SDK: pip install --upgrade claude-agent-sdk\n"
-            "  3. Or re-authenticate with: claude setup-token"
+            "  2. Or re-authenticate with: claude setup-token"
         )
     except ValueError:
         # Re-raise ValueError as-is (already has good error message)
