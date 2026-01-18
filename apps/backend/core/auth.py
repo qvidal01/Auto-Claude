@@ -9,7 +9,6 @@ for custom API endpoints.
 import json
 import logging
 import os
-import shutil
 import subprocess
 from typing import TYPE_CHECKING
 
