@@ -53,22 +53,31 @@ SDK_ENV_VARS = [
 ]
 
 
-def is_encrypted_token(token: str) -> bool:
+def is_encrypted_token(token: str | None) -> bool:
     """
     Check if a token is encrypted (has "enc:" prefix).
 
     Args:
-        token: Token string to check
+        token: Token string to check (can be None)
 
     Returns:
         True if token starts with "enc:", False otherwise
     """
-    return token.startswith("enc:")
+    return bool(token and token.startswith("enc:"))
 
 
 def decrypt_token(encrypted_token: str) -> str:
     """
     Decrypt Claude Code encrypted token.
+
+    NOTE: This implementation currently relies on the system keychain (macOS Keychain,
+    Linux Secret Service, Windows Credential Manager) to provide already-decrypted tokens.
+    Encrypted tokens in the CLAUDE_CODE_OAUTH_TOKEN environment variable are NOT supported
+    and will fail with NotImplementedError.
+
+    For encrypted token support, users should:
+    1. Run: claude setup-token (stores decrypted token in system keychain)
+    2. Or set CLAUDE_CODE_OAUTH_TOKEN to a plaintext token in .env file
 
     Claude Code CLI stores OAuth tokens in encrypted format with "enc:" prefix.
     This function attempts to decrypt the token using platform-specific methods.
@@ -224,7 +233,11 @@ def _decrypt_token_macos(encrypted_data: str) -> str:
     # However, there's no direct CLI command to decrypt tokens.
     # The SDK should handle this automatically when it receives encrypted tokens.
     raise NotImplementedError(
-        "macOS token decryption requires Claude Agent SDK >= 0.1.19 which handles encrypted tokens automatically"
+        "Encrypted tokens in environment variables are not supported. "
+        "Please use one of these options:\n"
+        "  1. Run 'claude setup-token' to store token in system keychain\n"
+        "  2. Set CLAUDE_CODE_OAUTH_TOKEN to a plaintext token in .env file\n\n"
+        "Note: This requires Claude Agent SDK >= 0.1.19"
     )
 
 
@@ -250,7 +263,11 @@ def _decrypt_token_linux(encrypted_data: str) -> str:
     # Similar to macOS, the actual decryption mechanism isn't publicly documented
     # The Claude Agent SDK should handle this automatically
     raise NotImplementedError(
-        "Linux token decryption requires Claude Agent SDK >= 0.1.19 which handles encrypted tokens automatically"
+        "Encrypted tokens in environment variables are not supported. "
+        "Please use one of these options:\n"
+        "  1. Run 'claude setup-token' to store token in system keychain\n"
+        "  2. Set CLAUDE_CODE_OAUTH_TOKEN to a plaintext token in .env file\n\n"
+        "Note: This requires Claude Agent SDK >= 0.1.19"
     )
 
 
@@ -270,7 +287,11 @@ def _decrypt_token_windows(encrypted_data: str) -> str:
     # Windows token decryption from Credential Manager or .credentials.json
     # The Claude Agent SDK should handle this automatically
     raise NotImplementedError(
-        "Windows token decryption requires Claude Agent SDK >= 0.1.19 which handles encrypted tokens automatically"
+        "Encrypted tokens in environment variables are not supported. "
+        "Please use one of these options:\n"
+        "  1. Run 'claude setup-token' to store token in system keychain\n"
+        "  2. Set CLAUDE_CODE_OAUTH_TOKEN to a plaintext token in .env file\n\n"
+        "Note: This requires Claude Agent SDK >= 0.1.19"
     )
 
 
@@ -467,8 +488,9 @@ def get_auth_token() -> str | None:
                 try:
                     token = decrypt_token(token)
                 except ValueError:
-                    # Decryption failed, try next source
-                    continue
+                    # Decryption failed - return encrypted token so client validation
+                    # can provide specific error message about encrypted format
+                    return token
             return token
 
     # Fallback to system credential store
