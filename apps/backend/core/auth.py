@@ -7,11 +7,21 @@ for custom API endpoints.
 """
 
 import json
+import logging
 import os
-import platform
 import shutil
 import subprocess
 from typing import TYPE_CHECKING
+
+from core.platform import (
+    find_executable,
+    get_claude_detection_paths,
+    is_linux,
+    is_macos,
+    is_windows,
+)
+
+logger = logging.getLogger(__name__)
 
 # Optional import for Linux secret-service support
 # secretstorage provides access to the Freedesktop.org Secret Service API via DBus
@@ -66,6 +76,31 @@ def is_encrypted_token(token: str | None) -> bool:
     return bool(token and token.startswith("enc:"))
 
 
+def validate_token_not_encrypted(token: str) -> None:
+    """
+    Validate that a token is not in encrypted format.
+
+    This function should be called before passing a token to the Claude Agent SDK
+    to ensure proper error messages when decryption has failed.
+
+    Args:
+        token: Token string to validate
+
+    Raises:
+        ValueError: If token is in encrypted format (enc:...)
+    """
+    if is_encrypted_token(token):
+        raise ValueError(
+            "Authentication token is in encrypted format and cannot be used.\n\n"
+            "The token decryption process failed or was not attempted.\n\n"
+            "To fix this issue:\n"
+            "  1. Re-authenticate with Claude Code CLI: claude setup-token\n"
+            "  2. Or set CLAUDE_CODE_OAUTH_TOKEN to a plaintext token in your .env file\n\n"
+            "Note: Encrypted tokens require the Claude Code CLI to be installed\n"
+            "and properly configured with system keychain access."
+        )
+
+
 def decrypt_token(encrypted_token: str) -> str:
     """
     Decrypt Claude Code encrypted token.
@@ -104,7 +139,7 @@ def decrypt_token(encrypted_token: str) -> str:
 
     if not encrypted_token.startswith("enc:"):
         raise ValueError(
-            f"Invalid encrypted token format. Expected 'enc:' prefix, got: {encrypted_token[:10]}..."
+            "Invalid encrypted token format. Token must start with 'enc:' prefix."
         )
 
     # Remove 'enc:' prefix to get encrypted data
@@ -130,20 +165,21 @@ def decrypt_token(encrypted_token: str) -> str:
         )
 
     # Attempt platform-specific decryption
-    system = platform.system()
-
     try:
-        if system == "Darwin":
+        if is_macos():
             return _decrypt_token_macos(encrypted_data)
-        elif system == "Linux":
+        elif is_linux():
             return _decrypt_token_linux(encrypted_data)
-        elif system == "Windows":
+        elif is_windows():
             return _decrypt_token_windows(encrypted_data)
         else:
-            raise ValueError(f"Unsupported platform for token decryption: {system}")
+            raise ValueError("Unsupported platform for token decryption")
 
     except NotImplementedError as e:
-        # SDK version issue - provide specific guidance
+        # SDK version issue - log warning and provide specific guidance
+        logger.warning(
+            "Token decryption failed: %s. Users must use plaintext tokens.", str(e)
+        )
         raise ValueError(
             f"Token decryption not yet implemented: {str(e)}\n\n"
             "This feature requires Claude Agent SDK >= 0.1.19.\n\n"
@@ -206,20 +242,8 @@ def _decrypt_token_macos(encrypted_data: str) -> str:
     Raises:
         ValueError: If decryption fails or Claude CLI not available
     """
-    # Find claude binary
-    claude_path = shutil.which("claude")
-
-    if not claude_path:
-        # Check common macOS installation paths
-        common_paths = [
-            os.path.expanduser("~/.local/bin/claude"),
-            "/usr/local/bin/claude",
-            "/opt/homebrew/bin/claude",
-        ]
-        for path in common_paths:
-            if os.path.exists(path):
-                claude_path = path
-                break
+    # Find claude binary using platform module's detection
+    claude_path = find_executable("claude", get_claude_detection_paths())
 
     if not claude_path:
         raise ValueError(
@@ -307,11 +331,9 @@ def get_token_from_keychain() -> str | None:
     Returns:
         Token string if found, None otherwise
     """
-    system = platform.system()
-
-    if system == "Darwin":
+    if is_macos():
         return _get_token_from_macos_keychain()
-    elif system == "Windows":
+    elif is_windows():
         return _get_token_from_windows_credential_files()
     else:
         # Linux: use secret-service API via DBus
@@ -513,10 +535,9 @@ def get_auth_token_source() -> str | None:
 
     # Check if token came from system credential store
     if get_token_from_keychain():
-        system = platform.system()
-        if system == "Darwin":
+        if is_macos():
             return "macOS Keychain"
-        elif system == "Windows":
+        elif is_windows():
             return "Windows Credential Files"
         else:
             return "Linux Secret Service"
@@ -539,15 +560,14 @@ def require_auth_token() -> str:
             "Direct API keys (ANTHROPIC_API_KEY) are not supported.\n\n"
         )
         # Provide platform-specific guidance
-        system = platform.system()
-        if system == "Darwin":
+        if is_macos():
             error_msg += (
                 "To authenticate:\n"
                 "  1. Run: claude setup-token\n"
                 "  2. The token will be saved to macOS Keychain automatically\n\n"
                 "Or set CLAUDE_CODE_OAUTH_TOKEN in your .env file."
             )
-        elif system == "Windows":
+        elif is_windows():
             error_msg += (
                 "To authenticate:\n"
                 "  1. Run: claude setup-token\n"
@@ -578,7 +598,7 @@ def _find_git_bash_path() -> str | None:
     Returns:
         Full path to bash.exe if found, None otherwise
     """
-    if platform.system() != "Windows":
+    if not is_windows():
         return None
 
     # If already set in environment, use that
@@ -666,7 +686,7 @@ def get_sdk_env_vars() -> dict[str, str]:
 
     # On Windows, auto-detect git-bash path if not already set
     # Claude Code CLI requires bash.exe to run on Windows
-    if platform.system() == "Windows" and "CLAUDE_CODE_GIT_BASH_PATH" not in env:
+    if is_windows() and "CLAUDE_CODE_GIT_BASH_PATH" not in env:
         bash_path = _find_git_bash_path()
         if bash_path:
             env["CLAUDE_CODE_GIT_BASH_PATH"] = bash_path

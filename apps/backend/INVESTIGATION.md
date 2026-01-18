@@ -250,7 +250,7 @@ const { DEBUG: _DEBUG, ANTHROPIC_API_KEY: _ANTHROPIC_API_KEY, ...cleanEnv } = pr
 
 **File**: `apps/backend/core/auth.py`
 
-#### 3.1. get_auth_token() - Lines 221-243
+#### 3.1. get_auth_token()
 
 This function retrieves the token from multiple sources:
 
@@ -268,7 +268,7 @@ def get_auth_token() -> str | None:
 
 **Issue**: Returns token as-is with `enc:` prefix intact.
 
-#### 3.2. require_auth_token() - Lines 266-306
+#### 3.2. require_auth_token()
 
 This function calls `get_auth_token()` and raises an error if no token is found:
 
@@ -282,7 +282,7 @@ def require_auth_token() -> str:
 
 **Issue**: No decryption step between retrieval and return.
 
-#### 3.3. ensure_claude_code_oauth_token() - Lines 426-438
+#### 3.3. ensure_claude_code_oauth_token()
 
 This function ensures the environment variable is set:
 
@@ -302,7 +302,7 @@ def ensure_claude_code_oauth_token() -> None:
 
 #### 4.1. Full Client Creation
 
-**File**: `apps/backend/core/client.py` (Lines 708-710)
+**File**: `apps/backend/core/client.py` (see `create_client()` function)
 
 ```python
 def create_client(...):
@@ -315,7 +315,7 @@ def create_client(...):
 
 #### 4.2. Simple Client Creation
 
-**File**: `apps/backend/core/simple_client.py` (Lines 69-72)
+**File**: `apps/backend/core/simple_client.py` (see `create_simple_client()` function)
 
 ```python
 def create_simple_client(...):

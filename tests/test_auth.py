@@ -648,9 +648,11 @@ class TestTokenDecryption:
 
         from core.auth import get_auth_token
 
-        # Should return None (decryption fails) or decrypted token, but not raise exception
+        # When decryption fails, get_auth_token returns the encrypted token so that
+        # validate_token_not_encrypted() can provide a specific error message
         result = get_auth_token()
-        # Test passes if no exception raised
+        # Verify the encrypted token is returned on decryption failure
+        assert result == "enc:testtoken123456789"
 
     def test_backward_compatibility_plaintext_tokens(self, monkeypatch):
         """Verify plaintext tokens continue to work unchanged."""
