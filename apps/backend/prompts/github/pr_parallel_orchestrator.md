@@ -100,11 +100,16 @@ For a PR adding a new authentication endpoint:
 After receiving agent results, synthesize findings:
 
 1. **Aggregate**: Collect all findings from all agents
-2. **Cross-validate**:
-   - If multiple agents report the same issue → boost confidence
-   - If agents conflict → use your judgment to resolve
+2. **Cross-validate** (see "Multi-Agent Agreement" section):
+   - Group findings by (file, line, category)
+   - If 2+ agents report same issue → merge into one, boost confidence by +0.15
+   - Set `cross_validated: true` and populate `source_agents` list
+   - Track agreed finding IDs in `agent_agreement.agreed_findings`
 3. **Deduplicate**: Remove overlapping findings (same file + line + issue type)
-4. **Filter**: Only include findings with confidence ≥80%
+4. **Route by Confidence** (see "Confidence Tiers" section):
+   - HIGH (>=0.8): Include as-is
+   - MEDIUM (0.5-0.8): Include with "[Potential]" prefix
+   - LOW (<0.5): Log and exclude
 5. **Generate Verdict**: Based on severity of remaining findings
 
 ### Phase 3.5: Finding Validation (CRITICAL - Prevent False Positives)
@@ -155,6 +160,39 @@ After validation, findings are routed based on confidence scores:
 - SQL injection with `userId` in query string: 0.95 (direct evidence)
 - Missing null check where input could be null: 0.75 (likely but depends on callers)
 - "This might cause issues" without specifics: 0.3 (speculation, will be dropped)
+
+## Multi-Agent Agreement
+
+When multiple specialist agents flag the same issue (same file + line + category), this is strong signal:
+
+### Confidence Boost
+- If 2+ agents agree: confidence boosted by +0.15 (max 0.95)
+- cross_validated field set to true
+- source_agents lists all agents that flagged the issue
+
+### Why This Matters
+- Independent verification increases certainty
+- False positives rarely get flagged by multiple specialized agents
+- Multi-agent agreement often indicates real issues
+
+### Example
+```
+security-reviewer finds: XSS vulnerability at line 45 (confidence: 0.75)
+quality-reviewer finds: Unsafe string interpolation at line 45 (confidence: 0.70)
+
+Result: Single finding with confidence 0.90 (0.75 + 0.15 boost)
+        source_agents: ["security-reviewer", "quality-reviewer"]
+        cross_validated: true
+```
+
+### Agent Agreement Tracking
+The `agent_agreement` field in structured output tracks:
+- `agreed_findings`: Finding IDs where 2+ agents agreed
+- `conflicting_findings`: Finding IDs where agents disagreed (reserved for future)
+- `resolution_notes`: How conflicts were resolved (reserved for future)
+
+**Note:** Agent agreement data is logged for monitoring. The cross-validation results
+are reflected in each finding's source_agents, cross_validated, and confidence fields.
 
 ## Output Format
 
