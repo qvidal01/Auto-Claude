@@ -49,6 +49,7 @@ import { AddProjectModal } from './AddProjectModal';
 import { GitSetupModal } from './GitSetupModal';
 import { RateLimitIndicator } from './RateLimitIndicator';
 import { ClaudeCodeStatusBadge } from './ClaudeCodeStatusBadge';
+import { AccountProfileIndicator } from './AccountProfileIndicator';
 import { UpdateBanner } from './UpdateBanner';
 import type { Project, AutoBuildVersionInfo, GitStatus, ProjectEnvConfig } from '../../shared/types';
 
@@ -328,6 +329,9 @@ export function Sidebar({
 
         {/* Bottom section with Settings, Help, and New Task */}
         <div className="p-4 space-y-3">
+          {/* Account Profile Indicator */}
+          <AccountProfileIndicator />
+
           {/* Claude Code Status Badge */}
           <ClaudeCodeStatusBadge />
 
