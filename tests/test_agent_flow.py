@@ -1092,6 +1092,572 @@ class TestSubtaskCompletionDetection:
 
 
 # =============================================================================
+# QA LOOP AND FIXER INTERACTION TESTS
+# =============================================================================
+
+class TestQALoopStateTransitions:
+    """Tests for QA loop state transitions in agent flow context."""
+
+    def test_qa_not_required_when_build_incomplete(self):
+        """QA should not run when build is incomplete."""
+        from qa_loop import should_run_qa, save_implementation_plan
+
+        temp_dir, spec_dir, project_dir, saved_env = setup_test_environment()
+
+        try:
+            # Create plan with pending subtasks
+            plan = {
+                "feature": "Test Feature",
+                "phases": [
+                    {
+                        "phase": 1,
+                        "name": "Test",
+                        "subtasks": [
+                            {"id": "c1", "description": "Task 1", "status": "completed"},
+                            {"id": "c2", "description": "Task 2", "status": "pending"},
+                        ],
+                    },
+                ],
+            }
+            save_implementation_plan(spec_dir, plan)
+
+            assert should_run_qa(spec_dir) is False, "QA should not run with pending subtasks"
+
+        finally:
+            cleanup_test_environment(temp_dir, saved_env)
+
+    def test_qa_required_when_build_complete(self):
+        """QA should run when build is complete and not yet approved."""
+        from qa_loop import should_run_qa, save_implementation_plan
+
+        temp_dir, spec_dir, project_dir, saved_env = setup_test_environment()
+
+        try:
+            # Create plan with all completed subtasks
+            plan = {
+                "feature": "Test Feature",
+                "phases": [
+                    {
+                        "phase": 1,
+                        "name": "Test",
+                        "subtasks": [
+                            {"id": "c1", "description": "Task 1", "status": "completed"},
+                            {"id": "c2", "description": "Task 2", "status": "completed"},
+                        ],
+                    },
+                ],
+            }
+            save_implementation_plan(spec_dir, plan)
+
+            assert should_run_qa(spec_dir) is True, "QA should run when build complete"
+
+        finally:
+            cleanup_test_environment(temp_dir, saved_env)
+
+    def test_qa_not_required_when_already_approved(self):
+        """QA should not run when build is already approved."""
+        from qa_loop import should_run_qa, save_implementation_plan
+
+        temp_dir, spec_dir, project_dir, saved_env = setup_test_environment()
+
+        try:
+            plan = {
+                "feature": "Test Feature",
+                "phases": [
+                    {
+                        "phase": 1,
+                        "name": "Test",
+                        "subtasks": [
+                            {"id": "c1", "description": "Task 1", "status": "completed"},
+                        ],
+                    },
+                ],
+                "qa_signoff": {
+                    "status": "approved",
+                    "qa_session": 1,
+                    "timestamp": "2024-01-01T12:00:00",
+                },
+            }
+            save_implementation_plan(spec_dir, plan)
+
+            assert should_run_qa(spec_dir) is False, "QA should not run when already approved"
+
+        finally:
+            cleanup_test_environment(temp_dir, saved_env)
+
+
+class TestQAFixerInteraction:
+    """Tests for QA reviewer to fixer handoff and interaction."""
+
+    def test_fixer_should_run_when_qa_rejected(self):
+        """Fixer should run when QA rejected the build."""
+        from qa_loop import should_run_fixes, save_implementation_plan
+
+        temp_dir, spec_dir, project_dir, saved_env = setup_test_environment()
+
+        try:
+            plan = {
+                "feature": "Test Feature",
+                "qa_signoff": {
+                    "status": "rejected",
+                    "qa_session": 1,
+                    "issues_found": [{"title": "Missing test", "type": "unit_test"}],
+                },
+            }
+            save_implementation_plan(spec_dir, plan)
+
+            assert should_run_fixes(spec_dir) is True, "Fixer should run when QA rejected"
+
+        finally:
+            cleanup_test_environment(temp_dir, saved_env)
+
+    def test_fixer_should_not_run_when_qa_approved(self):
+        """Fixer should not run when QA approved the build."""
+        from qa_loop import should_run_fixes, save_implementation_plan
+
+        temp_dir, spec_dir, project_dir, saved_env = setup_test_environment()
+
+        try:
+            plan = {
+                "feature": "Test Feature",
+                "qa_signoff": {
+                    "status": "approved",
+                    "qa_session": 1,
+                    "tests_passed": {"unit": True, "integration": True, "e2e": True},
+                },
+            }
+            save_implementation_plan(spec_dir, plan)
+
+            assert should_run_fixes(spec_dir) is False, "Fixer should not run when approved"
+
+        finally:
+            cleanup_test_environment(temp_dir, saved_env)
+
+    def test_fixer_should_not_run_at_max_iterations(self):
+        """Fixer should not run when max iterations reached."""
+        from qa_loop import should_run_fixes, save_implementation_plan, MAX_QA_ITERATIONS
+
+        temp_dir, spec_dir, project_dir, saved_env = setup_test_environment()
+
+        try:
+            plan = {
+                "feature": "Test Feature",
+                "qa_signoff": {
+                    "status": "rejected",
+                    "qa_session": MAX_QA_ITERATIONS,
+                    "issues_found": [{"title": "Recurring issue", "type": "unit_test"}],
+                },
+            }
+            save_implementation_plan(spec_dir, plan)
+
+            assert should_run_fixes(spec_dir) is False, "Fixer should not run at max iterations"
+
+        finally:
+            cleanup_test_environment(temp_dir, saved_env)
+
+    def test_fixer_fixes_applied_state(self):
+        """Test transition to fixes_applied state after fixer runs."""
+        from qa_loop import is_fixes_applied, save_implementation_plan
+
+        temp_dir, spec_dir, project_dir, saved_env = setup_test_environment()
+
+        try:
+            # Simulate fixer completing and setting fixes_applied
+            plan = {
+                "feature": "Test Feature",
+                "qa_signoff": {
+                    "status": "fixes_applied",
+                    "ready_for_qa_revalidation": True,
+                    "qa_session": 1,
+                },
+            }
+            save_implementation_plan(spec_dir, plan)
+
+            assert is_fixes_applied(spec_dir) is True, "Should detect fixes_applied state"
+
+        finally:
+            cleanup_test_environment(temp_dir, saved_env)
+
+    def test_fixer_fixes_not_ready_for_revalidation(self):
+        """Test fixes_applied but not ready for revalidation."""
+        from qa_loop import is_fixes_applied, save_implementation_plan
+
+        temp_dir, spec_dir, project_dir, saved_env = setup_test_environment()
+
+        try:
+            plan = {
+                "feature": "Test Feature",
+                "qa_signoff": {
+                    "status": "fixes_applied",
+                    "ready_for_qa_revalidation": False,
+                    "qa_session": 1,
+                },
+            }
+            save_implementation_plan(spec_dir, plan)
+
+            assert is_fixes_applied(spec_dir) is False, "Should not be ready when flag is False"
+
+        finally:
+            cleanup_test_environment(temp_dir, saved_env)
+
+
+class TestQAVerdictHandling:
+    """Tests for QA verdict handling and status management."""
+
+    def test_qa_approved_verdict(self):
+        """Test QA approved verdict is correctly detected."""
+        from qa_loop import is_qa_approved, is_qa_rejected, save_implementation_plan
+
+        temp_dir, spec_dir, project_dir, saved_env = setup_test_environment()
+
+        try:
+            plan = {
+                "feature": "Test Feature",
+                "qa_signoff": {
+                    "status": "approved",
+                    "qa_session": 1,
+                    "timestamp": "2024-01-01T12:00:00",
+                    "tests_passed": {"unit": True, "integration": True, "e2e": True},
+                },
+            }
+            save_implementation_plan(spec_dir, plan)
+
+            assert is_qa_approved(spec_dir) is True, "Should detect approved status"
+            assert is_qa_rejected(spec_dir) is False, "Should not detect rejected when approved"
+
+        finally:
+            cleanup_test_environment(temp_dir, saved_env)
+
+    def test_qa_rejected_verdict(self):
+        """Test QA rejected verdict is correctly detected."""
+        from qa_loop import is_qa_approved, is_qa_rejected, save_implementation_plan
+
+        temp_dir, spec_dir, project_dir, saved_env = setup_test_environment()
+
+        try:
+            plan = {
+                "feature": "Test Feature",
+                "qa_signoff": {
+                    "status": "rejected",
+                    "qa_session": 1,
+                    "timestamp": "2024-01-01T12:00:00",
+                    "issues_found": [{"title": "Missing test", "type": "unit_test"}],
+                },
+            }
+            save_implementation_plan(spec_dir, plan)
+
+            assert is_qa_rejected(spec_dir) is True, "Should detect rejected status"
+            assert is_qa_approved(spec_dir) is False, "Should not detect approved when rejected"
+
+        finally:
+            cleanup_test_environment(temp_dir, saved_env)
+
+    def test_qa_no_verdict_yet(self):
+        """Test when no QA verdict has been made yet."""
+        from qa_loop import is_qa_approved, is_qa_rejected, get_qa_signoff_status, save_implementation_plan
+
+        temp_dir, spec_dir, project_dir, saved_env = setup_test_environment()
+
+        try:
+            plan = {
+                "feature": "Test Feature",
+                "phases": [],
+            }
+            save_implementation_plan(spec_dir, plan)
+
+            assert get_qa_signoff_status(spec_dir) is None, "Should have no signoff status"
+            assert is_qa_approved(spec_dir) is False, "Should not be approved with no verdict"
+            assert is_qa_rejected(spec_dir) is False, "Should not be rejected with no verdict"
+
+        finally:
+            cleanup_test_environment(temp_dir, saved_env)
+
+    def test_qa_iteration_count_tracking(self):
+        """Test QA iteration count is tracked correctly."""
+        from qa_loop import get_qa_iteration_count, save_implementation_plan
+
+        temp_dir, spec_dir, project_dir, saved_env = setup_test_environment()
+
+        try:
+            # First iteration
+            plan = {
+                "feature": "Test Feature",
+                "qa_signoff": {"status": "rejected", "qa_session": 1},
+            }
+            save_implementation_plan(spec_dir, plan)
+            assert get_qa_iteration_count(spec_dir) == 1, "Should be iteration 1"
+
+            # Second iteration
+            plan["qa_signoff"]["qa_session"] = 2
+            save_implementation_plan(spec_dir, plan)
+            assert get_qa_iteration_count(spec_dir) == 2, "Should be iteration 2"
+
+            # Third iteration
+            plan["qa_signoff"]["qa_session"] = 3
+            save_implementation_plan(spec_dir, plan)
+            assert get_qa_iteration_count(spec_dir) == 3, "Should be iteration 3"
+
+        finally:
+            cleanup_test_environment(temp_dir, saved_env)
+
+    def test_qa_iteration_count_zero_when_no_signoff(self):
+        """Test iteration count is 0 when no QA sessions yet."""
+        from qa_loop import get_qa_iteration_count, save_implementation_plan
+
+        temp_dir, spec_dir, project_dir, saved_env = setup_test_environment()
+
+        try:
+            plan = {"feature": "Test Feature", "phases": []}
+            save_implementation_plan(spec_dir, plan)
+
+            assert get_qa_iteration_count(spec_dir) == 0, "Should be 0 with no signoff"
+
+        finally:
+            cleanup_test_environment(temp_dir, saved_env)
+
+
+class TestQALoopWorkflow:
+    """Integration tests for complete QA loop workflow."""
+
+    def test_full_qa_workflow_approved_first_try(self):
+        """Test complete QA workflow where build passes on first try."""
+        from qa_loop import (
+            should_run_qa,
+            should_run_fixes,
+            is_qa_approved,
+            save_implementation_plan,
+        )
+
+        temp_dir, spec_dir, project_dir, saved_env = setup_test_environment()
+
+        try:
+            # Build complete, QA should run
+            plan = {
+                "feature": "Test Feature",
+                "phases": [
+                    {
+                        "phase": 1,
+                        "name": "Test",
+                        "subtasks": [
+                            {"id": "c1", "description": "Task 1", "status": "completed"},
+                        ],
+                    },
+                ],
+            }
+            save_implementation_plan(spec_dir, plan)
+            assert should_run_qa(spec_dir) is True, "QA should run initially"
+
+            # QA approves
+            plan["qa_signoff"] = {
+                "status": "approved",
+                "qa_session": 1,
+                "tests_passed": {"unit": True, "integration": True, "e2e": True},
+            }
+            save_implementation_plan(spec_dir, plan)
+
+            # Verify end state
+            assert is_qa_approved(spec_dir) is True, "Should be approved"
+            assert should_run_qa(spec_dir) is False, "QA should not run again"
+            assert should_run_fixes(spec_dir) is False, "Fixer should not run"
+
+        finally:
+            cleanup_test_environment(temp_dir, saved_env)
+
+    def test_full_qa_workflow_with_one_rejection(self):
+        """Test QA workflow with one rejection followed by approval."""
+        from qa_loop import (
+            should_run_qa,
+            should_run_fixes,
+            is_qa_approved,
+            is_qa_rejected,
+            is_fixes_applied,
+            get_qa_iteration_count,
+            save_implementation_plan,
+        )
+
+        temp_dir, spec_dir, project_dir, saved_env = setup_test_environment()
+
+        try:
+            # Build complete
+            plan = {
+                "feature": "Test Feature",
+                "phases": [
+                    {
+                        "phase": 1,
+                        "name": "Test",
+                        "subtasks": [
+                            {"id": "c1", "description": "Task 1", "status": "completed"},
+                        ],
+                    },
+                ],
+            }
+            save_implementation_plan(spec_dir, plan)
+
+            # First QA session - rejected
+            plan["qa_signoff"] = {
+                "status": "rejected",
+                "qa_session": 1,
+                "issues_found": [{"title": "Missing test", "type": "unit_test"}],
+            }
+            save_implementation_plan(spec_dir, plan)
+
+            assert is_qa_rejected(spec_dir) is True, "Should be rejected"
+            assert should_run_fixes(spec_dir) is True, "Fixer should run"
+            assert get_qa_iteration_count(spec_dir) == 1, "Should be iteration 1"
+
+            # Fixer applies fixes
+            plan["qa_signoff"] = {
+                "status": "fixes_applied",
+                "ready_for_qa_revalidation": True,
+                "qa_session": 1,
+            }
+            save_implementation_plan(spec_dir, plan)
+
+            assert is_fixes_applied(spec_dir) is True, "Fixes should be applied"
+
+            # Second QA session - approved
+            plan["qa_signoff"] = {
+                "status": "approved",
+                "qa_session": 2,
+                "tests_passed": {"unit": True, "integration": True, "e2e": True},
+            }
+            save_implementation_plan(spec_dir, plan)
+
+            assert is_qa_approved(spec_dir) is True, "Should be approved"
+            assert get_qa_iteration_count(spec_dir) == 2, "Should be iteration 2"
+
+        finally:
+            cleanup_test_environment(temp_dir, saved_env)
+
+    def test_qa_workflow_multiple_rejections(self):
+        """Test QA workflow with multiple rejections until max iterations."""
+        from qa_loop import (
+            should_run_fixes,
+            is_qa_rejected,
+            get_qa_iteration_count,
+            save_implementation_plan,
+            MAX_QA_ITERATIONS,
+        )
+
+        temp_dir, spec_dir, project_dir, saved_env = setup_test_environment()
+
+        try:
+            plan = {"feature": "Test Feature", "phases": []}
+
+            # Simulate multiple rejections
+            for i in range(1, MAX_QA_ITERATIONS + 1):
+                plan["qa_signoff"] = {
+                    "status": "rejected",
+                    "qa_session": i,
+                    "issues_found": [{"title": f"Issue {i}", "type": "unit_test"}],
+                }
+                save_implementation_plan(spec_dir, plan)
+
+                assert is_qa_rejected(spec_dir) is True, f"Should be rejected at iteration {i}"
+                assert get_qa_iteration_count(spec_dir) == i, f"Should be iteration {i}"
+
+                if i < MAX_QA_ITERATIONS:
+                    assert should_run_fixes(spec_dir) is True, f"Fixer should run at iteration {i}"
+                else:
+                    assert should_run_fixes(spec_dir) is False, "Fixer should not run at max iterations"
+
+        finally:
+            cleanup_test_environment(temp_dir, saved_env)
+
+
+class TestQASignoffDataStructure:
+    """Tests for QA signoff data structure validation."""
+
+    def test_approved_signoff_has_tests_passed(self):
+        """Test approved signoff includes tests_passed field."""
+        from qa_loop import get_qa_signoff_status, save_implementation_plan
+
+        temp_dir, spec_dir, project_dir, saved_env = setup_test_environment()
+
+        try:
+            plan = {
+                "feature": "Test Feature",
+                "qa_signoff": {
+                    "status": "approved",
+                    "qa_session": 1,
+                    "timestamp": "2024-01-01T12:00:00",
+                    "tests_passed": {
+                        "unit": True,
+                        "integration": True,
+                        "e2e": True,
+                    },
+                },
+            }
+            save_implementation_plan(spec_dir, plan)
+
+            status = get_qa_signoff_status(spec_dir)
+            assert status is not None, "Should have signoff status"
+            assert "tests_passed" in status, "Approved signoff should have tests_passed"
+            assert status["tests_passed"]["unit"] is True, "Unit tests should be True"
+
+        finally:
+            cleanup_test_environment(temp_dir, saved_env)
+
+    def test_rejected_signoff_has_issues_found(self):
+        """Test rejected signoff includes issues_found field."""
+        from qa_loop import get_qa_signoff_status, save_implementation_plan
+
+        temp_dir, spec_dir, project_dir, saved_env = setup_test_environment()
+
+        try:
+            plan = {
+                "feature": "Test Feature",
+                "qa_signoff": {
+                    "status": "rejected",
+                    "qa_session": 1,
+                    "timestamp": "2024-01-01T12:00:00",
+                    "issues_found": [
+                        {"title": "Missing test", "type": "unit_test"},
+                        {"title": "Validation error", "type": "acceptance"},
+                    ],
+                },
+            }
+            save_implementation_plan(spec_dir, plan)
+
+            status = get_qa_signoff_status(spec_dir)
+            assert status is not None, "Should have signoff status"
+            assert "issues_found" in status, "Rejected signoff should have issues_found"
+            assert len(status["issues_found"]) == 2, "Should have 2 issues"
+
+        finally:
+            cleanup_test_environment(temp_dir, saved_env)
+
+    def test_issues_have_title_and_type(self):
+        """Test that issues in rejected signoff have required fields."""
+        from qa_loop import get_qa_signoff_status, save_implementation_plan
+
+        temp_dir, spec_dir, project_dir, saved_env = setup_test_environment()
+
+        try:
+            plan = {
+                "feature": "Test Feature",
+                "qa_signoff": {
+                    "status": "rejected",
+                    "qa_session": 1,
+                    "issues_found": [
+                        {"title": "Test failure", "type": "unit_test"},
+                    ],
+                },
+            }
+            save_implementation_plan(spec_dir, plan)
+
+            status = get_qa_signoff_status(spec_dir)
+            issue = status["issues_found"][0]
+            assert "title" in issue, "Issue should have title"
+            assert "type" in issue, "Issue should have type"
+            assert issue["title"] == "Test failure", "Title should match"
+            assert issue["type"] == "unit_test", "Type should match"
+
+        finally:
+            cleanup_test_environment(temp_dir, saved_env)
+
+
+# =============================================================================
 # MAIN ENTRY POINT
 # =============================================================================
 
