@@ -20,6 +20,7 @@ from __future__ import annotations
 import hashlib
 import logging
 import os
+from collections import defaultdict
 from pathlib import Path
 from typing import Any
 
@@ -42,7 +43,7 @@ try:
     from .category_utils import map_category
     from .io_utils import safe_print
     from .pr_worktree_manager import PRWorktreeManager
-    from .pydantic_models import ParallelOrchestratorResponse
+    from .pydantic_models import AgentAgreement, ParallelOrchestratorResponse
     from .sdk_utils import process_sdk_stream
 except (ImportError, ValueError, SystemError):
     from context_gatherer import PRContext, PRContextGatherer, _validate_git_ref
@@ -61,7 +62,7 @@ except (ImportError, ValueError, SystemError):
     from services.category_utils import map_category
     from services.io_utils import safe_print
     from services.pr_worktree_manager import PRWorktreeManager
-    from services.pydantic_models import ParallelOrchestratorResponse
+    from services.pydantic_models import AgentAgreement, ParallelOrchestratorResponse
     from services.sdk_utils import process_sdk_stream
 
 
@@ -1110,6 +1111,113 @@ The SDK will run invoked agents in parallel automatically.
                 unique.append(f)
 
         return unique
+
+    def _cross_validate_findings(
+        self, findings: list[PRReviewFinding]
+    ) -> tuple[list[PRReviewFinding], AgentAgreement]:
+        """
+        Cross-validate findings to boost confidence when multiple agents agree.
+
+        Groups findings by location key (file, line, category) and:
+        - For groups with 2+ findings: merges into one, boosts confidence by 0.15,
+          sets cross_validated=True, collects all source agents
+        - For single-agent findings: keeps as-is, ensures source_agents is populated
+
+        Args:
+            findings: List of deduplicated findings to cross-validate
+
+        Returns:
+            Tuple of (cross-validated findings, AgentAgreement tracking object)
+        """
+        # Confidence boost for multi-agent agreement
+        CONFIDENCE_BOOST = 0.15
+        MAX_CONFIDENCE = 0.95
+
+        # Group findings by location key: (file, line, category)
+        groups: dict[tuple, list[PRReviewFinding]] = defaultdict(list)
+        for finding in findings:
+            key = (finding.file, finding.line, finding.category.value)
+            groups[key].append(finding)
+
+        validated_findings: list[PRReviewFinding] = []
+        agreed_finding_ids: list[str] = []
+
+        for key, group in groups.items():
+            if len(group) >= 2:
+                # Multi-agent agreement: merge findings
+                # Sort by severity to keep highest severity finding
+                severity_order = {
+                    ReviewSeverity.CRITICAL: 0,
+                    ReviewSeverity.HIGH: 1,
+                    ReviewSeverity.MEDIUM: 2,
+                    ReviewSeverity.LOW: 3,
+                }
+                group.sort(key=lambda f: severity_order.get(f.severity, 99))
+                primary = group[0]
+
+                # Collect all source agents from group
+                all_agents: list[str] = []
+                for f in group:
+                    if f.source_agents:
+                        for agent in f.source_agents:
+                            if agent not in all_agents:
+                                all_agents.append(agent)
+
+                # Combine evidence from all findings
+                all_evidence: list[str] = []
+                for f in group:
+                    if f.evidence and f.evidence.strip():
+                        all_evidence.append(f.evidence.strip())
+                combined_evidence = (
+                    "\n---\n".join(all_evidence) if all_evidence else None
+                )
+
+                # Combine descriptions
+                all_descriptions: list[str] = [primary.description]
+                for f in group[1:]:
+                    if f.description and f.description not in all_descriptions:
+                        all_descriptions.append(f.description)
+                combined_description = " | ".join(all_descriptions)
+
+                # Boost confidence (capped at MAX_CONFIDENCE)
+                base_confidence = primary.confidence or 0.5
+                boosted_confidence = min(
+                    base_confidence + CONFIDENCE_BOOST, MAX_CONFIDENCE
+                )
+
+                # Update the primary finding with merged data
+                primary.confidence = boosted_confidence
+                primary.cross_validated = True
+                primary.source_agents = all_agents
+                primary.evidence = combined_evidence
+                primary.description = combined_description
+
+                validated_findings.append(primary)
+                agreed_finding_ids.append(primary.id)
+
+                logger.debug(
+                    f"[PRReview] Cross-validated finding {primary.id}: "
+                    f"merged {len(group)} findings, agents={all_agents}, "
+                    f"confidence={boosted_confidence:.2f}"
+                )
+            else:
+                # Single-agent finding: keep as-is
+                finding = group[0]
+
+                # Ensure source_agents is populated (use empty list if not set)
+                if not finding.source_agents:
+                    finding.source_agents = []
+
+                validated_findings.append(finding)
+
+        # Create agent agreement tracking object
+        agent_agreement = AgentAgreement(
+            agreed_findings=agreed_finding_ids,
+            conflicting_findings=[],  # Not implemented yet - reserved for future
+            resolution_notes=None,
+        )
+
+        return validated_findings, agent_agreement
 
     def _apply_confidence_routing(
         self, findings: list[PRReviewFinding]
