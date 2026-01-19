@@ -830,6 +830,7 @@ class PRContextGatherer:
         - Imported modules and dependencies
         - Configuration files in the same directory
         - Related type definition files
+        - Reverse dependencies (files that import changed files)
         """
         related = set()
 
@@ -850,12 +851,15 @@ class PRContextGatherer:
             if path.suffix in [".ts", ".tsx"]:
                 related.update(self._find_type_definitions(path))
 
+            # Find reverse dependencies (files that import this file)
+            related.update(self._find_dependents(changed_file.path))
+
         # Remove files that are already in changed_files
         changed_paths = {cf.path for cf in changed_files}
         related = {r for r in related if r not in changed_paths}
 
-        # Limit to 20 most relevant files
-        return sorted(related)[:20]
+        # Use smart prioritization with increased limit (50 instead of 20)
+        return self._prioritize_related_files(related, limit=50)
 
     def _find_test_files(self, source_path: Path) -> set[str]:
         """Find test files related to a source file."""
@@ -1448,8 +1452,8 @@ class PRContextGatherer:
         changed_paths = {cf.path for cf in changed_files}
         related = {r for r in related if r not in changed_paths}
 
-        # Limit to 20 most relevant files
-        return sorted(related)[:20]
+        # Limit to 50 most relevant files (increased from 20)
+        return sorted(related)[:50]
 
 
 class FollowupContextGatherer:
