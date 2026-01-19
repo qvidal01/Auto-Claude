@@ -12,6 +12,7 @@
 
 import { execFileSync } from 'child_process';
 import { createHash } from 'crypto';
+import { isMacOS } from '../platform';
 
 /**
  * Credentials retrieved from macOS Keychain
@@ -111,7 +112,7 @@ function validateKeychainData(data: unknown): data is { claudeAiOauth?: { access
  */
 export function getCredentialsFromKeychain(configDir?: string, forceRefresh = false): KeychainCredentials {
   // Only attempt on macOS
-  if (process.platform !== 'darwin') {
+  if (!isMacOS()) {
     return { token: null, email: null };
   }
 

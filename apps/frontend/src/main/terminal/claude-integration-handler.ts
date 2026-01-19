@@ -26,6 +26,38 @@ import type {
   OnboardingCompleteEvent
 } from './types';
 
+// ============================================================================
+// AUTH TERMINAL ID PATTERN CONSTANTS
+// ============================================================================
+
+/**
+ * Regular expression pattern for matching auth terminal IDs.
+ * Auth terminals follow the format: claude-login-{profileId}-{timestamp}
+ * where profileId is either 'default' or 'profile-{digits}'
+ *
+ * This pattern is used to detect login terminals and extract the profile ID
+ * for OAuth token storage.
+ *
+ * @see claude-code-handlers.ts where the ID format is generated
+ */
+const AUTH_TERMINAL_ID_PATTERN = /claude-login-(profile-\d+|default)-/;
+
+/**
+ * Extract profile ID from an auth terminal ID.
+ *
+ * @param terminalId - Terminal ID to parse (e.g., 'claude-login-profile-123-1234567890')
+ * @returns The profile ID (e.g., 'profile-123' or 'default'), or null if not an auth terminal
+ *
+ * @example
+ * extractProfileIdFromAuthTerminalId('claude-login-default-1234567890') // 'default'
+ * extractProfileIdFromAuthTerminalId('claude-login-profile-123-1234567890') // 'profile-123'
+ * extractProfileIdFromAuthTerminalId('regular-terminal-1') // null
+ */
+function extractProfileIdFromAuthTerminalId(terminalId: string): string | null {
+  const match = terminalId.match(AUTH_TERMINAL_ID_PATTERN);
+  return match ? match[1] : null;
+}
+
 function normalizePathForBash(envPath: string): string {
   return isWindows() ? envPath.replace(/;/g, ':') : envPath;
 }
@@ -380,13 +412,12 @@ export function handleOAuthToken(
   data: string,
   getWindow: WindowGetter
 ): void {
-  // Match both custom profiles (profile-123456) and the default profile
-  const profileIdMatch = terminal.id.match(/claude-login-(profile-\d+|default)-/);
+  // Extract profile ID from auth terminal ID pattern (if this is an auth terminal)
+  const profileId = extractProfileIdFromAuthTerminalId(terminal.id);
 
   // First check for "Login successful" message (claude /login flow)
   // This is the primary detection method since tokens aren't displayed in output
-  if (OutputParser.hasLoginSuccess(data) && profileIdMatch) {
-    const profileId = profileIdMatch[1];
+  if (OutputParser.hasLoginSuccess(data) && profileId) {
     console.warn('[ClaudeIntegration] Login success detected for profile:', profileId);
 
     const emailFromOutput = OutputParser.extractEmail(terminal.outputBuffer);
@@ -475,9 +506,8 @@ export function handleOAuthToken(
 
   const email = OutputParser.extractEmail(terminal.outputBuffer);
 
-  if (profileIdMatch) {
+  if (profileId) {
     // Save to specific profile (profile login terminal)
-    const profileId = profileIdMatch[1];
     const profileManager = getClaudeProfileManager();
     const profile = profileManager.getProfile(profileId);
     const success = profileManager.setProfileToken(profileId, token, email || undefined);
@@ -587,8 +617,7 @@ export function handleOnboardingComplete(
   terminal.awaitingOnboardingComplete = false;
 
   // Extract profile ID from terminal ID pattern (claude-login-{profileId}-*)
-  const profileIdMatch = terminal.id.match(/claude-login-(profile-\d+|default)-/);
-  const profileId = profileIdMatch ? profileIdMatch[1] : undefined;
+  const profileId = extractProfileIdFromAuthTerminalId(terminal.id) || undefined;
 
   // Try to extract email from the welcome screen (e.g., "user@example.com's Organization")
   // Strip ANSI escape codes first since terminal output contains formatting

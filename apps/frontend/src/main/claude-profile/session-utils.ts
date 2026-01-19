@@ -6,7 +6,7 @@
  * and can be copied between profiles to enable session continuity after profile switches.
  */
 
-import { existsSync, mkdirSync, copyFileSync, cpSync } from 'fs';
+import { existsSync, mkdirSync, copyFileSync, cpSync, unlinkSync } from 'fs';
 import { join, dirname } from 'path';
 import { homedir } from 'os';
 
@@ -17,8 +17,9 @@ import { homedir } from 'os';
 export function cwdToProjectPath(cwd: string): string {
   // Normalize to forward slashes first (cross-platform: Windows C:\foo\bar -> C:/foo/bar)
   const normalized = cwd.replace(/\\/g, '/');
-  // Replace path separators with dashes and remove leading slash
-  return normalized.replace(/^\//, '').replace(/\//g, '-');
+  // Remove Windows drive letter (C:, D:, etc.) to avoid colons in directory names
+  // Then replace path separators with dashes and remove leading slash
+  return normalized.replace(/^[a-zA-Z]:/, '').replace(/^\//, '').replace(/\//g, '-');
 }
 
 /**
@@ -96,12 +97,13 @@ export function migrateSession(
     filesCopied: 0
   };
 
+  // Get source and target paths (declared outside try block for error cleanup)
+  const sourceFile = getSessionFilePath(sourceConfigDir, cwd, sessionId);
+  const targetFile = getSessionFilePath(targetConfigDir, cwd, sessionId);
+  const sourceDir = getSessionDirPath(sourceConfigDir, cwd, sessionId);
+  const targetDir = getSessionDirPath(targetConfigDir, cwd, sessionId);
+
   try {
-    // Get source and target paths
-    const sourceFile = getSessionFilePath(sourceConfigDir, cwd, sessionId);
-    const targetFile = getSessionFilePath(targetConfigDir, cwd, sessionId);
-    const sourceDir = getSessionDirPath(sourceConfigDir, cwd, sessionId);
-    const targetDir = getSessionDirPath(targetConfigDir, cwd, sessionId);
 
     // Check if source session exists
     if (!existsSync(sourceFile)) {
@@ -147,6 +149,20 @@ export function migrateSession(
   } catch (error) {
     result.error = error instanceof Error ? error.message : 'Unknown error during migration';
     console.error('[SessionUtils] Migration error:', result.error);
+
+    // Clean up partially migrated session file to enable retry
+    // If we copied the .jsonl but failed during tool-results copy,
+    // remove the target file so future migrations don't skip it
+    if (existsSync(targetFile)) {
+      try {
+        unlinkSync(targetFile);
+        console.warn('[SessionUtils] Cleaned up partial migration file:', targetFile);
+      } catch (cleanupError) {
+        console.error('[SessionUtils] Failed to cleanup partial migration:',
+          cleanupError instanceof Error ? cleanupError.message : 'Unknown cleanup error');
+      }
+    }
+
     return result;
   }
 }

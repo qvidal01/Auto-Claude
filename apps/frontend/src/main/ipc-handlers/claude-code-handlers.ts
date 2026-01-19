@@ -389,6 +389,18 @@ export function escapeGitBashCommand(str: string): string {
 }
 
 /**
+ * Escape a string for safe use in bash -c context (Linux terminals).
+ * Uses the same escaping rules as escapeGitBashCommand for consistency.
+ * Defense-in-depth: Currently all commands come from trusted sources (getInstallCommand,
+ * getInstallVersionCommand), but this prevents potential command injection if future
+ * code adds new call sites with less controlled input.
+ */
+export function escapeBashCommand(str: string): string {
+  // Reuse the same escaping logic as Git Bash
+  return escapeGitBashCommand(str);
+}
+
+/**
  * Open a terminal with the given command
  * Uses the user's preferred terminal from settings
  * Supports macOS, Windows, and Linux terminals
@@ -685,7 +697,10 @@ export async function openTerminalWithCommand(command: string): Promise<void> {
     console.warn('[Claude Code] Using terminal:', terminalId || 'auto-detect');
 
     // Command to run (keep terminal open after execution)
-    const bashCommand = `${command}; exec bash`;
+    // Escape for defense-in-depth (currently all commands come from trusted sources,
+    // but this prevents potential command injection if future code adds new call sites)
+    const escapedCommand = escapeBashCommand(command);
+    const bashCommand = `${escapedCommand}; exec bash`;
 
     // Try to use preferred terminal if specified
     if (terminalId === 'gnometerminal') {

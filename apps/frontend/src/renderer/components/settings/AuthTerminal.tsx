@@ -50,6 +50,8 @@ export function AuthTerminal({
   const cleanupFnsRef = useRef<(() => void)[]>([]);
   const loginSentRef = useRef(false); // Track if /login was already sent
   const loginTimeoutRef = useRef<NodeJS.Timeout | null>(null); // Track setTimeout for cleanup
+  const successTimeoutRef = useRef<NodeJS.Timeout | null>(null); // Track success auto-close timeout for cleanup
+  const authCompletedRef = useRef(false); // Track if auth has already completed to prevent race conditions
 
   const [status, setStatus] = useState<'connecting' | 'ready' | 'onboarding' | 'success' | 'error'>('connecting');
   const [authEmail, setAuthEmail] = useState<string | undefined>();
@@ -155,12 +157,12 @@ export function AuthTerminal({
         const step3Text = t('authTerminal.step3');
 
         xterm.writeln('\x1b[1;36m╔════════════════════════════════════════════════════════════╗\x1b[0m');
-        xterm.writeln(`\x1b[1;36m║\x1b[0m   \x1b[1m${titleText}\x1b[0m${' '.repeat(60 - titleText.length - 3)}\x1b[1;36m║\x1b[0m`);
+        xterm.writeln(`\x1b[1;36m║\x1b[0m   \x1b[1m${titleText}\x1b[0m${' '.repeat(Math.max(0, 60 - titleText.length - 3))}\x1b[1;36m║\x1b[0m`);
         xterm.writeln('\x1b[1;36m╠════════════════════════════════════════════════════════════╣\x1b[0m');
         xterm.writeln('\x1b[1;36m║\x1b[0m                                                            \x1b[1;36m║\x1b[0m');
-        xterm.writeln(`\x1b[1;36m║\x1b[0m   \x1b[33m1.\x1b[0m ${step1Text}${' '.repeat(60 - step1Text.length - 6)}\x1b[1;36m║\x1b[0m`);
-        xterm.writeln(`\x1b[1;36m║\x1b[0m   \x1b[33m2.\x1b[0m ${step2Text}${' '.repeat(60 - step2Text.length - 6)}\x1b[1;36m║\x1b[0m`);
-        xterm.writeln(`\x1b[1;36m║\x1b[0m   \x1b[33m3.\x1b[0m ${step3Text}${' '.repeat(60 - step3Text.length - 6)}\x1b[1;36m║\x1b[0m`);
+        xterm.writeln(`\x1b[1;36m║\x1b[0m   \x1b[33m1.\x1b[0m ${step1Text}${' '.repeat(Math.max(0, 60 - step1Text.length - 6))}\x1b[1;36m║\x1b[0m`);
+        xterm.writeln(`\x1b[1;36m║\x1b[0m   \x1b[33m2.\x1b[0m ${step2Text}${' '.repeat(Math.max(0, 60 - step2Text.length - 6))}\x1b[1;36m║\x1b[0m`);
+        xterm.writeln(`\x1b[1;36m║\x1b[0m   \x1b[33m3.\x1b[0m ${step3Text}${' '.repeat(Math.max(0, 60 - step3Text.length - 6))}\x1b[1;36m║\x1b[0m`);
         xterm.writeln('\x1b[1;36m║\x1b[0m                                                            \x1b[1;36m║\x1b[0m');
         xterm.writeln('\x1b[1;36m╚════════════════════════════════════════════════════════════╝\x1b[0m');
         xterm.writeln('');
@@ -276,6 +278,12 @@ export function AuthTerminal({
         // If we were in onboarding status and terminal exits with code 0,
         // that means the user completed the onboarding successfully
         if (statusRef.current === 'onboarding' && exitCode === 0) {
+          // Prevent race condition with onboarding-complete handler
+          if (authCompletedRef.current) {
+            debugLog('SKIPPED exit handler - auth already completed', { terminalId });
+            return;
+          }
+          authCompletedRef.current = true;
           debugLog('Transitioning from onboarding to success', { terminalId });
           setStatus('success');
           onAuthSuccess?.(authEmailRef.current);
@@ -296,11 +304,17 @@ export function AuthTerminal({
         });
         // Only process if we're in onboarding status
         if (statusRef.current === 'onboarding') {
+          // Prevent race condition with terminal exit handler
+          if (authCompletedRef.current) {
+            debugLog('SKIPPED onboarding-complete handler - auth already completed', { terminalId });
+            return;
+          }
+          authCompletedRef.current = true;
           debugLog('Auto-closing terminal after onboarding complete', { terminalId });
           setStatus('success');
           onAuthSuccess?.(authEmailRef.current);
           // Auto-close after a brief delay to show success UI
-          setTimeout(() => {
+          successTimeoutRef.current = setTimeout(() => {
             if (isCreatedRef.current) {
               window.electronAPI.destroyTerminal(terminalId).catch(console.error);
               isCreatedRef.current = false;
@@ -353,13 +367,20 @@ export function AuthTerminal({
         terminalId,
         isCreated: isCreatedRef.current,
         loginSent: loginSentRef.current,
-        hasLoginTimeout: !!loginTimeoutRef.current
+        hasLoginTimeout: !!loginTimeoutRef.current,
+        hasSuccessTimeout: !!successTimeoutRef.current
       });
       // Clear pending login timeout if component unmounts before it fires
       if (loginTimeoutRef.current) {
         debugLog('Clearing pending login timeout', { terminalId });
         clearTimeout(loginTimeoutRef.current);
         loginTimeoutRef.current = null;
+      }
+      // Clear pending success timeout if component unmounts before it fires
+      if (successTimeoutRef.current) {
+        debugLog('Clearing pending success timeout', { terminalId });
+        clearTimeout(successTimeoutRef.current);
+        successTimeoutRef.current = null;
       }
       if (isCreatedRef.current) {
         debugLog('Destroying terminal', { terminalId });
