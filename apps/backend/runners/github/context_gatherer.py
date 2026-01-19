@@ -883,25 +883,92 @@ class PRContextGatherer:
         Find imported files from source code.
 
         Supports:
-        - JavaScript/TypeScript: import statements
-        - Python: import statements
+        - JavaScript/TypeScript: ES6 imports, path aliases, CommonJS, re-exports
+        - Python: import statements via AST
         """
         imports = set()
 
         if source_path.suffix in [".ts", ".tsx", ".js", ".jsx"]:
-            # Match: import ... from './file' or from '../file'
-            # Only relative imports (starting with . or ..)
-            pattern = r"from\s+['\"](\.[^'\"]+)['\"]"
-            for match in re.finditer(pattern, content):
+            # Load tsconfig paths once for this file (for alias resolution)
+            ts_paths = self._load_tsconfig_paths()
+
+            # Pattern 1: ES6 relative imports (existing)
+            # Matches: from './file', from '../file'
+            relative_pattern = r"from\s+['\"](\.[^'\"]+)['\"]"
+            for match in re.finditer(relative_pattern, content):
                 import_path = match.group(1)
                 resolved = self._resolve_import_path(import_path, source_path)
                 if resolved:
                     imports.add(resolved)
 
+            # Pattern 2: Path alias imports (NEW)
+            # Matches: from '@/utils', from '~/config', from '@shared/types'
+            alias_pattern = r"from\s+['\"](@[^'\"]+|~[^'\"]+)['\"]"
+            if ts_paths:
+                for match in re.finditer(alias_pattern, content):
+                    import_path = match.group(1)
+                    resolved_alias = self._resolve_path_alias(import_path, ts_paths)
+                    if resolved_alias:
+                        # Resolve to actual file path using the alias-resolved path
+                        full_resolved = self._resolve_import_path(
+                            "./" + resolved_alias, source_path.parent / resolved_alias
+                        )
+                        if full_resolved:
+                            imports.add(full_resolved)
+
+            # Pattern 3: CommonJS require (NEW)
+            # Matches: require('./utils'), require('@/config')
+            require_pattern = r"require\s*\(\s*['\"]([^'\"]+)['\"]\s*\)"
+            for match in re.finditer(require_pattern, content):
+                import_path = match.group(1)
+                if import_path.startswith("."):
+                    resolved = self._resolve_import_path(import_path, source_path)
+                elif import_path.startswith("@") or import_path.startswith("~"):
+                    if ts_paths:
+                        resolved_alias = self._resolve_path_alias(import_path, ts_paths)
+                        resolved = (
+                            self._resolve_import_path(
+                                "./" + resolved_alias,
+                                source_path.parent / resolved_alias,
+                            )
+                            if resolved_alias
+                            else None
+                        )
+                    else:
+                        resolved = None
+                else:
+                    resolved = None  # Skip node_modules packages
+                if resolved:
+                    imports.add(resolved)
+
+            # Pattern 4: Re-exports (NEW)
+            # Matches: export * from './module', export { x } from './module'
+            reexport_pattern = r"export\s+(?:\*|\{[^}]*\})\s+from\s+['\"]([^'\"]+)['\"]"
+            for match in re.finditer(reexport_pattern, content):
+                import_path = match.group(1)
+                if import_path.startswith("."):
+                    resolved = self._resolve_import_path(import_path, source_path)
+                elif import_path.startswith("@") or import_path.startswith("~"):
+                    if ts_paths:
+                        resolved_alias = self._resolve_path_alias(import_path, ts_paths)
+                        resolved = (
+                            self._resolve_import_path(
+                                "./" + resolved_alias,
+                                source_path.parent / resolved_alias,
+                            )
+                            if resolved_alias
+                            else None
+                        )
+                    else:
+                        resolved = None
+                else:
+                    resolved = None
+                if resolved:
+                    imports.add(resolved)
+
         elif source_path.suffix == ".py":
-            # Python relative imports are complex, skip for now
-            # Could add support for "from . import" later
-            pass
+            # Python imports via AST
+            imports.update(self._find_python_imports(content, source_path))
 
         return imports
 
@@ -976,6 +1043,93 @@ class PRContextGatherer:
             return {str(type_def)}
 
         return set()
+
+    def _load_json_safe(self, filename: str) -> dict | None:
+        """
+        Load JSON file from project_dir, stripping comments first.
+
+        tsconfig.json allows // and /* */ comments, which standard JSON
+        parsers reject. This method strips them before parsing.
+
+        Args:
+            filename: JSON filename relative to project_dir
+
+        Returns:
+            Parsed JSON as dict, or None on error
+        """
+        try:
+            file_path = self.project_dir / filename
+            if not file_path.exists():
+                return None
+
+            content = file_path.read_text(encoding="utf-8")
+
+            # Strip single-line comments: // ...
+            content = re.sub(r"//.*$", "", content, flags=re.MULTILINE)
+            # Strip multi-line comments: /* ... */
+            content = re.sub(r"/\*.*?\*/", "", content, flags=re.DOTALL)
+
+            return json.loads(content)
+        except (json.JSONDecodeError, OSError):
+            return None
+
+    def _load_tsconfig_paths(self) -> dict[str, list[str]] | None:
+        """
+        Load path mappings from tsconfig.json.
+
+        Handles the 'extends' field to merge paths from base configs.
+
+        Returns:
+            Dict mapping path aliases to target paths, e.g.:
+            {"@/*": ["src/*"], "@shared/*": ["src/shared/*"]}
+            Returns None if no paths configured.
+        """
+        config = self._load_json_safe("tsconfig.json")
+        if not config:
+            return None
+
+        paths: dict[str, list[str]] = {}
+
+        # Handle extends field - load base config first
+        if "extends" in config:
+            extends_path = config["extends"]
+            # Handle relative paths like "./tsconfig.base.json"
+            if extends_path.startswith("./"):
+                extends_path = extends_path[2:]
+            base_config = self._load_json_safe(extends_path)
+            if base_config:
+                base_paths = base_config.get("compilerOptions", {}).get("paths", {})
+                paths.update(base_paths)
+
+        # Override with current config's paths
+        current_paths = config.get("compilerOptions", {}).get("paths", {})
+        paths.update(current_paths)
+
+        return paths if paths else None
+
+    def _resolve_path_alias(
+        self, import_path: str, paths: dict[str, list[str]]
+    ) -> str | None:
+        """
+        Resolve a path alias import to an actual file path.
+
+        Args:
+            import_path: Import path like '@/utils/helpers' or '~/config'
+            paths: tsconfig paths mapping from _load_tsconfig_paths()
+
+        Returns:
+            Resolved path like 'src/utils/helpers', or None if no match
+        """
+        for alias_pattern, target_paths in paths.items():
+            # Convert '@/*' to regex pattern '^@/(.*)$'
+            regex_pattern = "^" + alias_pattern.replace("*", "(.*)") + "$"
+            match = re.match(regex_pattern, import_path)
+            if match:
+                suffix = match.group(1) if match.lastindex else ""
+                # Use first target path, replace * with suffix
+                target = target_paths[0].replace("*", suffix)
+                return target
+        return None
 
     def _resolve_python_import(
         self, module_name: str, level: int, source_path: Path
