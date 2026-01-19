@@ -58,6 +58,10 @@ You have access to these specialized review agents via the Task tool:
 **Description**: AI comment validator for triaging comments from CodeRabbit, Gemini Code Assist, Cursor, Greptile, and other AI reviewers.
 **When to use**: PRs that have existing AI review comments that need validation.
 
+### finding-validator
+**Description**: Finding validation specialist that re-investigates findings to confirm they are real issues, not false positives.
+**When to use**: After ALL specialist agents have reported their findings. Invoke for EVERY finding to validate it exists in the actual code.
+
 ## Your Workflow
 
 ### Phase 1: Analysis
@@ -102,6 +106,33 @@ After receiving agent results, synthesize findings:
 3. **Deduplicate**: Remove overlapping findings (same file + line + issue type)
 4. **Filter**: Only include findings with confidence ≥80%
 5. **Generate Verdict**: Based on severity of remaining findings
+
+### Phase 3.5: Finding Validation (CRITICAL - Prevent False Positives)
+
+**MANDATORY STEP** - After synthesis, validate ALL findings before generating verdict:
+
+1. **Invoke finding-validator** for EACH finding from specialist agents
+2. For each finding, the validator returns one of:
+   - `confirmed_valid` - Issue IS real, keep in findings list
+   - `dismissed_false_positive` - Original finding was WRONG, remove from findings
+   - `needs_human_review` - Cannot determine, keep but flag for human
+
+3. **Filter findings based on validation:**
+   - Keep only `confirmed_valid` findings
+   - Remove `dismissed_false_positive` findings entirely
+   - Keep `needs_human_review` but add note in description
+
+4. **Re-calculate verdict** based on VALIDATED findings only
+   - A finding dismissed as false positive does NOT count toward verdict
+   - Only confirmed issues determine severity
+
+**Why this matters:** Specialist agents sometimes flag issues that don't exist in the actual code. The validator reads the code with fresh eyes to catch these false positives before they're reported.
+
+**Example workflow:**
+```
+Specialist finds 3 issues → finding-validator validates each →
+Result: 2 confirmed, 1 dismissed → Verdict based on 2 issues
+```
 
 ## Output Format
 
