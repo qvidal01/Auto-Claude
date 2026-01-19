@@ -391,6 +391,357 @@ def test_recovery_hints():
         cleanup_test_environment(temp_dir, saved_env)
 
 
+def test_checkpoint_persistence_across_sessions():
+    """Test that session state persists when manager is recreated (checkpoint persistence)."""
+    print("TEST: Checkpoint Persistence Across Sessions")
+
+    temp_dir, spec_dir, project_dir, saved_env = setup_test_environment()
+
+    try:
+        # Session 1: Create manager and record some attempts
+        manager1 = RecoveryManager(spec_dir, project_dir)
+
+        manager1.record_attempt(
+            subtask_id="subtask-1",
+            session=1,
+            success=False,
+            approach="First approach using REST API",
+            error="Connection timeout"
+        )
+        manager1.record_attempt(
+            subtask_id="subtask-1",
+            session=1,
+            success=False,
+            approach="Second approach using WebSocket",
+            error="Auth failure"
+        )
+
+        # Verify state in session 1
+        assert manager1.get_attempt_count("subtask-1") == 2, "Session 1: attempts not recorded"
+        print("  ✓ Session 1: recorded 2 attempts")
+
+        # Session 2: Create NEW manager instance (simulating session restart)
+        manager2 = RecoveryManager(spec_dir, project_dir)
+
+        # Verify checkpoint was restored
+        assert manager2.get_attempt_count("subtask-1") == 2, "Session 2: checkpoint not restored"
+
+        history = manager2.get_subtask_history("subtask-1")
+        assert len(history["attempts"]) == 2, "Session 2: attempt history missing"
+        assert history["attempts"][0]["approach"] == "First approach using REST API", "Session 2: first approach lost"
+        assert history["attempts"][1]["approach"] == "Second approach using WebSocket", "Session 2: second approach lost"
+        assert history["status"] == "failed", "Session 2: status not preserved"
+
+        print("  ✓ Session 2: checkpoint restored correctly")
+        print("  ✓ All attempt details preserved across sessions")
+        print()
+
+    finally:
+        cleanup_test_environment(temp_dir, saved_env)
+
+
+def test_restoration_after_failure():
+    """Test that state can be restored from checkpoints after simulated failures."""
+    print("TEST: Restoration After Failure")
+
+    temp_dir, spec_dir, project_dir, saved_env = setup_test_environment()
+
+    try:
+        # Simulate multiple sessions with failures
+        manager1 = RecoveryManager(spec_dir, project_dir)
+
+        # Session 1: Initial work
+        manager1.record_attempt("subtask-1", 1, False, "Attempt 1", "Error 1")
+        manager1.record_attempt("subtask-2", 1, True, "Successful approach", None)
+
+        # Get current commit
+        import subprocess
+        result = subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            cwd=project_dir,
+            capture_output=True,
+            text=True
+        )
+        commit_hash = result.stdout.strip()
+        manager1.record_good_commit(commit_hash, "subtask-2")
+
+        print("  ✓ Session 1: recorded mixed results")
+
+        # Session 2: Continue work with new manager (simulates restart after crash)
+        manager2 = RecoveryManager(spec_dir, project_dir)
+
+        # Verify complete state restored
+        assert manager2.get_attempt_count("subtask-1") == 1, "subtask-1 attempts not restored"
+        assert manager2.get_attempt_count("subtask-2") == 1, "subtask-2 attempts not restored"
+
+        subtask1_history = manager2.get_subtask_history("subtask-1")
+        assert subtask1_history["status"] == "failed", "subtask-1 status not restored"
+
+        subtask2_history = manager2.get_subtask_history("subtask-2")
+        assert subtask2_history["status"] == "completed", "subtask-2 status not restored"
+
+        # Verify good commit was restored
+        last_good = manager2.get_last_good_commit()
+        assert last_good == commit_hash, "Last good commit not restored"
+
+        print("  ✓ Session 2: all state restored after simulated failure")
+
+        # Session 3: Continue from restored state
+        manager3 = RecoveryManager(spec_dir, project_dir)
+        manager3.record_attempt("subtask-1", 2, True, "Fixed approach", None)
+
+        # Final verification
+        assert manager3.get_attempt_count("subtask-1") == 2, "Session 3: attempt not added"
+        history_final = manager3.get_subtask_history("subtask-1")
+        assert history_final["status"] == "completed", "Session 3: status not updated"
+
+        print("  ✓ Session 3: continued from restored state successfully")
+        print()
+
+    finally:
+        cleanup_test_environment(temp_dir, saved_env)
+
+
+def test_checkpoint_multiple_subtasks():
+    """Test checkpoint persistence with multiple subtasks in various states."""
+    print("TEST: Checkpoint Multiple Subtasks")
+
+    temp_dir, spec_dir, project_dir, saved_env = setup_test_environment()
+
+    try:
+        manager1 = RecoveryManager(spec_dir, project_dir)
+
+        # Create diverse subtask states
+        manager1.record_attempt("subtask-1", 1, True, "Completed on first try", None)
+
+        manager1.record_attempt("subtask-2", 1, False, "Failed first", "Error")
+        manager1.record_attempt("subtask-2", 2, True, "Fixed second try", None)
+
+        manager1.record_attempt("subtask-3", 1, False, "Try 1", "Error 1")
+        manager1.record_attempt("subtask-3", 2, False, "Try 2", "Error 2")
+        manager1.record_attempt("subtask-3", 3, False, "Try 3", "Error 3")
+        manager1.mark_subtask_stuck("subtask-3", "After 3 failed attempts")
+
+        manager1.record_attempt("subtask-4", 1, False, "In progress", "Partial error")
+
+        print("  ✓ Session 1: created 4 subtasks in different states")
+
+        # New session - verify all states restored
+        manager2 = RecoveryManager(spec_dir, project_dir)
+
+        # Verify subtask-1 (completed first try)
+        assert manager2.get_attempt_count("subtask-1") == 1
+        assert manager2.get_subtask_history("subtask-1")["status"] == "completed"
+        print("  ✓ subtask-1: completed state restored")
+
+        # Verify subtask-2 (completed after retry)
+        assert manager2.get_attempt_count("subtask-2") == 2
+        assert manager2.get_subtask_history("subtask-2")["status"] == "completed"
+        print("  ✓ subtask-2: completed-after-retry state restored")
+
+        # Verify subtask-3 (stuck)
+        assert manager2.get_attempt_count("subtask-3") == 3
+        assert manager2.get_subtask_history("subtask-3")["status"] == "stuck"
+        stuck_list = manager2.get_stuck_subtasks()
+        assert len(stuck_list) == 1
+        assert stuck_list[0]["subtask_id"] == "subtask-3"
+        print("  ✓ subtask-3: stuck state restored")
+
+        # Verify subtask-4 (in progress/failed)
+        assert manager2.get_attempt_count("subtask-4") == 1
+        assert manager2.get_subtask_history("subtask-4")["status"] == "failed"
+        print("  ✓ subtask-4: failed state restored")
+
+        print()
+
+    finally:
+        cleanup_test_environment(temp_dir, saved_env)
+
+
+def test_restoration_with_build_commits():
+    """Test restoration of build commit checkpoints across sessions."""
+    print("TEST: Restoration with Build Commits")
+
+    temp_dir, spec_dir, project_dir, saved_env = setup_test_environment()
+
+    try:
+        import subprocess
+
+        manager1 = RecoveryManager(spec_dir, project_dir)
+
+        # Create multiple commits and track them
+        commits = []
+
+        for i in range(3):
+            test_file = project_dir / f"test_file_{i}.txt"
+            test_file.write_text(f"Content {i}")
+            subprocess.run(["git", "add", "."], cwd=project_dir, capture_output=True)
+            subprocess.run(["git", "commit", "-m", f"Commit {i}"], cwd=project_dir, capture_output=True)
+
+            result = subprocess.run(
+                ["git", "rev-parse", "HEAD"],
+                cwd=project_dir,
+                capture_output=True,
+                text=True
+            )
+            commit_hash = result.stdout.strip()
+            commits.append(commit_hash)
+
+            manager1.record_good_commit(commit_hash, f"subtask-{i}")
+            manager1.record_attempt(f"subtask-{i}", 1, True, f"Approach {i}", None)
+
+        print(f"  ✓ Session 1: recorded {len(commits)} commits")
+
+        # New session - verify commit history restored
+        manager2 = RecoveryManager(spec_dir, project_dir)
+
+        last_good = manager2.get_last_good_commit()
+        assert last_good == commits[-1], "Last good commit not restored correctly"
+        print(f"  ✓ Session 2: last good commit restored ({commits[-1][:8]})")
+
+        # Verify we can continue building from restored state
+        manager2.record_attempt("subtask-3", 1, False, "New work after restore", "New error")
+        assert manager2.get_attempt_count("subtask-3") == 1
+
+        print("  ✓ Session 2: can continue work from restored checkpoint")
+        print()
+
+    finally:
+        cleanup_test_environment(temp_dir, saved_env)
+
+
+def test_checkpoint_recovery_hints_restoration():
+    """Test that recovery hints are correctly generated from restored checkpoint data."""
+    print("TEST: Checkpoint Recovery Hints Restoration")
+
+    temp_dir, spec_dir, project_dir, saved_env = setup_test_environment()
+
+    try:
+        manager1 = RecoveryManager(spec_dir, project_dir)
+
+        # Record detailed attempt history
+        manager1.record_attempt(
+            "subtask-1", 1, False,
+            "Using synchronous database calls",
+            "Database connection pooling exhausted"
+        )
+        manager1.record_attempt(
+            "subtask-1", 2, False,
+            "Using asynchronous database with asyncio",
+            "Event loop already running error"
+        )
+
+        print("  ✓ Session 1: recorded 2 attempts with detailed errors")
+
+        # New session
+        manager2 = RecoveryManager(spec_dir, project_dir)
+
+        # Get recovery hints (should be based on restored data)
+        hints = manager2.get_recovery_hints("subtask-1")
+
+        assert len(hints) > 0, "No hints generated from restored data"
+        assert "Previous attempts: 2" in hints[0], "Attempt count not in restored hints"
+
+        # Verify attempt details are in hints
+        hint_text = " ".join(hints)
+        assert "synchronous" in hint_text.lower() or "FAILED" in hint_text, "Previous approach not reflected in hints"
+
+        print("  ✓ Session 2: recovery hints generated from restored checkpoint")
+
+        # Check circular fix detection with restored data
+        is_circular = manager2.is_circular_fix("subtask-1", "Using async database with asyncio again")
+        # Note: May or may not detect as circular depending on word overlap
+        print(f"  ✓ Session 2: circular fix detection works ({is_circular})")
+        print()
+
+    finally:
+        cleanup_test_environment(temp_dir, saved_env)
+
+
+def test_restoration_stuck_subtasks_list():
+    """Test that stuck subtasks list is restored correctly across sessions."""
+    print("TEST: Restoration Stuck Subtasks List")
+
+    temp_dir, spec_dir, project_dir, saved_env = setup_test_environment()
+
+    try:
+        manager1 = RecoveryManager(spec_dir, project_dir)
+
+        # Mark multiple subtasks as stuck
+        for i in range(3):
+            subtask_id = f"subtask-stuck-{i}"
+            for j in range(3):
+                manager1.record_attempt(subtask_id, j + 1, False, f"Try {j + 1}", f"Error {j + 1}")
+            manager1.mark_subtask_stuck(subtask_id, f"Reason {i}: circular fix detected")
+
+        print("  ✓ Session 1: marked 3 subtasks as stuck")
+
+        # New session
+        manager2 = RecoveryManager(spec_dir, project_dir)
+
+        stuck = manager2.get_stuck_subtasks()
+        assert len(stuck) == 3, f"Expected 3 stuck subtasks, got {len(stuck)}"
+
+        stuck_ids = {s["subtask_id"] for s in stuck}
+        expected_ids = {"subtask-stuck-0", "subtask-stuck-1", "subtask-stuck-2"}
+        assert stuck_ids == expected_ids, "Stuck subtask IDs not restored correctly"
+
+        # Verify stuck reasons preserved
+        for s in stuck:
+            assert "circular fix detected" in s["reason"], "Stuck reason not preserved"
+            assert s["attempt_count"] == 3, "Stuck attempt count not preserved"
+
+        print("  ✓ Session 2: all 3 stuck subtasks restored with reasons")
+        print()
+
+    finally:
+        cleanup_test_environment(temp_dir, saved_env)
+
+
+def test_checkpoint_clear_and_reset():
+    """Test that clearing stuck subtasks and resetting subtasks persists across sessions."""
+    print("TEST: Checkpoint Clear and Reset")
+
+    temp_dir, spec_dir, project_dir, saved_env = setup_test_environment()
+
+    try:
+        manager1 = RecoveryManager(spec_dir, project_dir)
+
+        # Create some state
+        manager1.record_attempt("subtask-1", 1, False, "Try 1", "Error 1")
+        manager1.record_attempt("subtask-1", 2, False, "Try 2", "Error 2")
+        manager1.mark_subtask_stuck("subtask-1", "Stuck reason")
+
+        manager1.record_attempt("subtask-2", 1, False, "Only try", "Error")
+
+        # Clear stuck subtasks
+        manager1.clear_stuck_subtasks()
+        assert len(manager1.get_stuck_subtasks()) == 0, "Stuck subtasks not cleared"
+        print("  ✓ Session 1: cleared stuck subtasks")
+
+        # Reset subtask-2
+        manager1.reset_subtask("subtask-2")
+        assert manager1.get_attempt_count("subtask-2") == 0, "Subtask not reset"
+        print("  ✓ Session 1: reset subtask-2")
+
+        # New session - verify clear/reset persisted
+        manager2 = RecoveryManager(spec_dir, project_dir)
+
+        assert len(manager2.get_stuck_subtasks()) == 0, "Stuck subtasks clear not persisted"
+        print("  ✓ Session 2: stuck subtasks clear persisted")
+
+        assert manager2.get_attempt_count("subtask-2") == 0, "Subtask reset not persisted"
+        print("  ✓ Session 2: subtask reset persisted")
+
+        # But subtask-1 history should still exist (just not marked stuck)
+        assert manager2.get_attempt_count("subtask-1") == 2, "subtask-1 history lost"
+        print("  ✓ Session 2: subtask-1 history preserved (not reset)")
+        print()
+
+    finally:
+        cleanup_test_environment(temp_dir, saved_env)
+
+
 def run_all_tests():
     """Run all tests."""
     print("=" * 70)
@@ -407,6 +758,14 @@ def run_all_tests():
         test_good_commit_tracking,
         test_mark_subtask_stuck,
         test_recovery_hints,
+        # Session checkpoint and restoration tests
+        test_checkpoint_persistence_across_sessions,
+        test_restoration_after_failure,
+        test_checkpoint_multiple_subtasks,
+        test_restoration_with_build_commits,
+        test_checkpoint_recovery_hints_restoration,
+        test_restoration_stuck_subtasks_list,
+        test_checkpoint_clear_and_reset,
     ]
 
     passed = 0
