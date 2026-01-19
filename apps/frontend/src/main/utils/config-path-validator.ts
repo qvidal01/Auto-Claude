@@ -39,8 +39,12 @@ export function isValidConfigDir(configDir: string): boolean {
   ];
 
   // Check if normalized path starts with any allowed prefix
+  // IMPORTANT: Use path separator boundary to prevent attacks like
+  // /home/alice-malicious passing validation for /home/alice
   for (const prefix of allowedPrefixes) {
-    if (normalizedPath.startsWith(path.resolve(prefix))) {
+    const resolvedPrefix = path.resolve(prefix);
+    // Check for exact match OR starts with prefix + separator
+    if (normalizedPath === resolvedPrefix || normalizedPath.startsWith(resolvedPrefix + path.sep)) {
       return true;
     }
   }

@@ -35,6 +35,11 @@ vi.mock('electron', () => ({
   BrowserWindow: vi.fn()
 }));
 
+// Mock config path validator to allow test temp directories
+vi.mock('../../main/utils/config-path-validator', () => ({
+  isValidConfigDir: vi.fn().mockReturnValue(true),
+}));
+
 // Mock ClaudeProfileManager
 const mockProfileManager = {
   generateProfileId: vi.fn((name: string) => `profile-${name.toLowerCase().replace(/\s+/g, '-')}`),
