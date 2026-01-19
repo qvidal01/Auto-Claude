@@ -1100,7 +1100,9 @@ class TestQALoopStateTransitions:
 
     def test_qa_not_required_when_build_incomplete(self):
         """QA should not run when build is incomplete."""
-        from qa_loop import should_run_qa, save_implementation_plan
+        from qa_loop import save_implementation_plan
+        # Import the real is_build_complete to patch at the right level
+        from core.progress import is_build_complete as real_is_build_complete
 
         temp_dir, spec_dir, project_dir, saved_env = setup_test_environment()
 
@@ -1121,14 +1123,19 @@ class TestQALoopStateTransitions:
             }
             save_implementation_plan(spec_dir, plan)
 
-            assert should_run_qa(spec_dir) is False, "QA should not run with pending subtasks"
+            # Patch is_build_complete where it's used (qa.criteria) to use real implementation
+            # This is needed because test_qa_criteria.py module-level mocks may pollute
+            with patch('qa.criteria.is_build_complete', side_effect=real_is_build_complete):
+                from qa.criteria import should_run_qa
+                assert should_run_qa(spec_dir) is False, "QA should not run with pending subtasks"
 
         finally:
             cleanup_test_environment(temp_dir, saved_env)
 
     def test_qa_required_when_build_complete(self):
         """QA should run when build is complete and not yet approved."""
-        from qa_loop import should_run_qa, save_implementation_plan
+        from qa_loop import save_implementation_plan
+        from core.progress import is_build_complete as real_is_build_complete
 
         temp_dir, spec_dir, project_dir, saved_env = setup_test_environment()
 
@@ -1149,14 +1156,18 @@ class TestQALoopStateTransitions:
             }
             save_implementation_plan(spec_dir, plan)
 
-            assert should_run_qa(spec_dir) is True, "QA should run when build complete"
+            # Patch is_build_complete where it's used (qa.criteria) to use real implementation
+            with patch('qa.criteria.is_build_complete', side_effect=real_is_build_complete):
+                from qa.criteria import should_run_qa
+                assert should_run_qa(spec_dir) is True, "QA should run when build complete"
 
         finally:
             cleanup_test_environment(temp_dir, saved_env)
 
     def test_qa_not_required_when_already_approved(self):
         """QA should not run when build is already approved."""
-        from qa_loop import should_run_qa, save_implementation_plan
+        from qa_loop import save_implementation_plan
+        from core.progress import is_build_complete as real_is_build_complete
 
         temp_dir, spec_dir, project_dir, saved_env = setup_test_environment()
 
@@ -1180,7 +1191,10 @@ class TestQALoopStateTransitions:
             }
             save_implementation_plan(spec_dir, plan)
 
-            assert should_run_qa(spec_dir) is False, "QA should not run when already approved"
+            # Patch is_build_complete where it's used (qa.criteria) to use real implementation
+            with patch('qa.criteria.is_build_complete', side_effect=real_is_build_complete):
+                from qa.criteria import should_run_qa
+                assert should_run_qa(spec_dir) is False, "QA should not run when already approved"
 
         finally:
             cleanup_test_environment(temp_dir, saved_env)
