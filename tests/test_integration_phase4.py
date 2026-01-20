@@ -460,7 +460,9 @@ class TestImportDetection:
 
         # Should resolve @/utils to src/utils.ts
         assert isinstance(imports, set)
-        assert "src/utils.ts" in imports, f"Expected 'src/utils.ts' in imports, got: {imports}"
+        # Normalize paths for cross-platform comparison (Windows uses backslashes)
+        normalized_imports = {p.replace("\\", "/") for p in imports}
+        assert "src/utils.ts" in normalized_imports, f"Expected 'src/utils.ts' in imports, got: {imports}"
 
     def test_commonjs_require_detection(self, temp_project):
         """CommonJS require('./utils') should be detected."""
