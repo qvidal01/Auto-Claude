@@ -19,8 +19,8 @@ from __future__ import annotations
 import ast
 import asyncio
 import json
+import os
 import re
-import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -1053,7 +1053,8 @@ class PRContextGatherer:
         """
         Find files that import the given file (reverse dependencies).
 
-        Uses grep to search for import statements referencing this file.
+        Uses pure Python to search for import statements referencing this file.
+        Cross-platform compatible (Windows, macOS, Linux).
         Limited to prevent performance issues on large codebases.
 
         Args:
@@ -1071,65 +1072,88 @@ class PRContextGatherer:
         if stem in ["index", "main", "app", "utils", "helpers", "types", "constants"]:
             return dependents
 
-        # Build grep patterns based on file type
-        patterns = []
+        # Build regex patterns and file extensions based on file type
+        pattern = None
+        file_extensions = []
 
         if path_obj.suffix in [".ts", ".tsx", ".js", ".jsx"]:
             # Match various import styles for JS/TS
             # from './helpers', from '../utils/helpers', from '@/utils/helpers'
-            patterns.append(f"['\"].*{stem}['\"]")
-            # Also match without extension: import from './helpers' (no .ts)
-            file_types = [
-                "--include=*.ts",
-                "--include=*.tsx",
-                "--include=*.js",
-                "--include=*.jsx",
-            ]
+            # Escape stem for regex safety
+            escaped_stem = re.escape(stem)
+            pattern = re.compile(rf"['\"].*{escaped_stem}['\"]")
+            file_extensions = [".ts", ".tsx", ".js", ".jsx"]
         elif path_obj.suffix == ".py":
             # Match Python imports: from .helpers import, import helpers
-            patterns.append(f"(from.*{stem}|import.*{stem})")
-            file_types = ["--include=*.py"]
+            escaped_stem = re.escape(stem)
+            pattern = re.compile(rf"(from.*{escaped_stem}|import.*{escaped_stem})")
+            file_extensions = [".py"]
         else:
             return dependents
 
+        # Directories to exclude
+        exclude_dirs = {
+            "node_modules",
+            ".git",
+            "dist",
+            "build",
+            "__pycache__",
+            ".venv",
+            "venv",
+        }
+
+        # Walk the project directory
+        project_path = Path(self.project_dir)
+        files_checked = 0
+        max_files_to_check = 2000  # Prevent infinite scanning on large codebases
+
         try:
-            for pattern in patterns:
-                result = subprocess.run(
-                    [
-                        "grep",
-                        "-rl",  # Recursive, list files only
-                        "-E",  # Extended regex
-                        pattern,
-                        *file_types,
-                        "--exclude-dir=node_modules",
-                        "--exclude-dir=.git",
-                        "--exclude-dir=dist",
-                        "--exclude-dir=build",
-                        "--exclude-dir=__pycache__",
-                        "--exclude-dir=.venv",
-                        "--exclude-dir=venv",
-                        ".",
-                    ],
-                    cwd=self.project_dir,
-                    capture_output=True,
-                    text=True,
-                    timeout=5.0,  # 5 second timeout to prevent hanging
-                )
-                if result.returncode == 0:
-                    for line in result.stdout.strip().split("\n"):
-                        if line and line != f"./{file_path}":
-                            # Remove leading ./
-                            clean_path = line.lstrip("./")
-                            # Don't include the file itself
-                            if clean_path != file_path:
-                                dependents.add(clean_path)
-                                if len(dependents) >= max_results:
-                                    return dependents
-        except subprocess.TimeoutExpired:
-            safe_print(f"[Context] Timeout finding dependents for {file_path}")
-        except FileNotFoundError:
-            # grep not available - skip silently
-            pass
+            for root, dirs, files in os.walk(project_path):
+                # Modify dirs in-place to exclude certain directories
+                dirs[:] = [d for d in dirs if d not in exclude_dirs]
+
+                for filename in files:
+                    # Check if we've hit the file limit
+                    if files_checked >= max_files_to_check:
+                        safe_print(
+                            f"[Context] File limit reached finding dependents for {file_path}"
+                        )
+                        return dependents
+
+                    # Check if file has the right extension
+                    if not any(filename.endswith(ext) for ext in file_extensions):
+                        continue
+
+                    file_full_path = Path(root) / filename
+                    files_checked += 1
+
+                    # Get relative path from project root
+                    try:
+                        relative_path = file_full_path.relative_to(project_path)
+                        relative_path_str = str(relative_path).replace("\\", "/")
+
+                        # Don't include the file itself
+                        if relative_path_str == file_path:
+                            continue
+
+                        # Search for the pattern in the file
+                        try:
+                            with open(
+                                file_full_path, encoding="utf-8", errors="ignore"
+                            ) as f:
+                                content = f.read()
+                                if pattern.search(content):
+                                    dependents.add(relative_path_str)
+                                    if len(dependents) >= max_results:
+                                        return dependents
+                        except (OSError, UnicodeDecodeError):
+                            # Skip files that can't be read
+                            continue
+
+                    except ValueError:
+                        # File is not relative to project_path, skip it
+                        continue
+
         except Exception as e:
             safe_print(f"[Context] Error finding dependents: {e}")
 
@@ -1241,7 +1265,8 @@ class PRContextGatherer:
             content = "\n".join(cleaned_lines)
 
             return json.loads(content)
-        except (json.JSONDecodeError, OSError):
+        except (json.JSONDecodeError, OSError) as e:
+            safe_print(f"[Context] Could not load {filename}: {e}", style="dim")
             return None
 
     def _load_tsconfig_paths(self) -> dict[str, list[str]] | None:

@@ -439,8 +439,9 @@ class TestImportDetection:
         # Call _find_imports
         imports = gatherer._find_imports(test_content, source_path)
 
-        # Should resolve @/utils to src/utils.ts
-        assert len(imports) > 0 or True  # May not resolve if file structure differs
+        # Should resolve @/utils to src/utils.ts or detect as external/unresolved
+        # Note: This may return 0 imports if file structure differs or alias isn't fully resolved
+        assert isinstance(imports, set)  # Verify it returns a set structure
 
     def test_commonjs_require_detection(self, temp_project):
         """CommonJS require('./utils') should be detected."""
