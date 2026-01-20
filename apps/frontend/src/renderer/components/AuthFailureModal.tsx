@@ -25,7 +25,7 @@ export function AuthFailureModal({ onOpenSettings }: AuthFailureModalProps) {
 
   if (!authFailureInfo) return null;
 
-  const profileName = authFailureInfo.profileName || 'Unknown Profile';
+  const profileName = authFailureInfo.profileName || t('auth.failure.unknownProfile', 'Unknown Profile');
 
   // Get user-friendly message for the auth failure type
   const getFailureMessage = () => {
@@ -101,7 +101,7 @@ export function AuthFailureModal({ onOpenSettings }: AuthFailureModalProps) {
 
         <DialogFooter className="flex-col sm:flex-row gap-2">
           <Button variant="outline" onClick={handleDismiss} className="sm:mr-auto">
-            {t('common.dismiss', 'Dismiss')}
+            {t('labels.dismiss', 'Dismiss')}
           </Button>
           <Button onClick={handleGoToSettings} className="gap-2">
             <Settings className="h-4 w-4" />

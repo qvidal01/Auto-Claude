@@ -27,6 +27,7 @@ import { persistPlanStatusSync, getPlanPath } from "./task/plan-file-utils";
 import { findTaskWorktree } from "../worktree-paths";
 import { findTaskAndProject } from "./task/shared";
 import { safeSendToRenderer } from "./utils";
+import { getClaudeProfileManager } from "../claude-profile-manager";
 
 /**
  * Validates status transitions to prevent invalid state changes.
@@ -144,7 +145,6 @@ export function registerAgenteventsHandlers(
     console.warn(`[AgentEvents] Auth failure detected for task ${taskId}:`, authFailure);
 
     // Get profile name for display
-    const { getClaudeProfileManager } = require("../claude-profile-manager");
     const profileManager = getClaudeProfileManager();
     const profile = authFailure.profileId
       ? profileManager.getProfile(authFailure.profileId)

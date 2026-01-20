@@ -6,7 +6,8 @@ interface AuthFailureState {
   isModalOpen: boolean;
   authFailureInfo: AuthFailureInfo | null;
 
-  // Track if there's a pending auth failure that needs attention
+  // TODO: Use hasPendingAuthFailure to show a badge/indicator in the sidebar
+  // when there's an unresolved auth failure (e.g., red dot on Settings icon)
   hasPendingAuthFailure: boolean;
 
   // Actions
