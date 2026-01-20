@@ -12,9 +12,9 @@ import os
 import subprocess
 from typing import TYPE_CHECKING
 
+import shutil
+
 from core.platform import (
-    find_executable,
-    get_claude_detection_paths,
     is_linux,
     is_macos,
     is_windows,
@@ -239,7 +239,7 @@ def _decrypt_token_macos(encrypted_data: str) -> str:
         ValueError: If decryption fails or Claude CLI not available
     """
     # Verify Claude CLI is installed (required for future decryption implementation)
-    if not find_executable("claude", get_claude_detection_paths()):
+    if not shutil.which("claude"):
         raise ValueError(
             "Claude Code CLI not found. Please install it from https://code.claude.com"
         )

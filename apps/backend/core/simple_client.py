@@ -30,7 +30,6 @@ from core.auth import (
     require_auth_token,
     validate_token_not_encrypted,
 )
-from core.client import find_claude_cli
 from phase_config import get_thinking_budget
 
 
@@ -95,10 +94,8 @@ def create_simple_client(
         thinking_level = get_default_thinking_level(agent_type)
         max_thinking_tokens = get_thinking_budget(thinking_level)
 
-    # Find Claude CLI path (handles non-standard installations)
-    cli_path = find_claude_cli()
-
     # Build options dict
+    # Note: SDK bundles its own CLI, so no cli_path detection needed
     options_kwargs = {
         "model": model,
         "system_prompt": system_prompt,
@@ -112,8 +109,9 @@ def create_simple_client(
     if max_thinking_tokens is not None:
         options_kwargs["max_thinking_tokens"] = max_thinking_tokens
 
-    # Add CLI path if found
-    if cli_path:
-        options_kwargs["cli_path"] = cli_path
+    # Optional: Allow CLI path override via environment variable
+    env_cli_path = os.environ.get("CLAUDE_CLI_PATH")
+    if env_cli_path and os.path.exists(env_cli_path):
+        options_kwargs["cli_path"] = env_cli_path
 
     return ClaudeSDKClient(options=ClaudeAgentOptions(**options_kwargs))
