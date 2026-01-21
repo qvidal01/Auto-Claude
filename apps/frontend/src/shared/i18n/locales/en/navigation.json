@@ -91,6 +91,8 @@
     "weeklyUsage": "Weekly (All Models)",
     "sonnetUsage": "Weekly (Sonnet Only)",
     "resetsAt": "Resets at {{time}}",
-    "lastUpdated": "Last updated {{time}}"
+    "lastUpdated": "Last updated {{time}}",
+    "activeAccount": "Active Account",
+    "usageStatusAriaLabel": "Claude usage status"
   }
 }

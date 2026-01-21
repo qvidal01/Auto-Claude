@@ -91,6 +91,8 @@
     "weeklyUsage": "Hebdomadaire (Tous les modèles)",
     "sonnetUsage": "Hebdomadaire (Sonnet uniquement)",
     "resetsAt": "Réinitialisation à {{time}}",
-    "lastUpdated": "Dernière mise à jour {{time}}"
+    "lastUpdated": "Dernière mise à jour {{time}}",
+    "activeAccount": "Compte actif",
+    "usageStatusAriaLabel": "Statut d'utilisation de Claude"
   }
 }
