@@ -153,8 +153,6 @@ export function AuthStatusIndicator() {
   const Icon = isOAuth ? Lock : Key;
   // Compute once and reuse for aria-label and displayed text
   const localizedProviderLabel = getLocalizedProviderLabel(authStatus.provider);
-  // Badge label: "Claude Code" for OAuth, "API Key" for API profiles
-  const badgeLabel = isOAuth ? t('common:usage.claudeCode') : t('common:usage.apiKey');
 
   return (
     <div className="flex items-center gap-2">
@@ -190,11 +188,11 @@ export function AuthStatusIndicator() {
             <button
               type="button"
               className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border transition-all hover:opacity-80 ${authStatus.badgeColor}`}
-              aria-label={t('common:usage.authenticationAriaLabel', { provider: badgeLabel })}
+              aria-label={t('common:usage.authenticationAriaLabel', { provider: localizedProviderLabel })}
             >
               <Icon className="h-3.5 w-3.5" />
               <span className="text-xs font-semibold">
-                {badgeLabel}
+                {localizedProviderLabel}
               </span>
             </button>
           </TooltipTrigger>
@@ -211,7 +209,7 @@ export function AuthStatusIndicator() {
                     ? 'bg-orange-500/15 text-orange-500'
                     : 'bg-primary/15 text-primary'
                 }`}>
-                  {isOAuth ? t('common:usage.oauth') : t('common:usage.apiKey')}
+                  {isOAuth ? t('common:usage.oauth') : t('common:usage.apiProfile')}
                 </div>
               </div>
 
@@ -224,20 +222,10 @@ export function AuthStatusIndicator() {
                 <span className="font-semibold text-xs">{localizedProviderLabel}</span>
               </div>
 
-              {/* Claude Code subscription label for OAuth */}
-              {isOAuth && (
-                <div className="flex items-center justify-between pt-2 border-t">
-                  <div className="flex items-center gap-1.5 text-muted-foreground">
-                    <Lock className="h-3 w-3" />
-                    <span className="text-[10px]">{t('common:usage.subscription')}</span>
-                  </div>
-                  <span className="font-medium text-[10px]">{t('common:usage.claudeCodeSubscription')}</span>
-                </div>
-              )}
-
               {/* Profile details for API profiles */}
               {!isOAuth && (
-                <div className="pt-2 border-t space-y-2">
+                <>
+                  <div className="pt-2 border-t space-y-2">
                     {/* Profile name with icon */}
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-1.5 text-muted-foreground">
@@ -271,6 +259,7 @@ export function AuthStatusIndicator() {
                       </div>
                     )}
                   </div>
+                </>
               )}
             </div>
           </TooltipContent>
