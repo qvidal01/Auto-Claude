@@ -599,8 +599,15 @@ def get_auth_token(config_dir: str | None = None) -> str | None:
     return _try_decrypt_token(get_token_from_keychain())
 
 
-def get_auth_token_source() -> str | None:
-    """Get the name of the source that provided the auth token."""
+def get_auth_token_source(config_dir: str | None = None) -> str | None:
+    """
+    Get the name of the source that provided the auth token.
+
+    Args:
+        config_dir: Optional custom config directory (profile's configDir).
+                   If provided, checks this directory for credentials.
+                   If None, checks CLAUDE_CONFIG_DIR env var.
+    """
     # Check environment variables first
     for var in AUTH_TOKEN_ENV_VARS:
         if os.environ.get(var):
@@ -608,7 +615,8 @@ def get_auth_token_source() -> str | None:
 
     # Check if token came from custom config directory (profile's configDir)
     env_config_dir = os.environ.get("CLAUDE_CONFIG_DIR")
-    if env_config_dir and _get_token_from_config_dir(env_config_dir):
+    effective_config_dir = config_dir or env_config_dir
+    if effective_config_dir and _get_token_from_config_dir(effective_config_dir):
         return "CLAUDE_CONFIG_DIR"
 
     # Check if token came from system credential store
