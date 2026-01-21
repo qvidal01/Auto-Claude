@@ -47,6 +47,7 @@ if sys.version_info < (3, 10):  # noqa: UP036
 import asyncio
 import io
 import os
+import subprocess
 from pathlib import Path
 
 # Configure safe encoding on Windows BEFORE any imports that might print
@@ -104,6 +105,7 @@ from core.sentry import capture_exception, init_sentry
 
 init_sentry(component="spec-runner")
 
+from core.platform import is_windows
 from debug import debug, debug_error, debug_section, debug_success
 from phase_config import resolve_model_id
 from review import ReviewState
@@ -187,7 +189,9 @@ def _run_methodology_pipeline(
                 "standard": ComplexityLevel.STANDARD,
                 "complex": ComplexityLevel.COMPLEX,
             }
-            complexity_level = complexity_map.get(complexity.lower(), ComplexityLevel.STANDARD)
+            complexity_level = complexity_map.get(
+                complexity.lower(), ComplexityLevel.STANDARD
+            )
 
         # Create task configuration
         task_config = TaskConfig(
@@ -262,9 +266,15 @@ def _run_methodology_pipeline(
         result = asyncio.run(executor.execute())
 
         if result.status == "completed":
-            debug_success("spec_runner", f"{methodology_name.upper()} pipeline completed successfully")
+            debug_success(
+                "spec_runner",
+                f"{methodology_name.upper()} pipeline completed successfully",
+            )
             print()
-            print_status(f"{methodology_name.upper()} pipeline completed successfully!", "success")
+            print_status(
+                f"{methodology_name.upper()} pipeline completed successfully!",
+                "success",
+            )
 
             # Save task metadata
             metadata_path = spec_dir / "task_metadata.json"
@@ -283,9 +293,14 @@ def _run_methodology_pipeline(
                 for artifact in result.artifacts:
                     print(f"  - {artifact}")
         else:
-            debug_error("spec_runner", f"{methodology_name.upper()} pipeline failed: {result.error}")
+            debug_error(
+                "spec_runner",
+                f"{methodology_name.upper()} pipeline failed: {result.error}",
+            )
             print()
-            print_status(f"{methodology_name.upper()} pipeline failed: {result.error}", "error")
+            print_status(
+                f"{methodology_name.upper()} pipeline failed: {result.error}", "error"
+            )
             sys.exit(1)
 
     except ImportError as e:
@@ -293,12 +308,15 @@ def _run_methodology_pipeline(
         print_status(f"Methodology system not available: {e}", "error")
         print()
         print(f"  {muted('The methodology plugin system may not be installed.')}")
-        print(f"  {muted('Falling back to native methodology is not supported for this task.')}")
+        print(
+            f"  {muted('Falling back to native methodology is not supported for this task.')}"
+        )
         sys.exit(1)
     except Exception as e:
         debug_error("spec_runner", f"Methodology pipeline error: {e}")
         print_status(f"Methodology pipeline error: {e}", "error")
         import traceback
+
         traceback.print_exc()
         sys.exit(1)
 
@@ -430,7 +448,7 @@ Examples:
         if not args.task_file.exists():
             print(f"Error: Task file not found: {args.task_file}")
             sys.exit(1)
-        task_description = args.task_file.read_text().strip()
+        task_description = args.task_file.read_text(encoding="utf-8").strip()
         if not task_description:
             print(f"Error: Task file is empty: {args.task_file}")
             sys.exit(1)
@@ -535,23 +553,31 @@ Examples:
         if metadata_path.exists():
             # Update existing metadata
             import json as json_lib
+
             try:
                 with open(metadata_path) as f:
                     metadata = json_lib.load(f)
                 metadata["methodology"] = args.methodology
                 with open(metadata_path, "w") as f:
                     json_lib.dump(metadata, f, indent=2)
-                debug("spec_runner", f"Updated task_metadata.json with methodology: {args.methodology}")
+                debug(
+                    "spec_runner",
+                    f"Updated task_metadata.json with methodology: {args.methodology}",
+                )
             except Exception as e:
                 debug_error("spec_runner", f"Failed to update task_metadata.json: {e}")
         else:
             # Create minimal metadata with methodology
             import json as json_lib
+
             metadata = {"methodology": args.methodology}
             try:
                 with open(metadata_path, "w") as f:
                     json_lib.dump(metadata, f, indent=2)
-                debug("spec_runner", f"Created task_metadata.json with methodology: {args.methodology}")
+                debug(
+                    "spec_runner",
+                    f"Created task_metadata.json with methodology: {args.methodology}",
+                )
             except Exception as e:
                 debug_error("spec_runner", f"Failed to create task_metadata.json: {e}")
 
@@ -616,8 +642,32 @@ Examples:
             print(f"  {muted('Running:')} {' '.join(run_cmd)}")
             print()
 
-            # Execute run.py - replace current process
-            os.execv(sys.executable, run_cmd)
+            # Execute run.py - use subprocess on Windows to maintain connection with Electron
+            # Fix for issue #609: os.execv() breaks connection on Windows
+            if is_windows():
+                try:
+                    result = subprocess.run(run_cmd)
+                    sys.exit(result.returncode)
+                except FileNotFoundError:
+                    debug_error(
+                        "spec_runner",
+                        "Could not start coding phase - executable not found",
+                    )
+                    print_status(
+                        "Could not start coding phase - executable not found", "error"
+                    )
+                    sys.exit(1)
+                except OSError as e:
+                    debug_error("spec_runner", f"Error starting coding phase: {e}")
+                    print_status(f"Error starting coding phase: {e}", "error")
+                    sys.exit(1)
+                except KeyboardInterrupt:
+                    debug_error("spec_runner", "Coding phase interrupted by user")
+                    print("\n\nCoding phase interrupted.")
+                    sys.exit(1)
+            else:
+                # On Unix/macOS, os.execv() works correctly - replaces current process
+                os.execv(sys.executable, run_cmd)
 
         sys.exit(0)
 

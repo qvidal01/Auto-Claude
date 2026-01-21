@@ -63,7 +63,7 @@ describe('NotificationService', () => {
     const electron = await import('electron');
     mockNotification = electron.Notification as unknown as ReturnType<typeof vi.fn>;
     mockShell = electron.shell as unknown as { beep: ReturnType<typeof vi.fn> };
-    mockApp = electron.app as unknown as { dock: { setBadge: ReturnType<typeof vi.fn> } };
+    mockApp = electron.app as unknown as { dock: { setBadge: ReturnType<typeof vi.fn> }; setBadgeCount: ReturnType<typeof vi.fn> };
 
     // Mock BrowserWindow
     mockBrowserWindow = {
