@@ -910,6 +910,8 @@ def create_client(
     if _temp_prompt_file:
         # Pass temp file path via environment variable since @filepath syntax
         # is not supported by the CLI for --system-prompt
+        # Set in both os.environ (for monkey-patch) and sdk_env (for subprocess)
+        os.environ["CLAUDE_SYSTEM_PROMPT_FILE"] = _temp_prompt_file
         sdk_env["CLAUDE_SYSTEM_PROMPT_FILE"] = _temp_prompt_file
         print("   - CLAUDE.md: large prompt (using temp file)")
     print()
