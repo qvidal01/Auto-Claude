@@ -2,10 +2,11 @@
  * Usage Indicator - Real-time Claude usage display in header
  *
  * Displays current session/weekly usage as a badge with color-coded status.
- * Click to show persistent breakdown popup, click outside to dismiss.
+ * - Hover to show breakdown popup (auto-closes on mouse leave)
+ * - Click to pin popup open (stays until clicking outside)
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Activity, TrendingUp, AlertCircle, Clock, User, ChevronRight, Info } from 'lucide-react';
 import {
   Popover,
@@ -29,26 +30,15 @@ export function UsageIndicator() {
   const [isLoading, setIsLoading] = useState(true);
   const [isAvailable, setIsAvailable] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
+  const [isPinned, setIsPinned] = useState(false);
+  const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   /**
    * Helper function to format large numbers with locale-aware compact notation
-   *
-   * Returns undefined for null/undefined values. The caller (JSX conditional guards)
-   * is responsible for checking values before calling this function.
-   *
-   * @param value - The number to format (undefined, null, or number)
-   * @returns Formatted compact number string (e.g., "1.2K", "3.4M"), or undefined if input is null/undefined
-   *
-   * @example
-   * formatUsageValue(1234) // "1.2K" (en-US)
-   * formatUsageValue(null) // undefined
-   * formatUsageValue(undefined) // undefined
    */
   const formatUsageValue = (value?: number | null): string | undefined => {
     if (value == null) return undefined;
 
-    // Use Intl.NumberFormat for locale-aware compact number formatting
-    // Fallback to toString() if Intl is not available
     if (typeof Intl !== 'undefined' && Intl.NumberFormat) {
       try {
         return new Intl.NumberFormat(i18n.language, {
@@ -66,18 +56,92 @@ export function UsageIndicator() {
   /**
    * Navigate to settings integrations tab
    */
-  const handleOpenIntegrations = useCallback(() => {
+  const handleOpenIntegrations = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
     // Close the popover first
     setIsOpen(false);
+    setIsPinned(false);
     // Dispatch custom event to open settings with integrations section
-    const event = new CustomEvent<AppSection>('open-settings', {
-      detail: 'integrations'
-    });
-    window.dispatchEvent(event);
+    // Small delay to allow popover to close first
+    setTimeout(() => {
+      const event = new CustomEvent<AppSection>('open-settings', {
+        detail: 'integrations',
+        bubbles: true
+      });
+      window.dispatchEvent(event);
+    }, 100);
+  }, []);
+
+  /**
+   * Handle mouse enter - show popup after short delay (unless pinned)
+   */
+  const handleMouseEnter = useCallback(() => {
+    if (isPinned) return;
+    // Clear any pending close timeout
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current);
+      hoverTimeoutRef.current = null;
+    }
+    // Open after short delay for smoother UX
+    hoverTimeoutRef.current = setTimeout(() => {
+      setIsOpen(true);
+    }, 150);
+  }, [isPinned]);
+
+  /**
+   * Handle mouse leave - close popup after delay (unless pinned)
+   */
+  const handleMouseLeave = useCallback(() => {
+    if (isPinned) return;
+    // Clear any pending open timeout
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current);
+      hoverTimeoutRef.current = null;
+    }
+    // Close after delay to allow moving to popup content
+    hoverTimeoutRef.current = setTimeout(() => {
+      setIsOpen(false);
+    }, 300);
+  }, [isPinned]);
+
+  /**
+   * Handle click on trigger - toggle pinned state
+   */
+  const handleTriggerClick = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    if (isPinned) {
+      // Clicking when pinned unpins and closes
+      setIsPinned(false);
+      setIsOpen(false);
+    } else {
+      // Clicking when not pinned pins it open
+      setIsPinned(true);
+      setIsOpen(true);
+    }
+  }, [isPinned]);
+
+  /**
+   * Handle popover open change (e.g., clicking outside)
+   */
+  const handleOpenChange = useCallback((open: boolean) => {
+    if (!open) {
+      // Closing from outside click
+      setIsOpen(false);
+      setIsPinned(false);
+    }
+  }, []);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (hoverTimeoutRef.current) {
+        clearTimeout(hoverTimeoutRef.current);
+      }
+    };
   }, []);
 
   // Get formatted reset times (calculated dynamically from timestamps)
-  // Only fall back to sessionResetTime/weeklyResetTime if they don't contain placeholder/hardcoded text
   const sessionResetTime = usage?.sessionResetTimestamp
     ? (formatTimeRemaining(usage.sessionResetTimestamp, t) ??
       (hasHardcodedText(usage?.sessionResetTime) ? undefined : usage?.sessionResetTime))
@@ -102,11 +166,9 @@ export function UsageIndicator() {
         setUsage(result.data);
         setIsAvailable(true);
       } else {
-        // No usage data available (endpoint not supported or error)
         setIsAvailable(false);
       }
     }).catch((error) => {
-      // Handle errors (IPC failure, network issues, etc.)
       console.warn('[UsageIndicator] Failed to fetch initial usage:', error);
       setIsLoading(false);
       setIsAvailable(false);
@@ -117,8 +179,7 @@ export function UsageIndicator() {
     };
   }, []);
 
-  // Always show the badge, but display different states
-  // Show loading state initially
+  // Show loading state
   if (isLoading) {
     return (
       <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border bg-muted/50 text-muted-foreground">
@@ -128,7 +189,7 @@ export function UsageIndicator() {
     );
   }
 
-  // Show unavailable state when endpoint doesn't return data
+  // Show unavailable state
   if (!isAvailable || !usage) {
     return (
       <TooltipProvider delayDuration={200}>
@@ -152,8 +213,7 @@ export function UsageIndicator() {
     );
   }
 
-  // Determine color based on session usage (5-hour window)
-  // This is what should be shown on the badge per QA feedback
+  // Determine colors and labels
   const badgeUsage = usage.sessionPercent;
   const badgeColorClasses =
     badgeUsage >= 95 ? 'text-red-500 bg-red-500/10 border-red-500/20' :
@@ -161,8 +221,6 @@ export function UsageIndicator() {
     badgeUsage >= 71 ? 'text-yellow-500 bg-yellow-500/10 border-yellow-500/20' :
     'text-green-500 bg-green-500/10 border-green-500/20';
 
-  // Get window labels for display
-  // Map backend-provided labels to localized versions with appropriate defaults
   const sessionLabel = localizeUsageWindowLabel(
     usage?.usageWindows?.sessionWindowLabel,
     t,
@@ -174,7 +232,6 @@ export function UsageIndicator() {
     'common:usage.weeklyDefault'
   );
 
-  // For icon, use the highest of the two windows
   const maxUsage = Math.max(usage.sessionPercent, usage.weeklyPercent);
   const Icon =
     maxUsage >= 91 ? AlertCircle :
@@ -182,11 +239,14 @@ export function UsageIndicator() {
     Activity;
 
   return (
-    <Popover open={isOpen} onOpenChange={setIsOpen}>
+    <Popover open={isOpen} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>
         <button
           className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border transition-all hover:opacity-80 ${badgeColorClasses}`}
           aria-label={t('common:usage.usageStatusAriaLabel')}
+          onMouseEnter={handleMouseEnter}
+          onMouseLeave={handleMouseLeave}
+          onClick={handleTriggerClick}
         >
           <Icon className="h-3.5 w-3.5" />
           <span className="text-xs font-semibold font-mono">
@@ -194,7 +254,13 @@ export function UsageIndicator() {
           </span>
         </button>
       </PopoverTrigger>
-      <PopoverContent side="bottom" align="end" className="text-xs w-72 p-0">
+      <PopoverContent
+        side="bottom"
+        align="end"
+        className="text-xs w-72 p-0"
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+      >
         <div className="p-3 space-y-3">
           {/* Header with overall status */}
           <div className="flex items-center pb-2 border-b">
@@ -224,7 +290,6 @@ export function UsageIndicator() {
                 {sessionResetTime}
               </div>
             )}
-            {/* Enhanced progress bar with gradient */}
             <div className="h-2 bg-muted rounded-full overflow-hidden shadow-inner">
               <div
                 className={`h-full rounded-full transition-all duration-500 ease-out relative overflow-hidden ${
@@ -235,11 +300,9 @@ export function UsageIndicator() {
                 }`}
                 style={{ width: `${Math.min(usage.sessionPercent, 100)}%` }}
               >
-                {/* Subtle shine effect */}
                 <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent motion-safe:animate-pulse" />
               </div>
             </div>
-            {/* Raw usage value with better styling */}
             {usage.sessionUsageValue != null && usage.sessionUsageLimit != null && (
               <div className="flex items-center justify-between text-[10px]">
                 <span className="text-muted-foreground">{t('common:usage.used')}</span>
@@ -272,7 +335,6 @@ export function UsageIndicator() {
                 {weeklyResetTime}
               </div>
             )}
-            {/* Enhanced progress bar with gradient */}
             <div className="h-2 bg-muted rounded-full overflow-hidden shadow-inner">
               <div
                 className={`h-full rounded-full transition-all duration-500 ease-out relative overflow-hidden ${
@@ -283,11 +345,9 @@ export function UsageIndicator() {
                 }`}
                 style={{ width: `${Math.min(usage.weeklyPercent, 100)}%` }}
               >
-                {/* Subtle shine effect */}
                 <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent motion-safe:animate-pulse" />
               </div>
             </div>
-            {/* Raw usage value with better styling */}
             {usage.weeklyUsageValue != null && usage.weeklyUsageLimit != null && (
               <div className="flex items-center justify-between text-[10px]">
                 <span className="text-muted-foreground">{t('common:usage.used')}</span>
@@ -300,6 +360,7 @@ export function UsageIndicator() {
 
           {/* Active account footer - clickable to go to settings */}
           <button
+            type="button"
             onClick={handleOpenIntegrations}
             className="w-full pt-2 border-t flex items-center justify-between hover:bg-muted/50 -mx-3 px-3 -mb-3 pb-3 rounded-b-md transition-colors cursor-pointer"
           >
