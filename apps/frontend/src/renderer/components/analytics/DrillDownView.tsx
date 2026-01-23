@@ -14,6 +14,10 @@ import {
   FileText,
   GitPullRequest,
   Info,
+  Coins,
+  Cpu,
+  ArrowDownToLine,
+  ArrowUpFromLine,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../ui/card';
 import { Button } from '../ui/button';
@@ -28,7 +32,10 @@ import type {
   AnalyticsPhase,
   TaskAnalytics,
   PhaseMetrics,
+  TokenUsageDetails,
+  CostDetails,
 } from '../../../shared/types/analytics';
+import { formatCost, formatTokenCount } from '../../../shared/constants/pricing';
 
 // ============================================
 // Types & Interfaces
@@ -451,14 +458,25 @@ function FeatureLevelView({ data, feature, onSelectTask }: FeatureLevelViewProps
     );
   }
 
-  const items: DrillDownItem[] = tasks.map((task) => ({
-    id: task.taskId,
-    label: task.title || task.specId,
-    sublabel: new Date(task.createdAt).toLocaleDateString(),
-    value: formatDuration(task.totalDurationMs),
-    status: getStatusFromOutcome(task.outcome),
-    onClick: onSelectTask ? () => onSelectTask(task.taskId) : undefined,
-  }));
+  const items: DrillDownItem[] = tasks.map((task) => {
+    // Build sublabel with date and optional token count
+    let sublabel = new Date(task.createdAt).toLocaleDateString();
+    if (task.totalTokens > 0) {
+      sublabel += ` \u2022 ${formatTokenCount(task.totalTokens)} tokens`;
+    }
+    if (task.costDetails?.actualCostUsd) {
+      sublabel += ` \u2022 ${formatCost(task.costDetails.actualCostUsd)}`;
+    }
+
+    return {
+      id: task.taskId,
+      label: task.title || task.specId,
+      sublabel,
+      value: formatDuration(task.totalDurationMs),
+      status: getStatusFromOutcome(task.outcome),
+      onClick: onSelectTask ? () => onSelectTask(task.taskId) : undefined,
+    };
+  });
 
   return (
     <div className="space-y-4">
@@ -543,6 +561,9 @@ function TaskLevelView({ data, taskId, onSelectPhase }: TaskLevelViewProps) {
   }
 
   const totalPhaseDuration = task.phases.reduce((sum, p) => sum + p.durationMs, 0);
+  const hasTokenDetails = task.tokenDetails && (task.tokenDetails.inputTokens > 0 || task.tokenDetails.outputTokens > 0);
+  const hasCostDetails = task.costDetails && (task.costDetails.actualCostUsd || task.costDetails.estimatedApiCostUsd);
+  const isInsightsChat = task.feature === 'insights' && task.phases.length === 0;
 
   const items: DrillDownItem[] = task.phases.map((phase) => ({
     id: phase.phase,
@@ -564,7 +585,15 @@ function TaskLevelView({ data, taskId, onSelectPhase }: TaskLevelViewProps) {
           <h3 className="font-medium text-foreground truncate">
             {task.title || task.specId}
           </h3>
-          <TaskOutcomeBadge outcome={task.outcome} />
+          <div className="flex items-center gap-2">
+            {task.costDetails?.model && (
+              <Badge variant="outline" className="text-xs">
+                <Cpu className="h-3 w-3 mr-1" />
+                {task.costDetails.model}
+              </Badge>
+            )}
+            <TaskOutcomeBadge outcome={task.outcome} />
+          </div>
         </div>
         <div className="grid grid-cols-2 gap-4 text-sm">
           <div>
@@ -576,23 +605,98 @@ function TaskLevelView({ data, taskId, onSelectPhase }: TaskLevelViewProps) {
           <div>
             <span className="text-muted-foreground">{t('analytics:labels.tokens')}:</span>
             <span className="ml-1 font-medium">
-              {task.totalTokens > 0 ? task.totalTokens.toLocaleString() : '-'}
+              {task.totalTokens > 0 ? formatTokenCount(task.totalTokens) : '-'}
             </span>
           </div>
         </div>
       </div>
 
-      {/* Phase breakdown */}
-      <div className="space-y-1">
-        <h4 className="text-sm font-medium text-muted-foreground mb-2">
-          {t('analytics:metrics.duration.byPhase')}
-        </h4>
-        <div className="space-y-2">
-          {items.map((item) => (
-            <DrillDownRow key={item.id} item={item} showProgress />
-          ))}
+      {/* Token breakdown (if available) */}
+      {hasTokenDetails && (
+        <div className="rounded-lg border border-border p-4">
+          <h4 className="text-sm font-medium text-muted-foreground mb-3 flex items-center gap-2">
+            <Sparkles className="h-4 w-4" />
+            {t('analytics:metrics.tokenUsage.title')}
+          </h4>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="flex items-center gap-2">
+              <ArrowDownToLine className="h-4 w-4 text-blue-500" />
+              <div>
+                <div className="text-xs text-muted-foreground">{t('analytics:labels.inputTokens')}</div>
+                <div className="text-lg font-semibold">
+                  {formatTokenCount(task.tokenDetails!.inputTokens)}
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <ArrowUpFromLine className="h-4 w-4 text-green-500" />
+              <div>
+                <div className="text-xs text-muted-foreground">{t('analytics:labels.outputTokens')}</div>
+                <div className="text-lg font-semibold">
+                  {formatTokenCount(task.tokenDetails!.outputTokens)}
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
+      )}
+
+      {/* Cost information (if available) */}
+      {hasCostDetails && (
+        <div className="rounded-lg border border-border p-4">
+          <h4 className="text-sm font-medium text-muted-foreground mb-3 flex items-center gap-2">
+            <Coins className="h-4 w-4" />
+            {t('analytics:labels.cost')}
+          </h4>
+          <div className="grid grid-cols-2 gap-4">
+            {task.costDetails!.actualCostUsd !== undefined && (
+              <div>
+                <div className="text-xs text-muted-foreground">{t('analytics:labels.actualCost')}</div>
+                <div className="text-lg font-semibold text-green-600 dark:text-green-400">
+                  {formatCost(task.costDetails!.actualCostUsd)}
+                </div>
+              </div>
+            )}
+            {task.costDetails!.estimatedApiCostUsd !== undefined && (
+              <div>
+                <div className="text-xs text-muted-foreground">{t('analytics:labels.estimatedCost')}</div>
+                <div className="text-lg font-semibold">
+                  {formatCost(task.costDetails!.estimatedApiCostUsd)}
+                </div>
+              </div>
+            )}
+          </div>
+          {/* Note about Claude Code subscription */}
+          <div className="mt-3 text-xs text-muted-foreground bg-muted/50 rounded p-2">
+            <Info className="inline h-3 w-3 mb-0.5 mr-1" />
+            {isInsightsChat
+              ? 'Insights Chat uses your Claude Code subscription rate limit, not API billing.'
+              : 'Cost shown is the estimated API price. Claude Code subscription users are not charged per-token.'}
+          </div>
+        </div>
+      )}
+
+      {/* Phase breakdown (for non-Insights tasks) */}
+      {items.length > 0 && (
+        <div className="space-y-1">
+          <h4 className="text-sm font-medium text-muted-foreground mb-2">
+            {t('analytics:metrics.duration.byPhase')}
+          </h4>
+          <div className="space-y-2">
+            {items.map((item) => (
+              <DrillDownRow key={item.id} item={item} showProgress />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Note for Insights Chat sessions (no phases) */}
+      {isInsightsChat && (
+        <div className="rounded-lg border border-border bg-muted/30 p-3 text-xs text-muted-foreground">
+          <Info className="inline h-3 w-3 mb-0.5" />{' '}
+          Insights Chat sessions are conversational and don't have execution phases like build tasks.
+        </div>
+      )}
     </div>
   );
 }

@@ -70,6 +70,28 @@ export interface PhaseMetrics {
 export type TaskOutcome = 'done' | 'pr_created' | 'staged' | 'error' | 'in_progress';
 
 /**
+ * Detailed token usage breakdown
+ */
+export interface TokenUsageDetails {
+  inputTokens: number;
+  outputTokens: number;
+  cacheWriteTokens?: number;
+  cacheReadTokens?: number;
+}
+
+/**
+ * Cost information for a task or session
+ */
+export interface CostDetails {
+  /** Actual cost from API (if available) */
+  actualCostUsd?: number;
+  /** Estimated API cost based on token counts and model pricing */
+  estimatedApiCostUsd?: number;
+  /** Model used for this task/session */
+  model?: string;
+}
+
+/**
  * Analytics data for a single task
  */
 export interface TaskAnalytics {
@@ -83,6 +105,10 @@ export interface TaskAnalytics {
   outcome: TaskOutcome;
   createdAt: string;  // ISO date string
   completedAt?: string;  // ISO date string
+  /** Detailed token breakdown (input/output) */
+  tokenDetails?: TokenUsageDetails;
+  /** Cost information */
+  costDetails?: CostDetails;
 }
 
 // ============================================

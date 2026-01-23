@@ -14,7 +14,10 @@ import type {
   AnalyticsSummary,
   PhaseMetrics,
   AnalyticsPhase,
+  TokenUsageDetails,
+  CostDetails,
 } from "../../shared/types";
+import { calculateApiCost } from "../../shared/constants/pricing";
 import { projectStore } from "../project-store";
 
 /**
@@ -82,25 +85,39 @@ interface InsightsMessageWithTokens {
  */
 interface InsightsSessionJson {
   id: string;
+  title?: string;
   messages: InsightsMessageWithTokens[];
+  modelConfig?: {
+    model?: string;
+    thinkingLevel?: string;
+  };
   createdAt?: string;
   updatedAt?: string;
 }
 
 /**
- * Load all insights sessions from disk and aggregate token usage
+ * Result type for insights session loading
  */
-function loadInsightsTokenUsage(projectPath: string, dateRange: DateRange): {
+interface InsightsUsageResult {
   totalInputTokens: number;
   totalOutputTokens: number;
   totalCostUsd: number;
   sessionCount: number;
-} {
-  const result = {
+  /** Synthetic task analytics entries for drill-down support */
+  taskAnalytics: TaskAnalytics[];
+}
+
+/**
+ * Load all insights sessions from disk and aggregate token usage
+ * Also creates synthetic TaskAnalytics entries for drill-down support
+ */
+function loadInsightsTokenUsage(projectPath: string, dateRange: DateRange): InsightsUsageResult {
+  const result: InsightsUsageResult = {
     totalInputTokens: 0,
     totalOutputTokens: 0,
     totalCostUsd: 0,
     sessionCount: 0,
+    taskAnalytics: [],
   };
 
   try {
@@ -123,20 +140,63 @@ function loadInsightsTokenUsage(projectPath: string, dateRange: DateRange): {
           continue;
         }
 
+        let sessionInputTokens = 0;
+        let sessionOutputTokens = 0;
+        let sessionCostUsd = 0;
         let sessionHasTokens = false;
 
         // Aggregate token usage from assistant messages
         for (const msg of session.messages) {
           if (msg.role === "assistant" && msg.tokenUsage) {
-            result.totalInputTokens += msg.tokenUsage.inputTokens || 0;
-            result.totalOutputTokens += msg.tokenUsage.outputTokens || 0;
-            result.totalCostUsd += msg.tokenUsage.totalCostUsd || 0;
+            sessionInputTokens += msg.tokenUsage.inputTokens || 0;
+            sessionOutputTokens += msg.tokenUsage.outputTokens || 0;
+            sessionCostUsd += msg.tokenUsage.totalCostUsd || 0;
             sessionHasTokens = true;
           }
         }
 
         if (sessionHasTokens) {
+          result.totalInputTokens += sessionInputTokens;
+          result.totalOutputTokens += sessionOutputTokens;
+          result.totalCostUsd += sessionCostUsd;
           result.sessionCount += 1;
+
+          // Create synthetic TaskAnalytics entry for drill-down
+          const sessionTitle = session.title || `Chat Session`;
+          const sessionCreatedAt = session.createdAt;
+          const sessionUpdatedAt = session.updatedAt;
+
+          // Get model from session config (default to sonnet for insights)
+          const model = session.modelConfig?.model || "sonnet";
+
+          // Calculate estimated API cost if actual cost not available
+          const estimatedApiCost = calculateApiCost(sessionInputTokens, sessionOutputTokens, model);
+
+          result.taskAnalytics.push({
+            taskId: `insights-${session.id}`,
+            specId: session.id,
+            title: sessionTitle,
+            feature: "insights" as FeatureType,
+            totalTokens: sessionInputTokens + sessionOutputTokens,
+            totalDurationMs: sessionCreatedAt && sessionUpdatedAt
+              ? Math.max(0, new Date(sessionUpdatedAt).getTime() - new Date(sessionCreatedAt).getTime())
+              : 0,
+            phases: [], // Insights chat doesn't have phases
+            outcome: "done" as TaskOutcome,
+            createdAt: sessionCreatedAt || new Date().toISOString(),
+            completedAt: sessionUpdatedAt,
+            // Add token details
+            tokenDetails: {
+              inputTokens: sessionInputTokens,
+              outputTokens: sessionOutputTokens,
+            },
+            // Add cost details
+            costDetails: {
+              actualCostUsd: sessionCostUsd > 0 ? sessionCostUsd : undefined,
+              estimatedApiCostUsd: estimatedApiCost,
+              model,
+            },
+          });
         }
       } catch {
         // Skip invalid session files
@@ -525,14 +585,27 @@ function aggregateAnalytics(
   }
 
   // Add insights chat token usage to the "insights" feature
-  const insightsTokens = loadInsightsTokenUsage(projectPath, dateRange);
-  if (insightsTokens.totalInputTokens > 0 || insightsTokens.totalOutputTokens > 0) {
-    const insightsChatTokens = insightsTokens.totalInputTokens + insightsTokens.totalOutputTokens;
+  const insightsData = loadInsightsTokenUsage(projectPath, dateRange);
+  console.log("[Analytics] Insights token usage:", {
+    projectPath,
+    dateRange: { start: dateRange.start.toISOString(), end: dateRange.end.toISOString() },
+    insightsTokens: {
+      totalInputTokens: insightsData.totalInputTokens,
+      totalOutputTokens: insightsData.totalOutputTokens,
+      sessionCount: insightsData.sessionCount,
+      taskAnalyticsCount: insightsData.taskAnalytics.length,
+    },
+  });
+  if (insightsData.totalInputTokens > 0 || insightsData.totalOutputTokens > 0) {
+    const insightsChatTokens = insightsData.totalInputTokens + insightsData.totalOutputTokens;
     totalTokens += insightsChatTokens;
     byFeature["insights"].tokenCount += insightsChatTokens;
     // Count sessions as "tasks" for the insights feature
-    byFeature["insights"].taskCount += insightsTokens.sessionCount;
-    byFeature["insights"].successCount += insightsTokens.sessionCount; // Chat sessions are always "successful"
+    byFeature["insights"].taskCount += insightsData.sessionCount;
+    byFeature["insights"].successCount += insightsData.sessionCount; // Chat sessions are always "successful"
+    // Add synthetic task analytics for drill-down support
+    taskAnalytics.push(...insightsData.taskAnalytics);
+    console.log("[Analytics] Added insights tokens:", { insightsChatTokens, totalTokens, byFeature: byFeature["insights"], addedTasks: insightsData.taskAnalytics.length });
   }
 
   // Calculate overall success rate

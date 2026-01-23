@@ -108,7 +108,18 @@
     "of": "of",
     "total": "Total",
     "average": "Average",
-    "count": "Count"
+    "count": "Count",
+    "inputTokens": "Input",
+    "outputTokens": "Output",
+    "cacheRead": "Cache Read",
+    "cacheWrite": "Cache Write",
+    "model": "Model",
+    "cost": "Cost",
+    "estimatedCost": "Est. API Cost",
+    "actualCost": "Actual Cost",
+    "rateLimitImpact": "Rate Limit Impact",
+    "session": "Session",
+    "messages": "messages"
   },
   "tooltips": {
     "tokenUsage": "Total tokens consumed by AI models during task execution",

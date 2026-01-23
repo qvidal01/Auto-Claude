@@ -218,7 +218,7 @@ Current question: {message}"""
 
             async for msg in client.receive_response():
                 msg_type = type(msg).__name__
-                debug_detailed("insights_runner", "Received message", msg_type=msg_type)
+                debug("insights_runner", "Received message type", msg_type=msg_type)
 
                 if msg_type == "AssistantMessage" and hasattr(msg, "content"):
                     for block in msg.content:
@@ -271,6 +271,9 @@ Current question: {message}"""
 
                 elif msg_type == "ResultMessage":
                     # Capture session usage from final result
+                    debug("insights_runner", "ResultMessage received",
+                          has_usage=hasattr(msg, "usage"),
+                          usage_value=str(msg.usage) if hasattr(msg, "usage") else "N/A")
                     if hasattr(msg, "usage") and msg.usage:
                         usage = msg.usage
                         session_usage = {
@@ -279,6 +282,9 @@ Current question: {message}"""
                         }
                         if hasattr(msg, "total_cost_usd") and msg.total_cost_usd is not None:
                             session_usage["total_cost_usd"] = msg.total_cost_usd
+                        debug("insights_runner", "Token usage captured",
+                              input_tokens=session_usage["input_tokens"],
+                              output_tokens=session_usage["output_tokens"])
 
             # Ensure we have a newline at the end
             if response_text and not response_text.endswith("\n"):

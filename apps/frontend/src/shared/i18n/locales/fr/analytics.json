@@ -108,7 +108,18 @@
     "of": "sur",
     "total": "Total",
     "average": "Moyenne",
-    "count": "Nombre"
+    "count": "Nombre",
+    "inputTokens": "Entrée",
+    "outputTokens": "Sortie",
+    "cacheRead": "Cache lu",
+    "cacheWrite": "Cache écrit",
+    "model": "Modèle",
+    "cost": "Coût",
+    "estimatedCost": "Coût API estimé",
+    "actualCost": "Coût réel",
+    "rateLimitImpact": "Impact limite de taux",
+    "session": "Session",
+    "messages": "messages"
   },
   "tooltips": {
     "tokenUsage": "Total des tokens consommés par les modèles IA lors de l'exécution des tâches",
