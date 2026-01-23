@@ -12,7 +12,8 @@
 
 import { execFileSync } from 'child_process';
 import { createHash } from 'crypto';
-import { existsSync } from 'fs';
+import { existsSync, readFileSync } from 'fs';
+import { join } from 'path';
 import { isMacOS } from '../platform';
 
 /**
@@ -128,6 +129,7 @@ export function getCredentialsFromKeychain(configDir?: string, forceRefresh = fa
   const cached = keychainCache.get(serviceName);
   if (!forceRefresh && cached && (now - cached.timestamp) < CACHE_TTL_MS) {
     if (isDebug) {
+      const cacheAge = now - cached.timestamp;
       const tokenHash = cached.credentials.token
         ? createHash('sha256').update(cached.credentials.token).digest('hex').slice(0, 8)
         : 'null';
@@ -135,7 +137,7 @@ export function getCredentialsFromKeychain(configDir?: string, forceRefresh = fa
         serviceName,
         hasToken: !!cached.credentials.token,
         tokenHash,
-        cacheAge: Math.round((now - cached.timestamp) / 1000) + 's'
+        cacheAge: Math.round(cacheAge / 1000) + 's'
       });
     }
     return cached.credentials;
@@ -226,13 +228,16 @@ export function getCredentialsFromKeychain(configDir?: string, forceRefresh = fa
 
     const credentials = { token: token || null, email };
     keychainCache.set(serviceName, { credentials, timestamp: now });
-    const tokenHash = token ? createHash('sha256').update(token).digest('hex').slice(0, 8) : 'null';
-    console.warn('[KeychainUtils] Retrieved credentials from Keychain for service:', serviceName, {
-      hasToken: !!token,
-      hasEmail: !!email,
-      tokenHash,
-      forceRefresh
-    });
+
+    if (isDebug) {
+      const tokenHash = token ? createHash('sha256').update(token).digest('hex').slice(0, 8) : 'null';
+      console.warn('[KeychainUtils] Retrieved credentials from Keychain for service:', serviceName, {
+        hasToken: !!token,
+        hasEmail: !!email,
+        tokenHash,
+        forceRefresh
+      });
+    }
     return credentials;
   } catch (error) {
     // Check for exit code 44 (errSecItemNotFound) which indicates item not found

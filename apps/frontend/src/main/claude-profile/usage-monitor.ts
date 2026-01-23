@@ -780,13 +780,15 @@ export class UsageMonitor extends EventEmitter {
       });
     }
 
-    return {
+    const result = {
       profileId: activeOAuthProfile.id,
       profileName: activeOAuthProfile.name,
       profileEmail,
       isAPIProfile: false,
       baseUrl: 'https://api.anthropic.com'
     };
+
+    return result;
   }
 
   /**
@@ -1080,6 +1082,17 @@ export class UsageMonitor extends EventEmitter {
       }
 
       if (this.isDebug) {
+        const tokenHash = createHash('sha256').update(credential).digest('hex').slice(0, 8);
+        const tokenPrefix = credential.substring(0, 15);
+        console.warn('[UsageMonitor:API_FETCH] API request:', {
+          endpoint: usageEndpoint,
+          profileId,
+          tokenPrefix,
+          tokenHash
+        });
+      }
+
+      if (this.isDebug) {
         console.warn('[UsageMonitor:API_FETCH] Fetching from endpoint:', {
           provider,
           endpoint: usageEndpoint,
@@ -1248,7 +1261,10 @@ export class UsageMonitor extends EventEmitter {
       }
 
       if (this.isDebug) {
-        console.warn('[UsageMonitor:PROVIDER] Normalized usage:', {
+        console.warn('[UsageMonitor:API_FETCH] Fetch completed - usage:', {
+          profileId,
+          profileName,
+          email: normalizedUsage.profileEmail,
           provider,
           sessionPercent: normalizedUsage.sessionPercent,
           weeklyPercent: normalizedUsage.weeklyPercent,

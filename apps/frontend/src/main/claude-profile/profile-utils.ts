@@ -165,3 +165,57 @@ export function expandHomePath(path: string): string {
   }
   return path;
 }
+
+/**
+ * Get the email address from a profile's Claude config file (.claude.json).
+ *
+ * This reads the email directly from Claude's config file, which is the authoritative
+ * source for the user's email. This is more reliable than parsing terminal output
+ * which may contain ANSI escape codes that corrupt the email.
+ *
+ * @param configDir - The profile's config directory (e.g., ~/.claude or ~/.claude-profiles/work)
+ * @returns The email address if found, null otherwise
+ */
+export function getEmailFromConfigDir(configDir?: string): string | null {
+  if (!configDir) {
+    return null;
+  }
+
+  // Expand ~ to home directory
+  const expandedConfigDir = expandHomePath(configDir);
+
+  // Check .claude.json (primary config file)
+  const claudeJsonPath = join(expandedConfigDir, '.claude.json');
+  if (existsSync(claudeJsonPath)) {
+    try {
+      const content = readFileSync(claudeJsonPath, 'utf-8');
+      const data = JSON.parse(content);
+
+      // Check for oauthAccount.emailAddress (modern Claude Code CLI format)
+      if (data?.oauthAccount?.emailAddress && typeof data.oauthAccount.emailAddress === 'string') {
+        return data.oauthAccount.emailAddress;
+      }
+    } catch (error) {
+      console.warn(`[profile-utils] Failed to read email from ${claudeJsonPath}:`, error);
+    }
+  }
+
+  // Fallback: check .credentials.json (used on some Linux setups)
+  const credentialsJsonPath = join(expandedConfigDir, '.credentials.json');
+  if (existsSync(credentialsJsonPath)) {
+    try {
+      const content = readFileSync(credentialsJsonPath, 'utf-8');
+      const data = JSON.parse(content);
+
+      // Check claudeAiOauth.email or emailAddress
+      const email = data?.claudeAiOauth?.email || data?.claudeAiOauth?.emailAddress || data?.email;
+      if (email && typeof email === 'string') {
+        return email;
+      }
+    } catch (error) {
+      console.warn(`[profile-utils] Failed to read email from ${credentialsJsonPath}:`, error);
+    }
+  }
+
+  return null;
+}

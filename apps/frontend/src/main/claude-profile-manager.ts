@@ -89,7 +89,47 @@ export class ClaudeProfileManager {
       this.data = loadedData;
     }
 
+    // Run one-time migration to fix corrupted emails
+    // This repairs emails that were truncated due to ANSI escape codes in terminal output
+    this.migrateCorruptedEmails();
+
     this.initialized = true;
+  }
+
+  /**
+   * One-time migration to fix emails that were corrupted by ANSI escape codes
+   * during terminal output parsing.
+   *
+   * This reads the authoritative email from Claude's config file (.claude.json)
+   * for each profile and updates any that differ from what we have stored.
+   */
+  private migrateCorruptedEmails(): void {
+    let needsSave = false;
+
+    for (const profile of this.data.profiles) {
+      if (!profile.configDir) {
+        continue;
+      }
+
+      // Import dynamically to avoid circular dependency issues
+      const { getEmailFromConfigDir } = require('./claude-profile/profile-utils');
+      const configEmail = getEmailFromConfigDir(profile.configDir);
+
+      if (configEmail && profile.email !== configEmail) {
+        console.warn('[ClaudeProfileManager] Migrating corrupted email for profile:', {
+          profileId: profile.id,
+          oldEmail: profile.email,
+          newEmail: configEmail
+        });
+        profile.email = configEmail;
+        needsSave = true;
+      }
+    }
+
+    if (needsSave) {
+      this.save();
+      console.warn('[ClaudeProfileManager] Email migration complete');
+    }
   }
 
   /**
@@ -105,6 +145,18 @@ export class ClaudeProfileManager {
   private load(): ProfileStoreData {
     const loadedData = loadProfileStore(this.storePath);
     if (loadedData) {
+      if (process.env.DEBUG === 'true') {
+        console.warn('[ClaudeProfileManager] Loaded profiles:', {
+          count: loadedData.profiles.length,
+          activeProfileId: loadedData.activeProfileId,
+          profiles: loadedData.profiles.map(p => ({
+            id: p.id,
+            name: p.name,
+            email: p.email,
+            isDefault: p.isDefault
+          }))
+        });
+      }
       return loadedData;
     }
 
@@ -210,11 +262,35 @@ export class ClaudeProfileManager {
       // Fallback to default
       const defaultProfile = this.data.profiles.find(p => p.isDefault);
       if (defaultProfile) {
+        if (process.env.DEBUG === 'true') {
+          console.warn('[ClaudeProfileManager] getActiveProfile - using default:', {
+            id: defaultProfile.id,
+            name: defaultProfile.name,
+            email: defaultProfile.email
+          });
+        }
         return defaultProfile;
       }
       // If somehow no default exists, return first profile
-      return this.data.profiles[0];
+      const fallback = this.data.profiles[0];
+      if (process.env.DEBUG === 'true') {
+        console.warn('[ClaudeProfileManager] getActiveProfile - using fallback:', {
+          id: fallback.id,
+          name: fallback.name,
+          email: fallback.email
+        });
+      }
+      return fallback;
     }
+
+    if (process.env.DEBUG === 'true') {
+      console.warn('[ClaudeProfileManager] getActiveProfile:', {
+        id: active.id,
+        name: active.name,
+        email: active.email
+      });
+    }
+
     return active;
   }
 
@@ -296,9 +372,19 @@ export class ClaudeProfileManager {
    * Set the active profile
    */
   setActiveProfile(profileId: string): boolean {
+    const previousProfileId = this.data.activeProfileId;
     const profile = this.getProfile(profileId);
     if (!profile) {
+      console.warn('[ClaudeProfileManager] setActiveProfile failed - profile not found:', { profileId });
       return false;
+    }
+
+    if (process.env.DEBUG === 'true') {
+      console.warn('[ClaudeProfileManager] setActiveProfile:', {
+        from: previousProfileId,
+        to: profileId,
+        profileName: profile.name
+      });
     }
 
     this.data.activeProfileId = profileId;

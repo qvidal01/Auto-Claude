@@ -11,6 +11,7 @@ import * as crypto from 'crypto';
 import { IPC_CHANNELS } from '../../shared/constants';
 import { getClaudeProfileManager, initializeClaudeProfileManager } from '../claude-profile-manager';
 import { getCredentialsFromKeychain, clearKeychainCache } from '../claude-profile/keychain-utils';
+import { getEmailFromConfigDir } from '../claude-profile/profile-utils';
 import * as OutputParser from './output-parser';
 import * as SessionHandler from './session-handler';
 import * as PtyManager from './pty-manager';
@@ -500,8 +501,26 @@ export function handleOAuthToken(
       // Claude CLI read fresh tokens from Keychain (which auto-refreshes).
       // See: docs/LONG_LIVED_AUTH_PLAN.md for full context.
 
-      // Just update email if we found one
-      const email = emailFromOutput || keychainCreds.email;
+      // Get email from multiple sources, preferring config file as the authoritative source
+      // Terminal output parsing can be corrupted by ANSI escape codes
+      let email = emailFromOutput || keychainCreds.email;
+
+      // Fallback/validation: Read from Claude's config file (authoritative source)
+      const configEmail = getEmailFromConfigDir(profile.configDir);
+      if (configEmail) {
+        if (!email) {
+          console.warn('[ClaudeIntegration] Email not found in output/keychain, using config file:', maskEmail(configEmail));
+          email = configEmail;
+        } else if (configEmail !== email) {
+          // Config file email is different (terminal extraction might be corrupt)
+          console.warn('[ClaudeIntegration] Email from output differs from config file, using config file:', {
+            outputEmail: maskEmail(email),
+            configEmail: maskEmail(configEmail)
+          });
+          email = configEmail;
+        }
+      }
+
       if (email) {
         profile.email = email;
       }
@@ -565,7 +584,7 @@ export function handleOAuthToken(
 
   console.warn('[ClaudeIntegration] OAuth token detected in output');
 
-  const email = OutputParser.extractEmail(terminal.outputBuffer);
+  let email = OutputParser.extractEmail(terminal.outputBuffer);
 
   if (profileId) {
     // Update profile metadata (but NOT the token - see docs/LONG_LIVED_AUTH_PLAN.md)
@@ -573,7 +592,21 @@ export function handleOAuthToken(
     const profile = profileManager.getProfile(profileId);
 
     if (profile) {
-      // Just update email if we found one
+      // Fallback/validation: Read email from Claude's config file (authoritative source)
+      const configEmail = getEmailFromConfigDir(profile.configDir);
+      if (configEmail) {
+        if (!email) {
+          console.warn('[ClaudeIntegration] Email not found in output, using config file:', maskEmail(configEmail));
+          email = configEmail;
+        } else if (configEmail !== email) {
+          console.warn('[ClaudeIntegration] Email from output differs from config file, using config file:', {
+            outputEmail: maskEmail(email),
+            configEmail: maskEmail(configEmail)
+          });
+          email = configEmail;
+        }
+      }
+
       if (email) {
         profile.email = email;
       }
@@ -621,7 +654,21 @@ export function handleOAuthToken(
       return;
     }
 
-    // Just update email if we found one
+    // Fallback/validation: Read email from Claude's config file (authoritative source)
+    const configEmail = getEmailFromConfigDir(activeProfile.configDir);
+    if (configEmail) {
+      if (!email) {
+        console.warn('[ClaudeIntegration] Email not found in output, using config file:', maskEmail(configEmail));
+        email = configEmail;
+      } else if (configEmail !== email) {
+        console.warn('[ClaudeIntegration] Email from output differs from config file, using config file:', {
+          outputEmail: maskEmail(email),
+          configEmail: maskEmail(configEmail)
+        });
+        email = configEmail;
+      }
+    }
+
     if (email) {
       activeProfile.email = email;
     }
@@ -684,6 +731,33 @@ export function handleOnboardingComplete(
     email = OutputParser.extractEmail(terminal.outputBuffer);
   }
 
+  // Fallback: If terminal extraction failed or might be corrupt, read directly from Claude's config file
+  // This is the authoritative source and doesn't suffer from ANSI escape code issues
+  const profileManager = getClaudeProfileManager();
+  const profile = profileId ? profileManager.getProfile(profileId) : null;
+
+  if (!email && profile?.configDir) {
+    const configEmail = getEmailFromConfigDir(profile.configDir);
+    if (configEmail) {
+      console.warn('[ClaudeIntegration] Email not found in terminal output, using config file:', maskEmail(configEmail));
+      email = configEmail;
+    }
+  }
+
+  // Validate email looks correct (basic sanity check)
+  // If terminal extraction gave us a truncated email but config file has the correct one, prefer config
+  if (email && profile?.configDir) {
+    const configEmail = getEmailFromConfigDir(profile.configDir);
+    if (configEmail && configEmail !== email) {
+      // Config file email is different - it's more authoritative
+      console.warn('[ClaudeIntegration] Terminal email differs from config file, using config file:', {
+        terminalEmail: maskEmail(email),
+        configEmail: maskEmail(configEmail)
+      });
+      email = configEmail;
+    }
+  }
+
   console.warn('[ClaudeIntegration] Email extraction attempt:', {
     profileId,
     foundEmail: maskEmail(email),
@@ -693,16 +767,12 @@ export function handleOnboardingComplete(
 
   // Update profile with email if found and profile exists
   // Always update - the newly extracted email from re-authentication should overwrite any stale/truncated email
-  if (profileId && email) {
-    const profileManager = getClaudeProfileManager();
-    const profile = profileManager.getProfile(profileId);
-    if (profile) {
-      const previousEmail = profile.email;
-      profile.email = email;
-      profileManager.saveProfile(profile);
-      if (previousEmail !== email) {
-        console.warn('[ClaudeIntegration] Updated profile email from welcome screen:', profileId, maskEmail(email), '(was:', maskEmail(previousEmail), ')');
-      }
+  if (profileId && email && profile) {
+    const previousEmail = profile.email;
+    profile.email = email;
+    profileManager.saveProfile(profile);
+    if (previousEmail !== email) {
+      console.warn('[ClaudeIntegration] Updated profile email from welcome screen:', profileId, maskEmail(email), '(was:', maskEmail(previousEmail), ')');
     }
   }
 
