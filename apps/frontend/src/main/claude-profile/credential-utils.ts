@@ -23,6 +23,20 @@ import { join } from 'path';
 import { isMacOS, isWindows, isLinux } from '../platform';
 
 /**
+ * Create a safe fingerprint of a token for debug logging.
+ * Shows first 8 and last 4 characters, hiding the sensitive middle portion.
+ * This is NOT for authentication - only for human-readable debug identification.
+ *
+ * @param token - The token to create a fingerprint for
+ * @returns A safe fingerprint like "sk-ant-oa...xyz9" or "null" if no token
+ */
+function getTokenFingerprint(token: string | null | undefined): string {
+  if (!token) return 'null';
+  if (token.length <= 16) return token.slice(0, 4) + '...' + token.slice(-2);
+  return token.slice(0, 8) + '...' + token.slice(-4);
+}
+
+/**
  * Credentials retrieved from platform-specific secure storage
  */
 export interface PlatformCredentials {
@@ -169,13 +183,10 @@ function getCredentialsFromMacOSKeychain(configDir?: string, forceRefresh = fals
     if ((now - cached.timestamp) < ttl) {
       if (isDebug) {
         const cacheAge = now - cached.timestamp;
-        const tokenHash = cached.credentials.token
-          ? createHash('sha256').update(cached.credentials.token).digest('hex').slice(0, 8)
-          : 'null';
         console.warn('[CredentialUtils:macOS:CACHE] Returning cached credentials:', {
           serviceName,
           hasToken: !!cached.credentials.token,
-          tokenHash,
+          tokenFingerprint: getTokenFingerprint(cached.credentials.token),
           cacheAge: Math.round(cacheAge / 1000) + 's'
         });
       }
@@ -252,11 +263,10 @@ function getCredentialsFromMacOSKeychain(configDir?: string, forceRefresh = fals
     credentialCache.set(cacheKey, { credentials, timestamp: now });
 
     if (isDebug) {
-      const tokenHash = token ? createHash('sha256').update(token).digest('hex').slice(0, 8) : 'null';
       console.warn('[CredentialUtils:macOS] Retrieved credentials from Keychain for service:', serviceName, {
         hasToken: !!token,
         hasEmail: !!email,
-        tokenHash,
+        tokenFingerprint: getTokenFingerprint(token),
         forceRefresh
       });
     }
@@ -306,13 +316,10 @@ function getCredentialsFromLinuxFile(configDir?: string, forceRefresh = false): 
     if ((now - cached.timestamp) < ttl) {
       if (isDebug) {
         const cacheAge = now - cached.timestamp;
-        const tokenHash = cached.credentials.token
-          ? createHash('sha256').update(cached.credentials.token).digest('hex').slice(0, 8)
-          : 'null';
         console.warn('[CredentialUtils:Linux:CACHE] Returning cached credentials:', {
           credentialsPath,
           hasToken: !!cached.credentials.token,
-          tokenHash,
+          tokenFingerprint: getTokenFingerprint(cached.credentials.token),
           cacheAge: Math.round(cacheAge / 1000) + 's'
         });
       }
@@ -366,11 +373,10 @@ function getCredentialsFromLinuxFile(configDir?: string, forceRefresh = false): 
     credentialCache.set(cacheKey, { credentials, timestamp: now });
 
     if (isDebug) {
-      const tokenHash = token ? createHash('sha256').update(token).digest('hex').slice(0, 8) : 'null';
       console.warn('[CredentialUtils:Linux] Retrieved credentials from file:', credentialsPath, {
         hasToken: !!token,
         hasEmail: !!email,
-        tokenHash,
+        tokenFingerprint: getTokenFingerprint(token),
         forceRefresh
       });
     }
@@ -409,13 +415,10 @@ function getCredentialsFromWindowsCredentialManager(configDir?: string, forceRef
     if ((now - cached.timestamp) < ttl) {
       if (isDebug) {
         const cacheAge = now - cached.timestamp;
-        const tokenHash = cached.credentials.token
-          ? createHash('sha256').update(cached.credentials.token).digest('hex').slice(0, 8)
-          : 'null';
         console.warn('[CredentialUtils:Windows:CACHE] Returning cached credentials:', {
           targetName,
           hasToken: !!cached.credentials.token,
-          tokenHash,
+          tokenFingerprint: getTokenFingerprint(cached.credentials.token),
           cacheAge: Math.round(cacheAge / 1000) + 's'
         });
       }
@@ -526,11 +529,10 @@ function getCredentialsFromWindowsCredentialManager(configDir?: string, forceRef
     credentialCache.set(cacheKey, { credentials, timestamp: now });
 
     if (isDebug) {
-      const tokenHash = token ? createHash('sha256').update(token).digest('hex').slice(0, 8) : 'null';
       console.warn('[CredentialUtils:Windows] Retrieved credentials from Credential Manager for target:', targetName, {
         hasToken: !!token,
         hasEmail: !!email,
-        tokenHash,
+        tokenFingerprint: getTokenFingerprint(token),
         forceRefresh
       });
     }

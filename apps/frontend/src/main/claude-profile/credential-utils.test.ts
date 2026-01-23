@@ -4,7 +4,7 @@
  * Tests for credential retrieval on macOS, Linux, and Windows platforms.
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createHash } from 'crypto';
 import { join } from 'path';
 

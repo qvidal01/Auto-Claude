@@ -10,7 +10,6 @@
  */
 
 import { EventEmitter } from 'events';
-import { createHash } from 'crypto';
 import { getClaudeProfileManager } from '../claude-profile-manager';
 import { ClaudeUsageSnapshot, ProfileUsageSummary, AllProfilesUsage } from '../../shared/types/agent';
 import { loadProfilesFile } from '../services/profile/profile-manager';
@@ -21,6 +20,30 @@ import { isProfileRateLimited } from './rate-limit-manager';
 
 // Re-export for backward compatibility
 export type { ApiProvider };
+
+/**
+ * Create a safe fingerprint of a credential for debug logging.
+ * Shows first 8 and last 4 characters, hiding the sensitive middle portion.
+ * This is NOT for authentication - only for human-readable debug identification.
+ *
+ * @param credential - The credential (token or API key) to create a fingerprint for
+ * @returns A safe fingerprint like "sk-ant-oa...xyz9" or "null" if no credential
+ */
+function getCredentialFingerprint(credential: string | null | undefined): string {
+  if (!credential) return 'null';
+  if (credential.length <= 16) return credential.slice(0, 4) + '...' + credential.slice(-2);
+  return credential.slice(0, 8) + '...' + credential.slice(-4);
+}
+
+/**
+ * Allowed domains for usage API requests.
+ * Only these domains are permitted for outbound usage monitoring requests.
+ */
+const ALLOWED_USAGE_API_DOMAINS = new Set([
+  'api.anthropic.com',
+  'api.z.ai',
+  'open.bigmodel.cn',
+]);
 
 /**
  * Provider usage endpoint configuration
@@ -396,11 +419,10 @@ export class UsageMonitor extends EventEmitter {
       }
 
       if (this.isDebug) {
-        const tokenHash = createHash('sha256').update(keychainCreds.token).digest('hex').slice(0, 8);
         console.warn('[UsageMonitor] Fetching usage for inactive profile:', {
           profileId: profile.id,
           profileName: profile.name,
-          tokenHash
+          tokenFingerprint: getCredentialFingerprint(keychainCreds.token)
         });
       }
 
@@ -557,10 +579,8 @@ export class UsageMonitor extends EventEmitter {
 
       if (keychainCreds.token) {
         if (this.isDebug) {
-          const tokenHash = createHash('sha256').update(keychainCreds.token).digest('hex').slice(0, 8);
           console.warn('[UsageMonitor:TRACE] Using OAuth token from Keychain for profile:', activeProfile.name, {
-            tokenHash,
-            tokenPrefix: keychainCreds.token.substring(0, 15) + '...'
+            tokenFingerprint: getCredentialFingerprint(keychainCreds.token)
           });
         }
         return keychainCreds.token;
@@ -1091,13 +1111,10 @@ export class UsageMonitor extends EventEmitter {
       }
 
       if (this.isDebug) {
-        const tokenHash = createHash('sha256').update(credential).digest('hex').slice(0, 8);
-        const tokenPrefix = credential.substring(0, 15);
         console.warn('[UsageMonitor:API_FETCH] API request:', {
           endpoint: usageEndpoint,
           profileId,
-          tokenPrefix,
-          tokenHash
+          credentialFingerprint: getCredentialFingerprint(credential)
         });
       }
 
@@ -1109,7 +1126,25 @@ export class UsageMonitor extends EventEmitter {
         });
       }
 
-      // Step 4: Fetch usage from provider endpoint
+      // Step 4: Validate endpoint domain before making request
+      // Security: Only allow requests to known provider domains
+      let endpointHostname: string;
+      try {
+        const endpointUrl = new URL(usageEndpoint);
+        endpointHostname = endpointUrl.hostname;
+      } catch {
+        console.error('[UsageMonitor] Invalid usage endpoint URL:', usageEndpoint);
+        return null;
+      }
+
+      if (!ALLOWED_USAGE_API_DOMAINS.has(endpointHostname)) {
+        console.error('[UsageMonitor] Blocked request to unauthorized domain:', endpointHostname, {
+          allowedDomains: Array.from(ALLOWED_USAGE_API_DOMAINS)
+        });
+        return null;
+      }
+
+      // Step 5: Fetch usage from provider endpoint
       // All providers use Bearer token authentication (RFC 6750)
       const authHeader = `Bearer ${credential}`;
 
