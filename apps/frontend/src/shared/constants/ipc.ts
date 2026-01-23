@@ -555,5 +555,9 @@ export const IPC_CHANNELS = {
   METHODOLOGY_GET_CONFIG: 'methodology:getConfig',              // Get project's methodology config
   METHODOLOGY_SAVE_CONFIG: 'methodology:saveConfig',            // Save project's methodology config
   METHODOLOGY_LIST_AVAILABLE: 'methodology:listAvailable',      // List available methodologies with their sources
-  METHODOLOGY_CHECK_COMPATIBILITY: 'methodology:checkCompatibility'  // Check version compatibility
+  METHODOLOGY_CHECK_COMPATIBILITY: 'methodology:checkCompatibility',  // Check version compatibility
+
+  // Screenshot capture
+  SCREENSHOT_GET_SOURCES: 'screenshot:getSources',  // Get available screens/windows
+  SCREENSHOT_CAPTURE: 'screenshot:capture'          // Capture screenshot from source
 } as const;

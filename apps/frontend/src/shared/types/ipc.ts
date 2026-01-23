@@ -862,6 +862,14 @@ export interface ElectronAPI {
     maxVersion?: string;
   }>>>;
   checkMethodologyCompatibility: (name: string, version: string) => Promise<IPCResult<MethodologyCompatibilityResult>>;
+
+  // Screenshot capture operations
+  getSources: () => Promise<IPCResult<Array<{
+    id: string;
+    name: string;
+    thumbnail: string;
+  }>>>;
+  capture: (options: { sourceId: string }) => Promise<IPCResult<string>>;
 }
 
 declare global {

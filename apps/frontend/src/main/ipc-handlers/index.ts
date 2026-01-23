@@ -32,6 +32,7 @@ import { registerDebugHandlers } from './debug-handlers';
 import { registerClaudeCodeHandlers } from './claude-code-handlers';
 import { registerMcpHandlers } from './mcp-handlers';
 import { registerProfileHandlers } from './profile-handlers';
+import { registerScreenshotHandlers } from './screenshot-handlers';
 import { registerTerminalWorktreeIpcHandlers } from './terminal';
 import { registerCheckpointHandlers } from './checkpoint-handlers';
 import { registerMethodologyHandlers } from './methodology-handlers';
@@ -120,6 +121,9 @@ export function setupIpcHandlers(
   // API Profile handlers (custom Anthropic-compatible endpoints)
   registerProfileHandlers();
 
+  // Screenshot capture handlers
+  registerScreenshotHandlers();
+
   // Checkpoint handlers (Semi-Auto execution mode - Story 5.4)
   registerCheckpointHandlers(agentManager, getMainWindow);
 
@@ -153,6 +157,7 @@ export {
   registerClaudeCodeHandlers,
   registerMcpHandlers,
   registerProfileHandlers,
+  registerScreenshotHandlers,
   registerCheckpointHandlers,
   registerMethodologyHandlers
 };

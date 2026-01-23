@@ -15,6 +15,7 @@ import { McpAPI, createMcpAPI } from './modules/mcp-api';
 import { ProfileAPI, createProfileAPI } from './profile-api';
 import { CheckpointAPI, createCheckpointAPI } from './modules/checkpoint-api';
 import { MethodologyAPI, createMethodologyAPI } from './modules/methodology-api';
+import { ScreenshotAPI, createScreenshotAPI } from './screenshot-api';
 
 export interface ElectronAPI extends
   ProjectAPI,
@@ -31,7 +32,8 @@ export interface ElectronAPI extends
   ClaudeCodeAPI,
   McpAPI,
   ProfileAPI,
-  MethodologyAPI {
+  MethodologyAPI,
+  ScreenshotAPI {
   github: GitHubAPI;
   checkpoints: CheckpointAPI;
 }
@@ -49,6 +51,7 @@ export const createElectronAPI = (): ElectronAPI => ({
   ...createMcpAPI(),
   ...createProfileAPI(),
   ...createMethodologyAPI(),
+  ...createScreenshotAPI(),
   github: createGitHubAPI(),
   checkpoints: createCheckpointAPI()
 });
@@ -69,7 +72,8 @@ export {
   createClaudeCodeAPI,
   createMcpAPI,
   createCheckpointAPI,
-  createMethodologyAPI
+  createMethodologyAPI,
+  createScreenshotAPI
 };
 
 export type {
@@ -89,5 +93,6 @@ export type {
   ClaudeCodeAPI,
   McpAPI,
   CheckpointAPI,
-  MethodologyAPI
+  MethodologyAPI,
+  ScreenshotAPI
 };

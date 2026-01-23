@@ -35,6 +35,8 @@ export interface ProjectSettings {
   useClaudeMd?: boolean;
   /** Default methodology name for this project (default: 'native') */
   methodology?: string;
+  /** Maximum parallel tasks allowed (default: 3) */
+  maxParallelTasks?: number;
 
   // ============================================
   // Agent Profile Settings (Project-Level)
