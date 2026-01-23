@@ -19,7 +19,7 @@ import {
   sortableKeyboardCoordinates,
   verticalListSortingStrategy
 } from '@dnd-kit/sortable';
-import { Plus, Inbox, Loader2, Eye, CheckCircle2, Archive, RefreshCw, GitPullRequest, X, Settings, ListPlus, ChevronLeft, ChevronRight, Lock, Unlock } from 'lucide-react';
+import { Plus, Inbox, Loader2, Eye, CheckCircle2, Archive, RefreshCw, GitPullRequest, X, Settings, ListPlus, ChevronLeft, ChevronRight, ChevronsRight, Lock, Unlock } from 'lucide-react';
 import { Checkbox } from './ui/checkbox';
 import { ScrollArea } from './ui/scroll-area';
 import { Button } from './ui/button';
@@ -642,6 +642,7 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick, onRefresh, isR
   const loadKanbanPreferences = useKanbanSettingsStore((state) => state.loadPreferences);
   const saveKanbanPreferences = useKanbanSettingsStore((state) => state.savePreferences);
   const toggleColumnCollapsed = useKanbanSettingsStore((state) => state.toggleColumnCollapsed);
+  const setColumnCollapsed = useKanbanSettingsStore((state) => state.setColumnCollapsed);
   const setColumnWidth = useKanbanSettingsStore((state) => state.setColumnWidth);
   const toggleColumnLocked = useKanbanSettingsStore((state) => state.toggleColumnLocked);
 
@@ -691,6 +692,14 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick, onRefresh, isR
     tasks.filter(t => t.metadata?.archivedAt).length,
     [tasks]
   );
+
+  // Calculate collapsed column count for "Expand All" button
+  const collapsedColumnCount = useMemo(() => {
+    if (!columnPreferences) return 0;
+    return TASK_STATUS_COLUMNS.filter(
+      (status) => columnPreferences[status]?.isCollapsed
+    ).length;
+  }, [columnPreferences]);
 
   // Filter tasks based on archive status
   const filteredTasks = useMemo(() => {
@@ -1119,6 +1128,22 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick, onRefresh, isR
     }
   }, [toggleColumnCollapsed, saveKanbanPreferences, projectId]);
 
+  // Create a callback to expand all collapsed columns and save to storage
+  const handleExpandAll = useCallback(() => {
+    // Expand all collapsed columns
+    for (const status of TASK_STATUS_COLUMNS) {
+      if (columnPreferences?.[status]?.isCollapsed) {
+        setColumnCollapsed(status, false);
+      }
+    }
+    // Save preferences after expanding
+    if (projectId) {
+      setTimeout(() => {
+        saveKanbanPreferences(projectId);
+      }, 0);
+    }
+  }, [columnPreferences, setColumnCollapsed, saveKanbanPreferences, projectId]);
+
   // Create a callback to toggle locked state and save to storage
   const handleToggleColumnLocked = useCallback((status: typeof TASK_STATUS_COLUMNS[number]) => {
     toggleColumnLocked(status);
@@ -1346,19 +1371,37 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick, onRefresh, isR
 
   return (
     <div className="flex h-full flex-col">
-      {/* Kanban header with refresh button */}
-      {onRefresh && (
-        <div className="flex items-center justify-end px-6 pt-4 pb-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onRefresh}
-            disabled={isRefreshing}
-            className="gap-2 text-muted-foreground hover:text-foreground"
-          >
-            <RefreshCw className={cn("h-4 w-4", isRefreshing && "animate-spin")} />
-            {isRefreshing ? t('common:buttons.refreshing') : t('tasks:refreshTasks')}
-          </Button>
+      {/* Kanban header with refresh button and expand all */}
+      {(onRefresh || collapsedColumnCount >= 3) && (
+        <div className="flex items-center justify-between px-6 pt-4 pb-2">
+          <div className="flex items-center gap-2">
+            {/* Expand All button - appears when 3+ columns are collapsed */}
+            {collapsedColumnCount >= 3 && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleExpandAll}
+                className="gap-2 text-muted-foreground hover:text-foreground"
+              >
+                <ChevronsRight className="h-4 w-4" />
+                {t('tasks:kanban.expandAll')}
+              </Button>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            {onRefresh && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onRefresh}
+                disabled={isRefreshing}
+                className="gap-2 text-muted-foreground hover:text-foreground"
+              >
+                <RefreshCw className={cn("h-4 w-4", isRefreshing && "animate-spin")} />
+                {isRefreshing ? t('common:buttons.refreshing') : t('tasks:refreshTasks')}
+              </Button>
+            )}
+          </div>
         </div>
       )}
       {/* Kanban columns */}
