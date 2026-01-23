@@ -170,6 +170,53 @@ class TestWorktreeCreation:
         # README should exist (copied from base branch)
         assert (info2.path / "README.md").exists()
 
+    def test_create_worktree_stale_directory(self, temp_git_repo: Path):
+        """create_worktree cleans up stale directory and recreates worktree."""
+        manager = WorktreeManager(temp_git_repo)
+        manager.setup()
+
+        # Create a worktree normally
+        info = manager.create_worktree("test-spec")
+        worktree_path = info.path
+        branch_name = info.branch
+        assert worktree_path.exists()
+
+        # Add a file to the worktree so we can verify it gets cleaned up
+        (worktree_path / "test-file.txt").write_text("test content")
+
+        # Force-remove the worktree from git's tracking, but leave directory intact
+        # This simulates a stale state where directory exists but git doesn't track it
+        result = subprocess.run(
+            ["git", "worktree", "remove", "--force", str(worktree_path)],
+            cwd=temp_git_repo, capture_output=True
+        )
+        assert result.returncode == 0, f"Failed to force remove worktree: {result.stderr}"
+
+        # Recreate the directory manually to simulate stale state
+        # (git worktree remove also deletes the directory, so we recreate it)
+        worktree_path.mkdir(parents=True, exist_ok=True)
+        (worktree_path / "stale-file.txt").write_text("stale content")
+
+        # Verify directory exists but is not tracked by git
+        assert worktree_path.exists()
+        wt_list_result = subprocess.run(
+            ["git", "worktree", "list", "--porcelain"],
+            cwd=temp_git_repo, capture_output=True, text=True
+        )
+        assert str(worktree_path) not in wt_list_result.stdout, "Worktree should not be registered"
+
+        # Now create_worktree should clean up the stale directory and recreate successfully
+        info2 = manager.create_worktree("test-spec")
+
+        # Should return valid worktree info
+        assert info2.path.exists()
+        assert info2.branch == branch_name
+        assert info2.is_active is True
+        # README should exist (from base branch)
+        assert (info2.path / "README.md").exists()
+        # Stale file should be gone (directory was cleaned up)
+        assert not (info2.path / "stale-file.txt").exists()
+
 
 class TestWorktreeRemoval:
     """Tests for removing worktrees."""
