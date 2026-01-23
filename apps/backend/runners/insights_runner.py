@@ -214,6 +214,7 @@ Current question: {message}"""
             # Stream the response
             response_text = ""
             current_tool = None
+            session_usage = None
 
             async for msg in client.receive_response():
                 msg_type = type(msg).__name__
@@ -268,9 +269,30 @@ Current question: {message}"""
                         )
                         current_tool = None
 
+                elif msg_type == "ResultMessage":
+                    # Capture session usage from final result
+                    if hasattr(msg, "usage") and msg.usage:
+                        usage = msg.usage
+                        session_usage = {
+                            "input_tokens": usage.get("input_tokens", 0),
+                            "output_tokens": usage.get("output_tokens", 0),
+                        }
+                        if hasattr(msg, "total_cost_usd") and msg.total_cost_usd is not None:
+                            session_usage["total_cost_usd"] = msg.total_cost_usd
+
             # Ensure we have a newline at the end
             if response_text and not response_text.endswith("\n"):
                 print()
+
+            # Output token usage for analytics
+            if session_usage:
+                print(f"__TOKEN_USAGE__:{json.dumps(session_usage)}", flush=True)
+                debug(
+                    "insights_runner",
+                    "Token usage",
+                    input_tokens=session_usage.get("input_tokens", 0),
+                    output_tokens=session_usage.get("output_tokens", 0),
+                )
 
             debug(
                 "insights_runner",

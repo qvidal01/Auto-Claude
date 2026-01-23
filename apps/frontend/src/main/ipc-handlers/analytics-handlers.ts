@@ -65,6 +65,91 @@ function loadImplementationPlan(projectPath: string, specId: string): Implementa
 }
 
 /**
+ * Interface for insights session message with token usage
+ */
+interface InsightsMessageWithTokens {
+  role: string;
+  tokenUsage?: {
+    inputTokens: number;
+    outputTokens: number;
+    totalCostUsd?: number;
+  };
+  timestamp?: string;
+}
+
+/**
+ * Interface for insights session JSON
+ */
+interface InsightsSessionJson {
+  id: string;
+  messages: InsightsMessageWithTokens[];
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+/**
+ * Load all insights sessions from disk and aggregate token usage
+ */
+function loadInsightsTokenUsage(projectPath: string, dateRange: DateRange): {
+  totalInputTokens: number;
+  totalOutputTokens: number;
+  totalCostUsd: number;
+  sessionCount: number;
+} {
+  const result = {
+    totalInputTokens: 0,
+    totalOutputTokens: 0,
+    totalCostUsd: 0,
+    sessionCount: 0,
+  };
+
+  try {
+    const sessionsDir = path.join(projectPath, ".auto-claude", "insights", "sessions");
+    if (!fs.existsSync(sessionsDir)) {
+      return result;
+    }
+
+    const sessionFiles = fs.readdirSync(sessionsDir).filter(f => f.endsWith(".json"));
+
+    for (const file of sessionFiles) {
+      try {
+        const sessionPath = path.join(sessionsDir, file);
+        const content = fs.readFileSync(sessionPath, "utf-8");
+        const session = JSON.parse(content) as InsightsSessionJson;
+
+        // Check if session is within date range
+        const sessionDate = session.updatedAt ? new Date(session.updatedAt) : new Date();
+        if (sessionDate < dateRange.start || sessionDate > dateRange.end) {
+          continue;
+        }
+
+        let sessionHasTokens = false;
+
+        // Aggregate token usage from assistant messages
+        for (const msg of session.messages) {
+          if (msg.role === "assistant" && msg.tokenUsage) {
+            result.totalInputTokens += msg.tokenUsage.inputTokens || 0;
+            result.totalOutputTokens += msg.tokenUsage.outputTokens || 0;
+            result.totalCostUsd += msg.tokenUsage.totalCostUsd || 0;
+            sessionHasTokens = true;
+          }
+        }
+
+        if (sessionHasTokens) {
+          result.sessionCount += 1;
+        }
+      } catch {
+        // Skip invalid session files
+      }
+    }
+  } catch {
+    // Return empty result if insights directory doesn't exist or is unreadable
+  }
+
+  return result;
+}
+
+/**
  * Extract token usage from implementation plan
  * Returns total input/output tokens and per-phase metrics
  */
@@ -437,6 +522,17 @@ function aggregateAnalytics(
     } else {
       inProgressCount += 1;
     }
+  }
+
+  // Add insights chat token usage to the "insights" feature
+  const insightsTokens = loadInsightsTokenUsage(projectPath, dateRange);
+  if (insightsTokens.totalInputTokens > 0 || insightsTokens.totalOutputTokens > 0) {
+    const insightsChatTokens = insightsTokens.totalInputTokens + insightsTokens.totalOutputTokens;
+    totalTokens += insightsChatTokens;
+    byFeature["insights"].tokenCount += insightsChatTokens;
+    // Count sessions as "tasks" for the insights feature
+    byFeature["insights"].taskCount += insightsTokens.sessionCount;
+    byFeature["insights"].successCount += insightsTokens.sessionCount; // Chat sessions are always "successful"
   }
 
   // Calculate overall success rate
