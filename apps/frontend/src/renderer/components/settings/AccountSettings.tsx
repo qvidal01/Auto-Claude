@@ -28,9 +28,7 @@ import {
   Activity,
   AlertCircle,
   Server,
-  Globe,
-  Clock,
-  TrendingUp
+  Globe
 } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
@@ -138,10 +136,9 @@ export function AccountSettings({ settings, onSettingsChange, isOpen }: AccountS
   const [profileUsageData, setProfileUsageData] = useState<Map<string, ProfileUsageSummary>>(new Map());
 
   // Fetch all profiles usage data
-  // Force refresh to get fresh data when Settings opens (bypasses 1-minute cache)
-  const loadProfileUsageData = useCallback(async (forceRefresh: boolean = false) => {
+  const loadProfileUsageData = useCallback(async () => {
     try {
-      const result = await window.electronAPI.requestAllProfilesUsage?.(forceRefresh);
+      const result = await window.electronAPI.requestAllProfilesUsage?.();
       if (result?.success && result.data) {
         const usageMap = new Map<string, ProfileUsageSummary>();
         result.data.allProfiles.forEach(profile => {
@@ -177,7 +174,6 @@ export function AccountSettings({ settings, onSettingsChange, isOpen }: AccountS
         isRateLimited: usageData?.isRateLimited,
         rateLimitType: usageData?.rateLimitType,
         isAuthenticated: profile.isAuthenticated,
-        needsReauthentication: usageData?.needsReauthentication,
       });
     });
 
@@ -251,11 +247,8 @@ export function AccountSettings({ settings, onSettingsChange, isOpen }: AccountS
       loadClaudeProfiles();
       loadAutoSwitchSettings();
       loadPriorityOrder();
-      // Force refresh usage data when Settings opens to get fresh data
-      // This bypasses the 1-minute cache to ensure accurate duplicate detection
-      loadProfileUsageData(true);
+      loadProfileUsageData();
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, loadProfileUsageData]);
 
   // Subscribe to usage updates for real-time data
@@ -340,7 +333,7 @@ export function AccountSettings({ settings, onSettingsChange, isOpen }: AccountS
           });
         }
       }
-    } catch (_err) {
+    } catch (err) {
       toast({
         variant: 'destructive',
         title: t('accounts.toast.addProfileFailed'),
@@ -370,7 +363,7 @@ export function AccountSettings({ settings, onSettingsChange, isOpen }: AccountS
           description: result.error || t('accounts.toast.tryAgain'),
         });
       }
-    } catch (_err) {
+    } catch (err) {
       toast({
         variant: 'destructive',
         title: t('accounts.toast.deleteProfileFailed'),
@@ -405,7 +398,7 @@ export function AccountSettings({ settings, onSettingsChange, isOpen }: AccountS
           description: result.error || t('accounts.toast.tryAgain'),
         });
       }
-    } catch (_err) {
+    } catch (err) {
       toast({
         variant: 'destructive',
         title: t('accounts.toast.renameProfileFailed'),
@@ -436,7 +429,7 @@ export function AccountSettings({ settings, onSettingsChange, isOpen }: AccountS
           description: result.error || t('accounts.toast.tryAgain'),
         });
       }
-    } catch (_err) {
+    } catch (err) {
       toast({
         variant: 'destructive',
         title: t('accounts.toast.setActiveProfileFailed'),
@@ -488,7 +481,7 @@ export function AccountSettings({ settings, onSettingsChange, isOpen }: AccountS
     setAuthTerminal(null);
     setAuthenticatingProfileId(null);
     await loadClaudeProfiles();
-  }, [loadClaudeProfiles]);
+  }, []);
 
   const handleAuthTerminalError = useCallback(() => {
     // Don't auto-close on error
@@ -535,7 +528,7 @@ export function AccountSettings({ settings, onSettingsChange, isOpen }: AccountS
           description: result.error || t('accounts.toast.tryAgain'),
         });
       }
-    } catch (_err) {
+    } catch (err) {
       toast({
         variant: 'destructive',
         title: t('accounts.toast.tokenSaveFailed'),
@@ -646,7 +639,7 @@ export function AccountSettings({ settings, onSettingsChange, isOpen }: AccountS
           description: result.error || t('accounts.toast.tryAgain'),
         });
       }
-    } catch (_err) {
+    } catch (err) {
       toast({
         variant: 'destructive',
         title: t('accounts.toast.settingsUpdateFailed'),
@@ -697,21 +690,14 @@ export function AccountSettings({ settings, onSettingsChange, isOpen }: AccountS
                 </div>
               ) : (
                 <div className="space-y-2 mb-4">
-                  {claudeProfiles.map((profile) => {
-                    // Get usage data to check needsReauthentication flag
-                    const usageData = profileUsageData.get(profile.id);
-                    const needsReauth = usageData?.needsReauthentication ?? false;
-
-                    return (
+                  {claudeProfiles.map((profile) => (
                     <div
                       key={profile.id}
                       className={cn(
                         "rounded-lg border transition-colors",
-                        needsReauth
-                          ? "border-destructive/50 bg-destructive/5"
-                          : profile.id === activeClaudeProfileId && !activeApiProfileId
-                            ? "border-primary bg-primary/5"
-                            : "border-border bg-background"
+                        profile.id === activeClaudeProfileId && !activeApiProfileId
+                          ? "border-primary bg-primary/5"
+                          : "border-border bg-background"
                       )}
                     >
                       <div className={cn(
@@ -770,12 +756,7 @@ export function AccountSettings({ settings, onSettingsChange, isOpen }: AccountS
                                       {t('accounts.claudeCode.active')}
                                     </span>
                                   )}
-                                  {needsReauth ? (
-                                    <span className="text-xs bg-destructive/20 text-destructive px-1.5 py-0.5 rounded flex items-center gap-1">
-                                      <AlertCircle className="h-3 w-3" />
-                                      {t('accounts.priority.needsReauth')}
-                                    </span>
-                                  ) : profile.isAuthenticated ? (
+                                  {profile.isAuthenticated ? (
                                     <span className="text-xs bg-success/20 text-success px-1.5 py-0.5 rounded flex items-center gap-1">
                                       <Check className="h-3 w-3" />
                                       {t('accounts.claudeCode.authenticated')}
@@ -788,57 +769,6 @@ export function AccountSettings({ settings, onSettingsChange, isOpen }: AccountS
                                 </div>
                                 {profile.email && (
                                   <span className="text-xs text-muted-foreground">{profile.email}</span>
-                                )}
-                                {/* Usage bars - show if we have usage data */}
-                                {usageData && profile.isAuthenticated && !needsReauth && (
-                                  <div className="flex items-center gap-3 mt-1.5">
-                                    {/* Session usage */}
-                                    <div className="flex items-center gap-1.5">
-                                      <Clock className="h-3 w-3 text-muted-foreground" />
-                                      <div className="w-12 h-1.5 bg-muted rounded-full overflow-hidden">
-                                        <div
-                                          className={`h-full rounded-full ${
-                                            (usageData.sessionPercent ?? 0) >= 95 ? 'bg-red-500' :
-                                            (usageData.sessionPercent ?? 0) >= 91 ? 'bg-orange-500' :
-                                            (usageData.sessionPercent ?? 0) >= 71 ? 'bg-yellow-500' :
-                                            'bg-green-500'
-                                          }`}
-                                          style={{ width: `${Math.min(usageData.sessionPercent ?? 0, 100)}%` }}
-                                        />
-                                      </div>
-                                      <span className={`text-[10px] tabular-nums w-7 ${
-                                        (usageData.sessionPercent ?? 0) >= 95 ? 'text-red-500' :
-                                        (usageData.sessionPercent ?? 0) >= 91 ? 'text-orange-500' :
-                                        (usageData.sessionPercent ?? 0) >= 71 ? 'text-yellow-500' :
-                                        'text-muted-foreground'
-                                      }`}>
-                                        {Math.round(usageData.sessionPercent ?? 0)}%
-                                      </span>
-                                    </div>
-                                    {/* Weekly usage */}
-                                    <div className="flex items-center gap-1.5">
-                                      <TrendingUp className="h-3 w-3 text-muted-foreground" />
-                                      <div className="w-12 h-1.5 bg-muted rounded-full overflow-hidden">
-                                        <div
-                                          className={`h-full rounded-full ${
-                                            (usageData.weeklyPercent ?? 0) >= 95 ? 'bg-red-500' :
-                                            (usageData.weeklyPercent ?? 0) >= 91 ? 'bg-orange-500' :
-                                            (usageData.weeklyPercent ?? 0) >= 71 ? 'bg-yellow-500' :
-                                            'bg-green-500'
-                                          }`}
-                                          style={{ width: `${Math.min(usageData.weeklyPercent ?? 0, 100)}%` }}
-                                        />
-                                      </div>
-                                      <span className={`text-[10px] tabular-nums w-7 ${
-                                        (usageData.weeklyPercent ?? 0) >= 95 ? 'text-red-500' :
-                                        (usageData.weeklyPercent ?? 0) >= 91 ? 'text-orange-500' :
-                                        (usageData.weeklyPercent ?? 0) >= 71 ? 'text-yellow-500' :
-                                        'text-muted-foreground'
-                                      }`}>
-                                        {Math.round(usageData.weeklyPercent ?? 0)}%
-                                      </span>
-                                    </div>
-                                  </div>
                                 )}
                               </>
                             )}
@@ -1022,8 +952,7 @@ export function AccountSettings({ settings, onSettingsChange, isOpen }: AccountS
                         </div>
                       )}
                     </div>
-                  );
-                  })}
+                  ))}
                 </div>
               )}
 
@@ -1329,11 +1258,11 @@ export function AccountSettings({ settings, onSettingsChange, isOpen }: AccountS
                           <input
                             id="session-threshold"
                             type="range"
-                            min="0"
+                            min="70"
                             max="99"
                             step="1"
                             value={autoSwitchSettings?.sessionThreshold ?? 95}
-                            onChange={(e) => handleUpdateAutoSwitch({ sessionThreshold: parseInt(e.target.value, 10) })}
+                            onChange={(e) => handleUpdateAutoSwitch({ sessionThreshold: parseInt(e.target.value) })}
                             disabled={isLoadingAutoSwitch}
                             className="w-full"
                             aria-describedby="session-threshold-description"
@@ -1352,11 +1281,11 @@ export function AccountSettings({ settings, onSettingsChange, isOpen }: AccountS
                           <input
                             id="weekly-threshold"
                             type="range"
-                            min="0"
+                            min="70"
                             max="99"
                             step="1"
                             value={autoSwitchSettings?.weeklyThreshold ?? 99}
-                            onChange={(e) => handleUpdateAutoSwitch({ weeklyThreshold: parseInt(e.target.value, 10) })}
+                            onChange={(e) => handleUpdateAutoSwitch({ weeklyThreshold: parseInt(e.target.value) })}
                             disabled={isLoadingAutoSwitch}
                             className="w-full"
                             aria-describedby="weekly-threshold-description"
@@ -1384,23 +1313,6 @@ export function AccountSettings({ settings, onSettingsChange, isOpen }: AccountS
                       <Switch
                         checked={autoSwitchSettings?.autoSwitchOnRateLimit ?? false}
                         onCheckedChange={(value) => handleUpdateAutoSwitch({ autoSwitchOnRateLimit: value })}
-                        disabled={isLoadingAutoSwitch}
-                      />
-                    </div>
-
-                    {/* Auto-switch on auth failure */}
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <Label className="text-sm font-medium">
-                          {t('accounts.autoSwitching.autoSwitchOnAuthFailure')}
-                        </Label>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {t('accounts.autoSwitching.autoSwitchOnAuthFailureDescription')}
-                        </p>
-                      </div>
-                      <Switch
-                        checked={autoSwitchSettings?.autoSwitchOnAuthFailure ?? false}
-                        onCheckedChange={(value) => handleUpdateAutoSwitch({ autoSwitchOnAuthFailure: value })}
                         disabled={isLoadingAutoSwitch}
                       />
                     </div>

@@ -159,7 +159,7 @@ export function extractEmail(data: string): string | null {
 
   for (const pattern of EMAIL_PATTERNS) {
     const match = cleanData.match(pattern);
-    if (match?.[1]) {
+    if (match && match[1]) {
       return match[1];
     }
   }

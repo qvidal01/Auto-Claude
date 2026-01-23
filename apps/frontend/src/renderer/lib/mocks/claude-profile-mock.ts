@@ -76,7 +76,7 @@ export const claudeProfileMock = {
     data: null
   }),
 
-  requestAllProfilesUsage: async (_forceRefresh?: boolean) => ({
+  requestAllProfilesUsage: async () => ({
     success: true,
     data: null
   }),

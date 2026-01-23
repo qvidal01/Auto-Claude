@@ -10,8 +10,7 @@ import * as path from 'path';
 import * as crypto from 'crypto';
 import { IPC_CHANNELS } from '../../shared/constants';
 import { getClaudeProfileManager, initializeClaudeProfileManager } from '../claude-profile-manager';
-import { getFullCredentialsFromKeychain, clearKeychainCache, updateProfileSubscriptionMetadata } from '../claude-profile/credential-utils';
-import { getUsageMonitor } from '../claude-profile/usage-monitor';
+import { getCredentialsFromKeychain, clearKeychainCache } from '../claude-profile/credential-utils';
 import { getEmailFromConfigDir } from '../claude-profile/profile-utils';
 import * as OutputParser from './output-parser';
 import * as SessionHandler from './session-handler';
@@ -525,8 +524,6 @@ export function handleOAuthToken(
       if (email) {
         profile.email = email;
       }
-      // Update subscription metadata from Keychain credentials
-      updateProfileSubscriptionMetadata(profile, keychainCreds);
       profile.isAuthenticated = true;
       profileManager.saveProfile(profile);
 
@@ -613,8 +610,6 @@ export function handleOAuthToken(
       if (email) {
         profile.email = email;
       }
-      // Update subscription metadata from Keychain credentials
-      updateProfileSubscriptionMetadata(profile, profile.configDir);
       profile.isAuthenticated = true;
       profileManager.saveProfile(profile);
 
@@ -677,8 +672,6 @@ export function handleOAuthToken(
     if (email) {
       activeProfile.email = email;
     }
-    // Update subscription metadata from Keychain credentials
-    updateProfileSubscriptionMetadata(activeProfile, activeProfile.configDir);
     activeProfile.isAuthenticated = true;
     profileManager.saveProfile(activeProfile);
 
@@ -772,13 +765,11 @@ export function handleOnboardingComplete(
     bufferLength: terminal.outputBuffer.length
   });
 
-  // Update profile with email and subscription metadata if found and profile exists
+  // Update profile with email if found and profile exists
   // Always update - the newly extracted email from re-authentication should overwrite any stale/truncated email
   if (profileId && email && profile) {
     const previousEmail = profile.email;
     profile.email = email;
-    // Also update subscription metadata from Keychain credentials
-    updateProfileSubscriptionMetadata(profile, profile.configDir);
     profileManager.saveProfile(profile);
     if (previousEmail !== email) {
       console.warn('[ClaudeIntegration] Updated profile email from welcome screen:', profileId, maskEmail(email), '(was:', maskEmail(previousEmail), ')');

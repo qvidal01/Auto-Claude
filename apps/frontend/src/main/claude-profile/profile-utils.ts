@@ -204,26 +204,6 @@ export function hasValidToken(profile: ClaudeProfile): boolean {
 }
 
 /**
- * Check if an API profile has valid authentication credentials.
- * Validates that both apiKey and baseUrl are present and non-empty.
- *
- * @param profile - The API profile to check
- * @returns true if the profile has both apiKey and baseUrl, false otherwise
- */
-export function isAPIProfileAuthenticated(profile: APIProfile): boolean {
-  // Check for presence of required fields
-  if (!profile?.apiKey || !profile?.baseUrl) {
-    return false;
-  }
-
-  // Validate that the fields are non-empty strings (after trimming whitespace)
-  const hasValidApiKey = typeof profile.apiKey === 'string' && profile.apiKey.trim().length > 0;
-  const hasValidBaseUrl = typeof profile.baseUrl === 'string' && profile.baseUrl.trim().length > 0;
-
-  return hasValidApiKey && hasValidBaseUrl;
-}
-
-/**
  * Expand ~ in path to home directory
  */
 export function expandHomePath(path: string): string {
