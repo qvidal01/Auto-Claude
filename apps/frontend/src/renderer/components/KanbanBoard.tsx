@@ -1118,18 +1118,22 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick, onRefresh, isR
 
   // Create a callback to toggle collapsed state and save to storage
   const handleToggleColumnCollapsed = useCallback((status: typeof TASK_STATUS_COLUMNS[number]) => {
+    // Capture projectId at function start to avoid stale closure in setTimeout
+    const currentProjectId = projectId;
     toggleColumnCollapsed(status);
     // Save preferences after toggling
-    if (projectId) {
+    if (currentProjectId) {
       // Use setTimeout to ensure state is updated before saving
       setTimeout(() => {
-        saveKanbanPreferences(projectId);
+        saveKanbanPreferences(currentProjectId);
       }, 0);
     }
   }, [toggleColumnCollapsed, saveKanbanPreferences, projectId]);
 
   // Create a callback to expand all collapsed columns and save to storage
   const handleExpandAll = useCallback(() => {
+    // Capture projectId at function start to avoid stale closure in setTimeout
+    const currentProjectId = projectId;
     // Expand all collapsed columns
     for (const status of TASK_STATUS_COLUMNS) {
       if (columnPreferences?.[status]?.isCollapsed) {
@@ -1137,21 +1141,23 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick, onRefresh, isR
       }
     }
     // Save preferences after expanding
-    if (projectId) {
+    if (currentProjectId) {
       setTimeout(() => {
-        saveKanbanPreferences(projectId);
+        saveKanbanPreferences(currentProjectId);
       }, 0);
     }
   }, [columnPreferences, setColumnCollapsed, saveKanbanPreferences, projectId]);
 
   // Create a callback to toggle locked state and save to storage
   const handleToggleColumnLocked = useCallback((status: typeof TASK_STATUS_COLUMNS[number]) => {
+    // Capture projectId at function start to avoid stale closure in setTimeout
+    const currentProjectId = projectId;
     toggleColumnLocked(status);
     // Save preferences after toggling
-    if (projectId) {
+    if (currentProjectId) {
       // Use setTimeout to ensure state is updated before saving
       setTimeout(() => {
-        saveKanbanPreferences(projectId);
+        saveKanbanPreferences(currentProjectId);
       }, 0);
     }
   }, [toggleColumnLocked, saveKanbanPreferences, projectId]);
