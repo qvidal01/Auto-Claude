@@ -89,7 +89,6 @@ interface DroppableColumnProps {
   columnWidth?: number;
   isResizing?: boolean;
   onResizeStart?: (startX: number) => void;
-  onResize?: (width: number) => void;
   onResizeEnd?: () => void;
   // Lock props
   isLocked?: boolean;
@@ -148,7 +147,6 @@ function droppableColumnPropsAreEqual(
   if (prevProps.columnWidth !== nextProps.columnWidth) return false;
   if (prevProps.isResizing !== nextProps.isResizing) return false;
   if (prevProps.onResizeStart !== nextProps.onResizeStart) return false;
-  if (prevProps.onResize !== nextProps.onResize) return false;
   if (prevProps.onResizeEnd !== nextProps.onResizeEnd) return false;
   if (prevProps.isLocked !== nextProps.isLocked) return false;
   if (prevProps.onToggleLocked !== nextProps.onToggleLocked) return false;
@@ -222,7 +220,7 @@ const getEmptyStateContent = (status: TaskStatus, t: (key: string) => string): {
   }
 };
 
-const DroppableColumn = memo(function DroppableColumn({ status, tasks, onTaskClick, onStatusChange, isOver, onAddClick, onArchiveAll, onQueueSettings, onQueueAll, maxParallelTasks, archivedCount, showArchived, onToggleArchived, selectedTaskIds, onSelectAll, onDeselectAll, onToggleSelect, isCollapsed, onToggleCollapsed, columnWidth, isResizing, onResizeStart, onResize, onResizeEnd, isLocked, onToggleLocked }: DroppableColumnProps) {
+const DroppableColumn = memo(function DroppableColumn({ status, tasks, onTaskClick, onStatusChange, isOver, onAddClick, onArchiveAll, onQueueSettings, onQueueAll, maxParallelTasks, archivedCount, showArchived, onToggleArchived, selectedTaskIds, onSelectAll, onDeselectAll, onToggleSelect, isCollapsed, onToggleCollapsed, columnWidth, isResizing, onResizeStart, onResizeEnd, isLocked, onToggleLocked }: DroppableColumnProps) {
   const { t } = useTranslation(['tasks', 'common']);
   const { setNodeRef } = useDroppable({
     id: status
@@ -374,7 +372,7 @@ const DroppableColumn = memo(function DroppableColumn({ status, tasks, onTaskCli
   return (
     <div
       className="relative flex"
-      style={columnWidth ? { width: columnWidth, minWidth: 180, maxWidth: 600, flexShrink: 0 } : undefined}
+      style={columnWidth ? { width: columnWidth, minWidth: MIN_COLUMN_WIDTH, maxWidth: MAX_COLUMN_WIDTH, flexShrink: 0 } : undefined}
     >
       <div
         ref={setNodeRef}
@@ -593,7 +591,7 @@ const DroppableColumn = memo(function DroppableColumn({ status, tasks, onTaskCli
       </div>
 
       {/* Resize handle on right edge */}
-      {onResizeStart && onResize && onResizeEnd && (
+      {onResizeStart && onResizeEnd && (
         <div
           className={cn(
             "absolute right-0 top-0 bottom-0 w-1 touch-none z-10",
@@ -650,6 +648,8 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick, onRefresh, isR
   const [resizingColumn, setResizingColumn] = useState<typeof TASK_STATUS_COLUMNS[number] | null>(null);
   const resizeStartX = useRef<number>(0);
   const resizeStartWidth = useRef<number>(0);
+  // Capture projectId at resize start to avoid stale closure if project changes during resize
+  const resizeProjectIdRef = useRef<string | null>(null);
 
   // Get projectId from first task
   const projectId = tasks[0]?.projectId;
@@ -1161,8 +1161,10 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick, onRefresh, isR
     const currentWidth = columnPreferences?.[status]?.width ?? DEFAULT_COLUMN_WIDTH;
     resizeStartX.current = startX;
     resizeStartWidth.current = currentWidth;
+    // Capture projectId at resize start to ensure we save to the correct project
+    resizeProjectIdRef.current = projectId ?? null;
     setResizingColumn(status);
-  }, [columnPreferences]);
+  }, [columnPreferences, projectId]);
 
   const handleResizeMove = useCallback((clientX: number) => {
     if (!resizingColumn) return;
@@ -1173,11 +1175,14 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick, onRefresh, isR
   }, [resizingColumn, setColumnWidth]);
 
   const handleResizeEnd = useCallback(() => {
-    if (resizingColumn && projectId) {
-      saveKanbanPreferences(projectId);
+    // Use the projectId captured at resize start to avoid saving to wrong project
+    const savedProjectId = resizeProjectIdRef.current;
+    if (resizingColumn && savedProjectId) {
+      saveKanbanPreferences(savedProjectId);
     }
     setResizingColumn(null);
-  }, [resizingColumn, projectId, saveKanbanPreferences]);
+    resizeProjectIdRef.current = null;
+  }, [resizingColumn, saveKanbanPreferences]);
 
   // Document-level event listeners for resize dragging
   useEffect(() => {
@@ -1443,7 +1448,6 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick, onRefresh, isR
               columnWidth={columnPreferences?.[status]?.width}
               isResizing={resizingColumn === status}
               onResizeStart={(startX) => handleResizeStart(status, startX)}
-              onResize={(width) => setColumnWidth(status, width)}
               onResizeEnd={handleResizeEnd}
               isLocked={columnPreferences?.[status]?.isLocked}
               onToggleLocked={() => handleToggleColumnLocked(status)}
