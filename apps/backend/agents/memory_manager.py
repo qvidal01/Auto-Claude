@@ -126,19 +126,6 @@ async def get_graphiti_context(
                 )
             return None
 
-        # ===== INVESTIGATION DEBUG LOGGING (subtask-1-1) =====
-        # Capture initialization state before any query attempt
-        if is_debug_enabled():
-            debug_detailed(
-                "memory",
-                "GraphitiMemory instance for context - PRE-QUERY STATE",
-                is_enabled=memory.is_enabled,
-                is_initialized=memory.is_initialized,
-                group_id=getattr(memory, "group_id", "unknown"),
-                available_flag=memory._available,
-            )
-        # ===== END INVESTIGATION DEBUG LOGGING =====
-
         # Build search query from subtask description
         subtask_desc = subtask.get("description", "")
         subtask_id = subtask.get("id", "")
@@ -360,78 +347,9 @@ async def save_session_memory(
                         "get_graphiti_memory() returned None - this usually means Graphiti is disabled or provider config is invalid",
                     )
                 # Continue to file-based fallback
-            else:
-                # ===== INVESTIGATION DEBUG LOGGING (subtask-1-1) =====
-                # Capture detailed initialization state BEFORE any save attempt
-                # This reveals if _ensure_initialized() might fail silently
-                if is_debug_enabled():
-                    debug_detailed(
-                        "memory",
-                        "GraphitiMemory instance created - PRE-INIT STATE",
-                        is_enabled=memory.is_enabled,
-                        is_initialized=memory.is_initialized,
-                        group_id=getattr(memory, "group_id", "unknown"),
-                        spec_dir=str(spec_dir),
-                        project_dir=str(project_dir),
-                        has_client=memory._client is not None,
-                        has_queries=memory._queries is not None,
-                        has_search=memory._search is not None,
-                        available_flag=memory._available,
-                    )
-
-                    # Log config details that affect initialization
-                    if hasattr(memory, "config") and memory.config:
-                        debug_detailed(
-                            "memory",
-                            "GraphitiMemory config state",
-                            config_is_valid=memory.config.is_valid()
-                            if hasattr(memory.config, "is_valid")
-                            else "unknown",
-                            llm_provider=memory.config.llm_provider
-                            if hasattr(memory.config, "llm_provider")
-                            else "unknown",
-                            embedder_provider=memory.config.embedder_provider
-                            if hasattr(memory.config, "embedder_provider")
-                            else "unknown",
-                            database=memory.config.database
-                            if hasattr(memory.config, "database")
-                            else "unknown",
-                        )
-
-                    # Log state object details
-                    if memory.state:
-                        debug_detailed(
-                            "memory",
-                            "GraphitiMemory state object",
-                            state_initialized=memory.state.initialized
-                            if hasattr(memory.state, "initialized")
-                            else "unknown",
-                            episode_count=memory.state.episode_count
-                            if hasattr(memory.state, "episode_count")
-                            else "unknown",
-                            last_session=memory.state.last_session
-                            if hasattr(memory.state, "last_session")
-                            else "unknown",
-                            error_count=len(memory.state.error_log)
-                            if hasattr(memory.state, "error_log")
-                            else 0,
-                        )
-                    else:
-                        debug("memory", "GraphitiMemory state object is None")
-                # ===== END INVESTIGATION DEBUG LOGGING =====
-
             if memory is not None and memory.is_enabled:
                 if is_debug_enabled():
                     debug("memory", "Saving to Graphiti...")
-                    # ===== INVESTIGATION DEBUG LOGGING (subtask-1-1) =====
-                    # Log state BEFORE calling save methods (which call _ensure_initialized internally)
-                    debug(
-                        "memory",
-                        "PRE-SAVE CHECK: About to call save method",
-                        is_initialized_before_save=memory.is_initialized,
-                        note="If False, _ensure_initialized() will be called inside save method",
-                    )
-                    # ===== END INVESTIGATION DEBUG LOGGING =====
 
                 # Use structured insights if we have rich extracted data
                 if discoveries and discoveries.get("file_insights"):
@@ -445,19 +363,6 @@ async def save_session_memory(
                 else:
                     # Fallback to basic session insights
                     result = await memory.save_session_insights(session_num, insights)
-
-                # ===== INVESTIGATION DEBUG LOGGING (subtask-1-1) =====
-                # Log state AFTER save attempt to see if initialization happened
-                if is_debug_enabled():
-                    debug(
-                        "memory",
-                        "POST-SAVE CHECK: After save method returned",
-                        is_initialized_after_save=memory.is_initialized,
-                        save_result=result,
-                        has_client_after=memory._client is not None,
-                        has_queries_after=memory._queries is not None,
-                    )
-                # ===== END INVESTIGATION DEBUG LOGGING =====
 
                 if result:
                     logger.info(

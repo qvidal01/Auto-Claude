@@ -90,20 +90,29 @@ def run_async(coro):
     """
     Run an async coroutine synchronously.
 
-    Handles the case where we're already in an event loop.
+    NOTE: This should only be called from synchronous code. For async callers,
+    use the async function directly with await to ensure proper execution.
 
     Args:
         coro: Async coroutine to run
 
     Returns:
-        Result of the coroutine or a Future if already in event loop
+        Result of the coroutine, or None if already in an async context
     """
     try:
-        loop = asyncio.get_running_loop()
-        # Already in an event loop - create a task
-        return asyncio.ensure_future(coro)
+        asyncio.get_running_loop()
+        # Already in an async context - caller should use await directly
+        # Log a warning and return None to avoid returning a Future that
+        # callers would incorrectly try to use as the actual result
+        logger.warning(
+            "run_async called from async context. "
+            "Use await directly for proper execution."
+        )
+        # Close the coroutine to avoid "coroutine was never awaited" warning
+        coro.close()
+        return None
     except RuntimeError:
-        # No event loop running - create one
+        # No event loop running - safe to create one
         return asyncio.run(coro)
 
 
