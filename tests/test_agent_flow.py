@@ -83,9 +83,7 @@ def get_latest_commit(project_dir: Path) -> str:
         ["git", "rev-parse", "HEAD"],
         cwd=project_dir,
         capture_output=True,
-        text=True,
-        encoding="utf-8",
-        errors="replace",
+        text=True
     )
     return result.stdout.strip() if result.returncode == 0 else ""
 
@@ -252,10 +250,8 @@ class TestPostSessionProcessing:
         recovery_manager = RecoveryManager(spec_dir, project_dir)
         commit_before = get_latest_commit(project_dir)
 
-        # Mock check_and_recover to prevent the recovery flow from resetting attempt history
         with patch("agents.session.extract_session_insights", new_callable=AsyncMock) as mock_insights, \
-             patch("agents.session.save_session_memory", new_callable=AsyncMock) as mock_memory, \
-             patch("agents.session.check_and_recover", return_value=None):
+             patch("agents.session.save_session_memory", new_callable=AsyncMock) as mock_memory:
 
             mock_insights.return_value = {"file_insights": [], "patterns_discovered": []}
             mock_memory.return_value = (True, "file")
@@ -767,6 +763,7 @@ class TestSubtaskCompletionDetection:
 
     def test_subtask_status_transition_through_in_progress(self, test_env):
         """Test detecting subtask transition through in_progress state."""
+        from agents.utils import load_implementation_plan, find_subtask_in_plan
         from progress import count_subtasks_detailed
 
         temp_dir, spec_dir, project_dir = test_env
@@ -1259,6 +1256,7 @@ class TestQALoopWorkflow:
     def test_full_qa_workflow_with_one_rejection(self, test_env):
         """Test QA workflow with one rejection followed by approval."""
         from qa_loop import (
+            should_run_qa,
             should_run_fixes,
             is_qa_approved,
             is_qa_rejected,

@@ -396,7 +396,7 @@ describe('E2E Smoke Tests', () => {
         statusHandler({}, 'task-001', 'in_progress');
       }
 
-      expect(statusCallback).toHaveBeenCalledWith('task-001', 'in_progress', undefined, undefined);
+      expect(statusCallback).toHaveBeenCalledWith('task-001', 'in_progress', undefined);
 
       // Cleanup listeners
       cleanupProgress();
@@ -656,7 +656,6 @@ describe('E2E Smoke Tests', () => {
           index + 1,
           'task-001',
           status,
-          undefined,
           undefined
         );
       });
