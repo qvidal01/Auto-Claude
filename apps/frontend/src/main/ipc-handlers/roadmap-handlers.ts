@@ -21,7 +21,7 @@ import type {
 } from "../../shared/types";
 import type { RoadmapConfig } from "../agent/types";
 import path from "path";
-import { readFileSync, writeFileSync, mkdirSync, readdirSync, unlinkSync } from "fs";
+import { existsSync, readFileSync, writeFileSync, mkdirSync, readdirSync, unlinkSync } from "fs";
 import { projectStore } from "../project-store";
 import { AgentManager } from "../agent";
 import { debugLog, debugError } from "../../shared/utils/debug-logger";
@@ -690,8 +690,10 @@ ${(feature.acceptance_criteria || []).map((c: string) => `- [ ] ${c}`).join("\n"
       const progressPath = path.join(roadmapDir, AUTO_BUILD_PATHS.GENERATION_PROGRESS);
 
       try {
-        // Ensure roadmap directory exists (mkdirSync with recursive: true doesn't error if exists)
-        mkdirSync(roadmapDir, { recursive: true });
+        // Ensure roadmap directory exists
+        if (!existsSync(roadmapDir)) {
+          mkdirSync(roadmapDir, { recursive: true });
+        }
 
         // Derive isRunning from phase (active phases are running)
         const isRunning = progressData.phase !== 'idle' && progressData.phase !== 'complete' && progressData.phase !== 'error';
@@ -706,7 +708,7 @@ ${(feature.acceptance_criteria || []).map((c: string) => `- [ ] ${c}`).join("\n"
           is_running: isRunning,
         };
 
-        await writeFileWithRetry(progressPath, JSON.stringify(fileData, null, 2), { encoding: 'utf-8' });
+        writeFileSync(progressPath, JSON.stringify(fileData, null, 2));
         debugLog("[Roadmap Handler] Saved progress checkpoint:", { projectId, phase: progressData.phase });
 
         return { success: true };
@@ -737,8 +739,12 @@ ${(feature.acceptance_criteria || []).map((c: string) => `- [ ] ${c}`).join("\n"
         AUTO_BUILD_PATHS.GENERATION_PROGRESS
       );
 
+      if (!existsSync(progressPath)) {
+        return { success: true, data: null };
+      }
+
       try {
-        const content = await readFileWithRetry(progressPath, { encoding: "utf-8" }) as string;
+        const content = readFileSync(progressPath, "utf-8");
         const rawData = JSON.parse(content);
 
         // Valid phase values that the frontend expects
@@ -763,10 +769,6 @@ ${(feature.acceptance_criteria || []).map((c: string) => `- [ ] ${c}`).join("\n"
 
         return { success: true, data: progressData };
       } catch (error) {
-        // ENOENT (file not found) is expected - return null data
-        if ((error as NodeJS.ErrnoException)?.code === 'ENOENT') {
-          return { success: true, data: null };
-        }
         debugError("[Roadmap Handler] Failed to load progress:", error);
         return {
           success: false,
@@ -791,21 +793,17 @@ ${(feature.acceptance_criteria || []).map((c: string) => `- [ ] ${c}`).join("\n"
       );
 
       try {
-        // unlinkSync errors if file doesn't exist - catch and ignore ENOENT
-        unlinkSync(progressPath);
-        debugLog("[Roadmap Handler] Cleared progress checkpoint:", { projectId });
+        if (existsSync(progressPath)) {
+          unlinkSync(progressPath);
+          debugLog("[Roadmap Handler] Cleared progress checkpoint:", { projectId });
+        }
         return { success: true };
       } catch (error) {
-        // ENOENT (file not found) is expected when clearing a non-existent progress file
-        if ((error as NodeJS.ErrnoException)?.code !== 'ENOENT') {
-          debugError("[Roadmap Handler] Failed to clear progress:", error);
-          return {
-            success: false,
-            error: error instanceof Error ? error.message : "Failed to clear progress",
-          };
-        }
-        // File didn't exist - that's fine, consider it cleared
-        return { success: true };
+        debugError("[Roadmap Handler] Failed to clear progress:", error);
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : "Failed to clear progress",
+        };
       }
     }
   );

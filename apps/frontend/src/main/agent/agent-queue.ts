@@ -1,6 +1,6 @@
 import { spawn } from 'child_process';
 import path from 'path';
-import { existsSync, mkdirSync, unlinkSync, promises as fsPromises } from 'fs';
+import { existsSync, writeFileSync, mkdirSync, unlinkSync, promises as fsPromises } from 'fs';
 import { EventEmitter } from 'events';
 import { AgentState } from './agent-state';
 import { AgentEvents } from './agent-events';
@@ -8,7 +8,7 @@ import { AgentProcessManager } from './agent-process';
 import { RoadmapConfig } from './types';
 import type { IdeationConfig, Idea } from '../../shared/types';
 import { AUTO_BUILD_PATHS } from '../../shared/constants';
-import { detectRateLimit, createSDKRateLimitInfo, getBestAvailableProfileEnv } from '../rate-limit-detector';
+import { detectRateLimit, createSDKRateLimitInfo, getProfileEnv } from '../rate-limit-detector';
 import { getAPIProfileEnv } from '../services/profile';
 import { getOAuthModeClearVars } from './env-utils';
 import { debugLog, debugError } from '../../shared/utils/debug-logger';
@@ -113,14 +113,14 @@ export class AgentQueueManager {
    * @param startedAt - When generation started (ISO string)
    * @param isRunning - Whether generation is actively running
    */
-  private async persistRoadmapProgress(
+  private persistRoadmapProgress(
     projectPath: string,
     phase: string,
     progress: number,
     message: string,
     startedAt: string,
     isRunning: boolean
-  ): Promise<void> {
+  ): void {
     try {
       const roadmapDir = path.join(projectPath, AUTO_BUILD_PATHS.ROADMAP_DIR);
       const progressPath = path.join(roadmapDir, AUTO_BUILD_PATHS.GENERATION_PROGRESS);
@@ -139,7 +139,7 @@ export class AgentQueueManager {
         is_running: isRunning
       };
 
-      await writeFileWithRetry(progressPath, JSON.stringify(progressData, null, 2), { encoding: 'utf-8' });
+      writeFileSync(progressPath, JSON.stringify(progressData, null, 2));
       debugLog('[Agent Queue] Persisted roadmap progress:', { phase, progress });
     } catch (err) {
       debugError('[Agent Queue] Failed to persist roadmap progress:', err);
@@ -153,9 +153,6 @@ export class AgentQueueManager {
    * @param projectPath - The project directory path
    */
   private clearRoadmapProgress(projectPath: string): void {
-    // Cancel any pending debounced write to prevent re-creating the file after deletion
-    this.cancelPersistRoadmapProgress();
-
     try {
       const progressPath = path.join(
         projectPath,
@@ -775,8 +772,8 @@ export class AgentQueueManager {
     // Track startedAt timestamp for progress persistence
     const roadmapStartedAt = new Date().toISOString();
 
-    // Persist initial progress state (debounced - will execute immediately due to leading: true)
-    this.debouncedPersistRoadmapProgress(
+    // Persist initial progress state
+    this.persistRoadmapProgress(
       projectPath,
       progressPhase,
       progressPercent,
@@ -813,8 +810,8 @@ export class AgentQueueManager {
       // Get status message for display
       const statusMessage = formatStatusMessage(log);
 
-      // Persist progress to disk for recovery after restart (debounced to limit writes)
-      this.debouncedPersistRoadmapProgress(
+      // Persist progress to disk for recovery after restart
+      this.persistRoadmapProgress(
         projectPath,
         progressPhase,
         progressPercent,
@@ -841,8 +838,8 @@ export class AgentQueueManager {
 
       const statusMessage = formatStatusMessage(log);
 
-      // Persist progress to disk (debounced - also on stderr to show activity)
-      this.debouncedPersistRoadmapProgress(
+      // Persist progress to disk (also on stderr to show activity)
+      this.persistRoadmapProgress(
         projectPath,
         progressPhase,
         progressPercent,
