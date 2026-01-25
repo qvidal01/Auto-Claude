@@ -100,14 +100,6 @@
     "selectedCountOne": "{{count}} tâche sélectionnée",
     "selectedCountOther": "{{count}} tâches sélectionnées",
     "createPRs": "Créer les PRs",
-    "deleteSelected": "Supprimer",
-    "deleteConfirmTitle": "Supprimer les tâches sélectionnées",
-    "deleteConfirmDescription": "Êtes-vous sûr de vouloir supprimer définitivement ces tâches ?",
-    "deleteWarning": "Cette action est irréversible. Tous les fichiers de tâche, y compris le spec, le plan d'implémentation et tout code généré seront définitivement supprimés du projet.",
-    "tasksToDelete": "Tâches à supprimer",
-    "deleteConfirmButton": "Supprimer {{count}} tâches",
-    "deleteSuccess": "{{count}} tâche(s) supprimée(s) avec succès",
-    "deleteError": "Échec de la suppression de certaines tâches",
     "clearSelection": "Effacer la sélection",
     "collapseColumn": "Réduire la colonne",
     "expandColumn": "Développer la colonne",
@@ -116,25 +108,6 @@
     "unlockColumn": "Déverrouiller la largeur de la colonne",
     "columnLocked": "La largeur de la colonne est verrouillée",
     "expandAll": "Développer toutes les colonnes"
-  },
-  "queue": {
-    "limitReached": "Limite de tâches parallèles atteinte ({{current}}/{{max}}). Tâche déplacée vers la file d'attente.",
-    "movedToQueue": "Tâche déplacée vers la file d'attente.",
-    "autoPromoted": "Tâche auto-promue de la file d'attente vers En cours.",
-    "capacityAvailable": "{{count}} emplacement(s) disponible(s) dans En cours.",
-    "queueAll": "Tout ajouter à la file d'attente",
-    "queueAllSuccess": "{{count}} tâches déplacées vers la file d'attente.",
-    "settings": {
-      "title": "Paramètres de la file d'attente",
-      "description": "Configurer le nombre maximal de tâches pouvant s'exécuter en parallèle dans le tableau \"En cours\"",
-      "maxParallelLabel": "Tâches parallèles maximales",
-      "minValueError": "Doit être au moins 1",
-      "maxValueError": "Ne peut pas dépasser 10",
-      "hint": "Lorsque cette limite est atteinte, les nouvelles tâches attendront dans la file avant de passer à \"En cours\"",
-      "saved": "Paramètres de la file d'attente enregistrés",
-      "saveFailed": "Échec de l'enregistrement des paramètres",
-      "retry": "Veuillez réessayer"
-    }
   },
   "queue": {
     "limitReached": "Limite de tâches parallèles atteinte ({{current}}/{{max}}). Tâche déplacée vers la file d'attente.",

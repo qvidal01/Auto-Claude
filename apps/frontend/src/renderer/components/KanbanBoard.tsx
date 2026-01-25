@@ -19,7 +19,7 @@ import {
   sortableKeyboardCoordinates,
   verticalListSortingStrategy
 } from '@dnd-kit/sortable';
-import { Plus, Inbox, Loader2, Eye, CheckCircle2, Archive, RefreshCw, GitPullRequest, X, Settings, ListPlus } from 'lucide-react';
+import { Plus, Inbox, Loader2, Eye, CheckCircle2, Archive, RefreshCw, GitPullRequest, X, Settings, ListPlus, ChevronLeft, ChevronRight, ChevronsRight, Lock, Unlock } from 'lucide-react';
 import { Checkbox } from './ui/checkbox';
 import { ScrollArea } from './ui/scroll-area';
 import { Button } from './ui/button';
@@ -31,6 +31,7 @@ import { TASK_STATUS_COLUMNS, TASK_STATUS_LABELS } from '../../shared/constants'
 import { cn } from '../lib/utils';
 import { persistTaskStatus, forceCompleteTask, archiveTasks, useTaskStore } from '../stores/task-store';
 import { updateProjectSettings, useProjectStore } from '../stores/project-store';
+import { useKanbanSettingsStore, COLLAPSED_COLUMN_WIDTH, DEFAULT_COLUMN_WIDTH, MIN_COLUMN_WIDTH, MAX_COLUMN_WIDTH } from '../stores/kanban-settings-store';
 import { useToast } from '../hooks/use-toast';
 import { WorktreeCleanupDialog } from './WorktreeCleanupDialog';
 import { BulkPRDialog } from './BulkPRDialog';
@@ -229,7 +230,7 @@ const getEmptyStateContent = (status: TaskStatus, t: (key: string) => string): {
   }
 };
 
-const DroppableColumn = memo(function DroppableColumn({ status, tasks, onTaskClick, onStatusChange, isOver, onAddClick, onArchiveAll, onQueueSettings, onQueueAll, maxParallelTasks, archivedCount, showArchived, onToggleArchived, selectedTaskIds, onSelectAll, onDeselectAll, onToggleSelect }: DroppableColumnProps) {
+const DroppableColumn = memo(function DroppableColumn({ status, tasks, onTaskClick, onStatusChange, isOver, onAddClick, onArchiveAll, onQueueSettings, onQueueAll, maxParallelTasks, archivedCount, showArchived, onToggleArchived, selectedTaskIds, onSelectAll, onDeselectAll, onToggleSelect, isCollapsed, onToggleCollapsed, columnWidth, isResizing, onResizeStart, onResizeEnd, isLocked, onToggleLocked }: DroppableColumnProps) {
   const { t } = useTranslation(['tasks', 'common']);
   const { setNodeRef } = useDroppable({
     id: status
@@ -337,7 +338,7 @@ const DroppableColumn = memo(function DroppableColumn({ status, tasks, onTaskCli
           'border-t-2',
           isOver && 'drop-zone-highlight'
         )}
-        style={{ width: COLLAPSED_COLUMN_WIDTH_REM, minWidth: COLLAPSED_COLUMN_WIDTH_REM, maxWidth: COLLAPSED_COLUMN_WIDTH_REM }}
+        style={{ width: COLLAPSED_COLUMN_WIDTH, minWidth: COLLAPSED_COLUMN_WIDTH, maxWidth: COLLAPSED_COLUMN_WIDTH }}
       >
         {/* Expand button at top */}
         <div className="flex justify-center p-2 border-b border-white/5">
@@ -380,7 +381,7 @@ const DroppableColumn = memo(function DroppableColumn({ status, tasks, onTaskCli
   return (
     <div
       className="relative flex"
-      style={columnWidth ? { width: pxToRem(columnWidth), minWidth: MIN_COLUMN_WIDTH_REM, maxWidth: MAX_COLUMN_WIDTH_REM, flexShrink: 0 } : undefined}
+      style={columnWidth ? { width: columnWidth, minWidth: MIN_COLUMN_WIDTH, maxWidth: MAX_COLUMN_WIDTH, flexShrink: 0 } : undefined}
     >
       <div
         ref={setNodeRef}
@@ -414,8 +415,8 @@ const DroppableColumn = memo(function DroppableColumn({ status, tasks, onTaskCli
               </TooltipContent>
             </Tooltip>
           )}
-          {/* Select All checkbox for column */}
-          {onSelectAll && onDeselectAll && (
+          {/* Select All checkbox for human_review column */}
+          {isHumanReview && onSelectAll && onDeselectAll && (
             <Tooltip delayDuration={200}>
               <TooltipTrigger asChild>
                 <div className="flex items-center">
@@ -450,6 +451,31 @@ const DroppableColumn = memo(function DroppableColumn({ status, tasks, onTaskCli
           )}
         </div>
         <div className="flex items-center gap-1">
+          {/* Lock toggle button - available for all columns */}
+          {onToggleLocked && (
+            <Tooltip delayDuration={200}>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className={cn(
+                    'h-7 w-7 transition-colors',
+                    isLocked
+                      ? 'text-amber-500 bg-amber-500/10 hover:bg-amber-500/20'
+                      : 'hover:bg-muted-foreground/10 hover:text-muted-foreground'
+                  )}
+                  onClick={onToggleLocked}
+                  aria-pressed={isLocked}
+                  aria-label={isLocked ? t('kanban.unlockColumn') : t('kanban.lockColumn')}
+                >
+                  {isLocked ? <Lock className="h-3.5 w-3.5" /> : <Unlock className="h-3.5 w-3.5" />}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                {isLocked ? t('kanban.unlockColumn') : t('kanban.lockColumn')}
+              </TooltipContent>
+            </Tooltip>
+          )}
           {status === 'backlog' && (
             <>
               {onQueueAll && tasks.length > 0 && (
@@ -580,7 +606,7 @@ const DroppableColumn = memo(function DroppableColumn({ status, tasks, onTaskCli
             "absolute right-0 top-0 bottom-0 w-1 touch-none z-10",
             "transition-colors duration-150",
             isLocked
-              ? "cursor-not-allowed bg-transparent"
+              ? "cursor-not-allowed bg-amber-500/20 hover:bg-amber-500/30"
               : "cursor-col-resize hover:bg-primary/40",
             isResizing && !isLocked && "bg-primary/60"
           )}
@@ -617,6 +643,22 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick, onRefresh, isR
 
   // Project store for queue settings
   const projects = useProjectStore((state) => state.projects);
+
+  // Kanban settings store for column preferences (collapse state, width, lock state)
+  const columnPreferences = useKanbanSettingsStore((state) => state.columnPreferences);
+  const loadKanbanPreferences = useKanbanSettingsStore((state) => state.loadPreferences);
+  const saveKanbanPreferences = useKanbanSettingsStore((state) => state.savePreferences);
+  const toggleColumnCollapsed = useKanbanSettingsStore((state) => state.toggleColumnCollapsed);
+  const setColumnCollapsed = useKanbanSettingsStore((state) => state.setColumnCollapsed);
+  const setColumnWidth = useKanbanSettingsStore((state) => state.setColumnWidth);
+  const toggleColumnLocked = useKanbanSettingsStore((state) => state.toggleColumnLocked);
+
+  // Column resize state
+  const [resizingColumn, setResizingColumn] = useState<typeof TASK_STATUS_COLUMNS[number] | null>(null);
+  const resizeStartX = useRef<number>(0);
+  const resizeStartWidth = useRef<number>(0);
+  // Capture projectId at resize start to avoid stale closure if project changes during resize
+  const resizeProjectIdRef = useRef<string | null>(null);
 
   // Get projectId from first task
   const projectId = tasks[0]?.projectId;
@@ -1190,8 +1232,7 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick, onRefresh, isR
   const handleResizeMove = useCallback((clientX: number) => {
     if (!resizingColumn) return;
 
-    const scaleFactor = parseFloat(getComputedStyle(document.documentElement).fontSize) / BASE_FONT_SIZE;
-    const deltaX = (clientX - resizeStartX.current) / scaleFactor;
+    const deltaX = clientX - resizeStartX.current;
     const newWidth = Math.max(MIN_COLUMN_WIDTH, Math.min(MAX_COLUMN_WIDTH, resizeStartWidth.current + deltaX));
     setColumnWidth(resizingColumn, newWidth);
   }, [resizingColumn, setColumnWidth]);
@@ -1461,10 +1502,10 @@ export function KanbanBoard({ tasks, onTaskClick, onNewTaskClick, onRefresh, isR
               archivedCount={status === 'done' ? archivedCount : undefined}
               showArchived={status === 'done' ? showArchived : undefined}
               onToggleArchived={status === 'done' ? toggleShowArchived : undefined}
-              selectedTaskIds={selectedTaskIds}
-              onSelectAll={() => selectAllTasks(status)}
-              onDeselectAll={deselectAllTasks}
-              onToggleSelect={toggleTaskSelection}
+              selectedTaskIds={status === 'human_review' ? selectedTaskIds : undefined}
+              onSelectAll={status === 'human_review' ? selectAllTasks : undefined}
+              onDeselectAll={status === 'human_review' ? deselectAllTasks : undefined}
+              onToggleSelect={status === 'human_review' ? toggleTaskSelection : undefined}
               isCollapsed={columnPreferences?.[status]?.isCollapsed}
               onToggleCollapsed={() => handleToggleColumnCollapsed(status)}
               columnWidth={columnPreferences?.[status]?.width}
