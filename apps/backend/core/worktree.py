@@ -413,11 +413,27 @@ class WorktreeManager:
         registered_paths = set()
         for line in result.stdout.split("\n"):
             if line.startswith("worktree "):
-                registered_paths.add(Path(line.split(" ", 1)[1]))
+                parts = line.split(" ", 1)
+                if len(parts) == 2:
+                    registered_paths.add(Path(parts[1]))
 
-        # Resolve the path to handle any symlinks or relative paths
+        # Check if worktree_path matches any registered path
+        # Use samefile() for accurate comparison on case-insensitive filesystems
         resolved_path = worktree_path.resolve()
-        return resolved_path in registered_paths or worktree_path in registered_paths
+        for registered_path in registered_paths:
+            # Try samefile first (handles case-insensitivity and symlinks)
+            try:
+                if resolved_path.exists() and registered_path.exists():
+                    if os.path.samefile(resolved_path, registered_path):
+                        return True
+            except OSError:
+                pass
+            # Fallback to normalized case comparison for non-existent paths
+            if os.path.normcase(str(resolved_path)) == os.path.normcase(
+                str(registered_path)
+            ):
+                return True
+        return False
 
     def _get_worktree_stats(self, spec_name: str) -> dict:
         """Get diff statistics for a worktree."""
@@ -513,9 +529,14 @@ class WorktreeManager:
         This method is idempotent - calling it multiple times with the same spec_name
         will succeed regardless of prior state. It handles:
         - Existing valid worktrees (returns existing)
+        - Corrupted worktrees (force removes and recreates)
         - Orphaned worktree references (prunes them)
         - Stale worktree directories (cleans them up)
         - Existing branches without worktrees (reuses the branch)
+
+        Note:
+            This method is NOT thread-safe for concurrent calls with the same spec_name.
+            If concurrent access is needed, implement external locking.
 
         Args:
             spec_name: The spec folder name (e.g., "002-implement-memory")
@@ -555,6 +576,11 @@ class WorktreeManager:
                     f"Using existing worktree: {worktree_path.name} on branch {existing.branch}"
                 )
                 return existing
+            else:
+                # Worktree is registered but corrupted (e.g., unreadable HEAD)
+                # Force remove the registration and let it be recreated
+                print(f"Removing corrupted worktree registration: {worktree_path.name}")
+                self._run_git(["worktree", "remove", "--force", str(worktree_path)])
 
         # Step 4: Handle stale worktree directory (exists but not registered with git)
         if worktree_path.exists() and not self._worktree_is_registered(worktree_path):
