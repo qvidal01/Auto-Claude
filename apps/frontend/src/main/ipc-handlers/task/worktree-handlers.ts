@@ -21,7 +21,6 @@ import {
 } from '../../worktree-paths';
 import { persistPlanStatus, updateTaskMetadataPrUrl } from './plan-file-utils';
 import { getIsolatedGitEnv, refreshGitIndex } from '../../utils/git-isolation';
-import { cleanupWorktree } from '../../utils/worktree-cleanup';
 import { killProcessGracefully } from '../../platform';
 import { stripAnsiCodes } from '../../../shared/utils/ansi-sanitizer';
 import { taskStateManager } from '../../task-state-manager';
