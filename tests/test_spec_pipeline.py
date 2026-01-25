@@ -19,7 +19,8 @@ import atexit
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-pytestmark = pytest.mark.slow
+# Add auto-claude directory to path for imports
+sys.path.insert(0, str(Path(__file__).parent.parent / "apps" / "backend"))
 
 # Add auto-claude directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent / "apps" / "backend"))

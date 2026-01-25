@@ -52,11 +52,9 @@ import { readSettingsFile } from './settings-utils';
 import { setupErrorLogging } from './app-logger';
 import { initSentryMain } from './sentry';
 import { preWarmToolCache } from './cli-tool-manager';
-import { initializeClaudeProfileManager, getClaudeProfileManager } from './claude-profile-manager';
-import { isProfileAuthenticated } from './claude-profile/profile-utils';
+import { initializeClaudeProfileManager } from './claude-profile-manager';
 import { isMacOS, isWindows } from './platform';
-import { ptyDaemonClient } from './terminal/pty-daemon-client';
-import type { AppSettings, AuthFailureInfo } from '../shared/types';
+import type { AppSettings } from '../shared/types';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Window sizing constants

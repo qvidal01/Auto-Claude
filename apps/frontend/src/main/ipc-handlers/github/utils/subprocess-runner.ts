@@ -20,7 +20,6 @@ import type { AuthFailureInfo, BillingFailureInfo } from '../../../../shared/typ
 import { parsePythonCommand } from '../../../python-detector';
 import { detectAuthFailure, detectBillingFailure } from '../../../rate-limit-detector';
 import { getClaudeProfileManager } from '../../../claude-profile-manager';
-import { getOperationRegistry, type OperationType } from '../../../claude-profile/operation-registry';
 import { isWindows, isMacOS } from '../../../platform';
 
 const execAsync = promisify(exec);

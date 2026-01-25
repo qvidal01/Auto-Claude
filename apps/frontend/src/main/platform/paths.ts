@@ -298,14 +298,11 @@ export function getOllamaInstallCommand(): string {
 /**
  * Get the command to find executables in PATH
  *
- * Windows: Full path to where.exe (C:\Windows\System32\where.exe)
- *          Using full path ensures it works even when System32 isn't in PATH,
- *          which can happen in restricted environments or when Electron doesn't
- *          inherit the full system PATH.
+ * Windows: where.exe
  * Unix: which
  */
 export function getWhichCommand(): string {
-  return isWindows() ? getWhereExePath() : 'which';
+  return isWindows() ? 'where.exe' : 'which';
 }
 
 /**
