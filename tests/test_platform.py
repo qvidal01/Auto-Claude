@@ -491,11 +491,13 @@ class TestClaudeCliDetectionCrossPlatform:
     def test_macos_claude_cli_detection_paths(self, mock_home, mock_brew, mock_is_windows, mock_is_macos):
         """macOS Claude paths should include Homebrew."""
         paths = get_claude_detection_paths()
+        # Normalize path separators for cross-platform test execution
+        normalized_paths = [p.replace('\\', '/') for p in paths]
 
         # Should include Homebrew path
-        assert '/opt/homebrew/bin/claude' in paths
+        assert '/opt/homebrew/bin/claude' in normalized_paths
         # Should include user local bin
-        assert any('.local/bin/claude' in p for p in paths)
+        assert any('.local/bin/claude' in p for p in normalized_paths)
         # No .exe extensions
         assert not any(p.endswith('.exe') for p in paths)
 
@@ -505,13 +507,15 @@ class TestClaudeCliDetectionCrossPlatform:
     def test_linux_claude_cli_detection_paths(self, mock_home, mock_is_windows, mock_is_macos):
         """Linux Claude paths should use standard Unix locations."""
         paths = get_claude_detection_paths()
+        # Normalize path separators for cross-platform test execution
+        normalized_paths = [p.replace('\\', '/') for p in paths]
 
         # Should include local bin
-        assert any('.local/bin/claude' in p for p in paths)
+        assert any('.local/bin/claude' in p for p in normalized_paths)
         # Should include user bin
-        assert any('/home/testuser/bin/claude' in p for p in paths)
+        assert any('/home/testuser/bin/claude' in p for p in normalized_paths)
         # No Homebrew paths (only macOS)
-        assert not any('/opt/homebrew' in p for p in paths)
+        assert not any('/opt/homebrew' in p for p in normalized_paths)
         # No .exe extensions
         assert not any(p.endswith('.exe') for p in paths)
 
