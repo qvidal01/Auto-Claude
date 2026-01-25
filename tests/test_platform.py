@@ -335,14 +335,17 @@ class TestFindExecutableCli:
     ):
         """macOS should search Homebrew directories."""
         def isfile_side_effect(path):
-            return path == '/opt/homebrew/bin/python3'
+            # Normalize path separators for cross-platform test execution
+            normalized = path.replace('\\', '/')
+            return normalized == '/opt/homebrew/bin/python3'
 
         mock_isfile.side_effect = isfile_side_effect
 
         result = find_executable('python3')
 
-        # Should find in Homebrew path
-        assert result == '/opt/homebrew/bin/python3'
+        # Should find in Homebrew path (normalize for cross-platform)
+        assert result is not None
+        assert result.replace('\\', '/') == '/opt/homebrew/bin/python3'
 
     @patch('core.platform.is_windows', return_value=False)
     @patch('shutil.which', return_value=None)
@@ -355,13 +358,17 @@ class TestFindExecutableCli:
     ):
         """Linux should search standard Unix paths."""
         def isfile_side_effect(path):
-            return path == '/usr/bin/python3'
+            # Normalize path separators for cross-platform test execution
+            normalized = path.replace('\\', '/')
+            return normalized == '/usr/bin/python3'
 
         mock_isfile.side_effect = isfile_side_effect
 
         result = find_executable('python3')
 
-        assert result == '/usr/bin/python3'
+        # Normalize for cross-platform
+        assert result is not None
+        assert result.replace('\\', '/') == '/usr/bin/python3'
 
     @patch('core.platform.is_windows', return_value=False)
     @patch('shutil.which', return_value=None)
