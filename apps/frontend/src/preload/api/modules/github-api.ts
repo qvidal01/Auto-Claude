@@ -271,8 +271,6 @@ export interface GitHubAPI {
 
   // PR operations (fetches up to 100 open PRs at once - GitHub GraphQL limit)
   listPRs: (projectId: string) => Promise<PRListResult>;
-  /** Load more PRs using cursor-based pagination */
-  listMorePRs: (projectId: string, cursor: string) => Promise<PRListResult>;
   getPR: (projectId: string, prNumber: number) => Promise<PRData | null>;
   runPRReview: (projectId: string, prNumber: number) => void;
   cancelPRReview: (projectId: string, prNumber: number) => Promise<boolean>;
@@ -359,7 +357,6 @@ export interface PRData {
 export interface PRListResult {
   prs: PRData[];
   hasNextPage: boolean; // True if more PRs exist beyond the 100 limit
-  endCursor?: string | null; // Cursor for fetching next page (null if no more pages)
 }
 
 /**
@@ -696,10 +693,6 @@ export const createGitHubAPI = (): GitHubAPI => ({
   // Fetches up to 100 open PRs at once (GitHub GraphQL limit)
   listPRs: (projectId: string): Promise<PRListResult> =>
     invokeIpc(IPC_CHANNELS.GITHUB_PR_LIST, projectId),
-
-  // Load more PRs using cursor-based pagination
-  listMorePRs: (projectId: string, cursor: string): Promise<PRListResult> =>
-    invokeIpc(IPC_CHANNELS.GITHUB_PR_LIST_MORE, projectId, cursor),
 
   getPR: (projectId: string, prNumber: number): Promise<PRData | null> =>
     invokeIpc(IPC_CHANNELS.GITHUB_PR_GET, projectId, prNumber),
