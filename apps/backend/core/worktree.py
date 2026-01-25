@@ -551,7 +551,9 @@ class WorktreeManager:
             # Worktree exists and is tracked by git - return existing (idempotent)
             existing = self.get_worktree_info(spec_name)
             if existing:
-                print(f"Using existing worktree: {worktree_path.name} on branch {existing.branch}")
+                print(
+                    f"Using existing worktree: {worktree_path.name} on branch {existing.branch}"
+                )
                 return existing
 
         # Step 4: Handle stale worktree directory (exists but not registered with git)
@@ -575,9 +577,7 @@ class WorktreeManager:
         if branch_exists:
             # Branch exists - attach worktree to existing branch (no -b flag)
             print(f"Reusing existing branch: {branch_name}")
-            result = self._run_git(
-                ["worktree", "add", str(worktree_path), branch_name]
-            )
+            result = self._run_git(["worktree", "add", str(worktree_path), branch_name])
         else:
             # Branch doesn't exist - create new branch from remote or local base
             # Determine the start point for the worktree
