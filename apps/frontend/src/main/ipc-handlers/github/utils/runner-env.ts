@@ -42,11 +42,15 @@ export async function getRunnerEnv(
   const githubToken = await getGitHubTokenForSubprocess();
   const githubEnv: Record<string, string> = githubToken ? { GITHUB_TOKEN: githubToken } : {};
 
+  // Fetch fresh GitHub token from gh CLI (no caching to reflect account changes)
+  const githubToken = await getGitHubTokenForSubprocess();
+  const githubEnv: Record<string, string> = githubToken ? { GITHUB_TOKEN: githubToken } : {};
+
   return {
     ...pythonEnv,  // Python environment including PYTHONPATH (fixes #139)
     ...apiProfileEnv,
     ...oauthModeClearVars,
-    ...profileEnv,  // OAuth token from profile manager (fixes #563, rate-limit aware)
+    ...profileEnv,  // OAuth token from profile manager (fixes #563)
     ...githubEnv,  // Fresh GitHub token from gh CLI (fixes #151)
     ...extraEnv,
   };
