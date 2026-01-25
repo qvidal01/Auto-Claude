@@ -510,7 +510,8 @@ Output the complete roadmap to roadmap.json.
 
                     # Write back the merged roadmap
                     try:
-                        write_json_atomic(self.roadmap_file, data, indent=2)
+                        with open(self.roadmap_file, "w", encoding="utf-8") as f:
+                            json.dump(data, f, indent=2)
                         debug_success(
                             "roadmap_phase",
                             "Merged preserved features into roadmap.json",
