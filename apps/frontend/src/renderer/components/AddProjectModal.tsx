@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FolderOpen, FolderPlus, ChevronRight } from 'lucide-react';
+import { FolderOpen, FolderPlus, ChevronRight, GitBranch, CheckCircle2, AlertCircle } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
@@ -17,7 +17,7 @@ import { addProject } from '../stores/project-store';
 import { MethodologySelector } from './task-form/MethodologySelector';
 import type { Project } from '../../shared/types';
 
-type ModalStep = 'choose' | 'create-form';
+type ModalStep = 'choose' | 'create-form' | 'existing-setup';
 
 interface AddProjectModalProps {
   open: boolean;
@@ -34,6 +34,11 @@ export function AddProjectModal({ open, onOpenChange, onProjectAdded }: AddProje
   const [methodology, setMethodology] = useState('native');
   const [isCreating, setIsCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // State for existing folder setup
+  const [existingFolderPath, setExistingFolderPath] = useState('');
+  const [existingFolderName, setExistingFolderName] = useState('');
+  const [existingIsGitRepo, setExistingIsGitRepo] = useState(false);
+  const [existingHasAutoClaude, setExistingHasAutoClaude] = useState(false);
 
   // Reset state when modal opens
   useEffect(() => {
@@ -44,6 +49,11 @@ export function AddProjectModal({ open, onOpenChange, onProjectAdded }: AddProje
       setInitGit(true);
       setMethodology('native');
       setError(null);
+      // Reset existing folder state
+      setExistingFolderPath('');
+      setExistingFolderName('');
+      setExistingIsGitRepo(false);
+      setExistingHasAutoClaude(false);
     }
   }, [open]);
 
@@ -66,25 +76,100 @@ export function AddProjectModal({ open, onOpenChange, onProjectAdded }: AddProje
     try {
       const path = await window.electronAPI.selectDirectory();
       if (path) {
-        const project = await addProject(path);
-        if (project) {
-          // Auto-detect and save the main branch for the project
-          try {
-            const mainBranchResult = await window.electronAPI.detectMainBranch(path);
-            if (mainBranchResult.success && mainBranchResult.data) {
-              await window.electronAPI.updateProjectSettings(project.id, {
-                mainBranch: mainBranchResult.data
-              });
-            }
-          } catch {
-            // Non-fatal - main branch can be set later in settings
-          }
-          onProjectAdded?.(project, !project.autoBuildPath);
-          onOpenChange(false);
+        // Extract folder name from path
+        const folderName = path.split(/[/\\]/).pop() || 'Project';
+        setExistingFolderPath(path);
+        setExistingFolderName(folderName);
+
+        // Check if folder is a git repo
+        try {
+          const mainBranchResult = await window.electronAPI.detectMainBranch(path);
+          setExistingIsGitRepo(mainBranchResult.success && !!mainBranchResult.data);
+        } catch {
+          setExistingIsGitRepo(false);
         }
+
+        // Check if folder already has .auto-claude by trying to get methodology config
+        try {
+          const configResult = await window.electronAPI.getMethodologyConfig(path);
+          if (configResult.success && configResult.data) {
+            // Has .auto-claude with methodology config
+            setExistingHasAutoClaude(true);
+            if (configResult.data.name) {
+              setMethodology(configResult.data.name);
+            }
+          } else {
+            // Check if .auto-claude folder exists by listing the directory
+            const listResult = await window.electronAPI.listDirectory(path);
+            if (listResult.success && listResult.data) {
+              const hasAutoClaudeFolder = listResult.data.some(
+                (item) => item.name === '.auto-claude' && item.type === 'directory'
+              );
+              setExistingHasAutoClaude(hasAutoClaudeFolder);
+            } else {
+              setExistingHasAutoClaude(false);
+            }
+          }
+        } catch {
+          setExistingHasAutoClaude(false);
+        }
+
+        // Navigate to setup step
+        setStep('existing-setup');
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : t('addProject.failedToOpen'));
+    }
+  };
+
+  const handleAddExistingProject = async () => {
+    if (!existingFolderPath) {
+      setError(t('addProject.locationRequired'));
+      return;
+    }
+
+    setIsCreating(true);
+    setError(null);
+
+    try {
+      const project = await addProject(existingFolderPath);
+      if (project) {
+        // Auto-detect and save the main branch for the project
+        try {
+          const mainBranchResult = await window.electronAPI.detectMainBranch(existingFolderPath);
+          if (mainBranchResult.success && mainBranchResult.data) {
+            await window.electronAPI.updateProjectSettings(project.id, {
+              mainBranch: mainBranchResult.data
+            });
+          }
+        } catch {
+          // Non-fatal - main branch can be set later in settings
+        }
+
+        // Save methodology preference in project settings
+        // The methodology.json will be saved AFTER initialization completes
+        let projectWithSettings = project;
+        try {
+          await window.electronAPI.updateProjectSettings(project.id, {
+            methodology
+          });
+          // Update local project object so it's available in pendingProject
+          projectWithSettings = {
+            ...project,
+            settings: { ...project.settings, methodology }
+          };
+        } catch {
+          // Non-fatal - methodology can be set later
+        }
+
+        // needsInit = true if no .auto-claude folder exists
+        onProjectAdded?.(projectWithSettings, !existingHasAutoClaude);
+        onOpenChange(false);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t('addProject.failedToOpen'));
+    } finally {
+      setIsCreating(false);
     }
   };
 
@@ -320,10 +405,119 @@ export function AddProjectModal({ open, onOpenChange, onProjectAdded }: AddProje
     </>
   );
 
+  const renderExistingSetup = () => (
+    <>
+      <DialogHeader>
+        <DialogTitle>{t('addProject.existingSetupTitle', { defaultValue: 'Project Setup' })}</DialogTitle>
+        <DialogDescription>
+          {t('addProject.existingSetupSubtitle', { defaultValue: 'Configure Auto Claude for your existing project' })}
+        </DialogDescription>
+      </DialogHeader>
+
+      <div className="py-4 space-y-4">
+        {/* Selected Folder Info */}
+        <div className="space-y-2">
+          <Label>{t('addProject.selectedFolder', { defaultValue: 'Selected Folder' })}</Label>
+          <div className="flex items-center gap-2 p-3 bg-muted rounded-lg">
+            <FolderOpen className="h-5 w-5 text-primary shrink-0" />
+            <div className="min-w-0 flex-1">
+              <p className="font-medium text-sm truncate">{existingFolderName}</p>
+              <p className="text-xs text-muted-foreground truncate">{existingFolderPath}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Status Indicators */}
+        <div className="space-y-2">
+          <Label>{t('addProject.projectStatus', { defaultValue: 'Project Status' })}</Label>
+          <div className="space-y-2">
+            {/* Git Status */}
+            <div className={cn(
+              'flex items-center gap-2 p-2 rounded-lg text-sm',
+              existingIsGitRepo ? 'bg-success/10 text-success' : 'bg-warning/10 text-warning'
+            )}>
+              {existingIsGitRepo ? (
+                <>
+                  <CheckCircle2 className="h-4 w-4 shrink-0" />
+                  <span>{t('addProject.gitInitialized', { defaultValue: 'Git repository detected' })}</span>
+                </>
+              ) : (
+                <>
+                  <AlertCircle className="h-4 w-4 shrink-0" />
+                  <span>{t('addProject.gitNotInitialized', { defaultValue: 'Not a Git repository (will be initialized)' })}</span>
+                </>
+              )}
+            </div>
+
+            {/* Auto Claude Status */}
+            <div className={cn(
+              'flex items-center gap-2 p-2 rounded-lg text-sm',
+              existingHasAutoClaude ? 'bg-success/10 text-success' : 'bg-muted text-muted-foreground'
+            )}>
+              {existingHasAutoClaude ? (
+                <>
+                  <CheckCircle2 className="h-4 w-4 shrink-0" />
+                  <span>{t('addProject.autoClaudeExists', { defaultValue: 'Auto Claude already configured' })}</span>
+                </>
+              ) : (
+                <>
+                  <GitBranch className="h-4 w-4 shrink-0" />
+                  <span>{t('addProject.autoClaudeWillInit', { defaultValue: 'Auto Claude will be initialized' })}</span>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Methodology Selector */}
+        <div className="space-y-2">
+          {existingHasAutoClaude && (
+            <p className="text-xs text-muted-foreground">
+              {t('addProject.methodologyNote', { defaultValue: 'You can change the methodology later in project settings.' })}
+            </p>
+          )}
+          <MethodologySelector
+            value={methodology}
+            onChange={setMethodology}
+            idPrefix="existing-project"
+          />
+        </div>
+
+        {error && (
+          <div className="text-sm text-destructive bg-destructive/10 rounded-lg p-3" role="alert">
+            {error}
+          </div>
+        )}
+      </div>
+
+      <DialogFooter>
+        <Button variant="outline" onClick={() => setStep('choose')} disabled={isCreating}>
+          {t('addProject.back')}
+        </Button>
+        <Button onClick={handleAddExistingProject} disabled={isCreating}>
+          {isCreating ? t('addProject.adding', { defaultValue: 'Adding...' }) : t('addProject.addProject', { defaultValue: 'Add Project' })}
+        </Button>
+      </DialogFooter>
+    </>
+  );
+
+  const renderStep = () => {
+    switch (step) {
+      case 'choose':
+        return renderChooseStep();
+      case 'create-form':
+        return renderCreateForm();
+      case 'existing-setup':
+        return renderExistingSetup();
+      default:
+        return renderChooseStep();
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
-        {step === 'choose' ? renderChooseStep() : renderCreateForm()}
+        {renderStep()}
       </DialogContent>
     </Dialog>
   );

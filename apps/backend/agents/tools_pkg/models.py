@@ -324,6 +324,18 @@ AGENT_CONFIGS = {
         "auto_claude_tools": [],
         "thinking_default": "high",
     },
+    # ═══════════════════════════════════════════════════════════════════════
+    # HUMAN REPLACEMENT (Read-only, acts as senior developer)
+    # ═══════════════════════════════════════════════════════════════════════
+    "human_replacement": {
+        # Acts as a senior developer answering BMAD agent questions.
+        # Can READ code to understand context and give informed answers.
+        # CANNOT write, edit, or execute anything - only reads and responds.
+        "tools": BASE_READ_TOOLS,  # Read, Glob, Grep - for reviewing existing code
+        "mcp_servers": [],  # No MCP servers needed
+        "auto_claude_tools": [],  # No custom tools
+        "thinking_default": "none",  # Quick responses, no extended thinking
+    },
 }
 
 

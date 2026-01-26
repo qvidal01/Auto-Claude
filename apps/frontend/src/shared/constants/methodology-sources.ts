@@ -54,8 +54,8 @@ export const METHODOLOGY_SOURCES: Record<string, MethodologySource> = {
     type: 'npm',
     verification: 'verified',
     packageName: 'bmad-method',
-    installCommand: 'npx bmad-method@alpha install',
-    versionCommand: 'npx bmad-method@alpha --version',
+    installCommand: 'npx bmad-method install',
+    versionCommand: 'npx bmad-method --version',
     minVersion: '1.0.0',
   },
 };

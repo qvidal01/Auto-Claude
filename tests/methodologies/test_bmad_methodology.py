@@ -95,6 +95,24 @@ def mock_context() -> Any:
     )
 
 
+@pytest.fixture
+def initialized_runner(mock_context: Any) -> Any:
+    """Create an initialized BMADRunner with worktree mocked.
+
+    Returns:
+        An initialized BMADRunner ready for testing.
+    """
+    from unittest.mock import patch
+
+    from apps.backend.methodologies.bmad import BMADRunner
+
+    runner = BMADRunner()
+    # Mock _init_worktree since it requires a real git repository
+    with patch.object(runner, "_init_worktree"):
+        runner.initialize(mock_context)
+    return runner
+
+
 # =============================================================================
 # Plugin Directory Structure Tests (AC#1)
 # =============================================================================
@@ -340,10 +358,14 @@ class TestBMADRunnerInitialization:
 
     def test_initialize_sets_context(self, mock_context: Any) -> None:
         """Test that initialize() stores the context."""
+        from unittest.mock import patch
+
         from apps.backend.methodologies.bmad import BMADRunner
 
         runner = BMADRunner()
-        runner.initialize(mock_context)
+        # Mock _init_worktree since it requires a real git repository
+        with patch.object(runner, "_init_worktree"):
+            runner.initialize(mock_context)
 
         # Runner should be initialized
         assert runner._initialized is True
@@ -351,13 +373,17 @@ class TestBMADRunnerInitialization:
 
     def test_initialize_allows_reinitialization(self, mock_context: Any) -> None:
         """Test that initializing twice resets state for runner reuse."""
+        from unittest.mock import patch
+
         from apps.backend.methodologies.bmad import BMADRunner
 
         runner = BMADRunner()
-        runner.initialize(mock_context)
+        # Mock _init_worktree since it requires a real git repository
+        with patch.object(runner, "_init_worktree"):
+            runner.initialize(mock_context)
 
-        # Should not raise - runners support reuse/reinitialization
-        runner.initialize(mock_context)
+            # Should not raise - runners support reuse/reinitialization
+            runner.initialize(mock_context)
 
         # Runner should still be functional after reinitialization
         assert runner._initialized is True
@@ -399,46 +425,27 @@ class TestBMADRunnerInitialization:
 class TestBMADRunnerGetPhases:
     """Tests for BMADRunner.get_phases() method."""
 
-    def test_get_phases_returns_list(self, mock_context: Any) -> None:
+    def test_get_phases_returns_list(self, initialized_runner: Any) -> None:
         """Test that get_phases() returns a list."""
-        from apps.backend.methodologies.bmad import BMADRunner
-
-        runner = BMADRunner()
-        runner.initialize(mock_context)
-
-        phases = runner.get_phases()
+        phases = initialized_runner.get_phases()
         assert isinstance(phases, list)
 
-    def test_get_phases_returns_seven_phases(self, mock_context: Any) -> None:
+    def test_get_phases_returns_seven_phases(self, initialized_runner: Any) -> None:
         """Test that get_phases() returns exactly 7 phases."""
-        from apps.backend.methodologies.bmad import BMADRunner
-
-        runner = BMADRunner()
-        runner.initialize(mock_context)
-
-        phases = runner.get_phases()
+        phases = initialized_runner.get_phases()
         assert len(phases) == 7
 
-    def test_get_phases_returns_phase_objects(self, mock_context: Any) -> None:
+    def test_get_phases_returns_phase_objects(self, initialized_runner: Any) -> None:
         """Test that get_phases() returns Phase objects."""
-        from apps.backend.methodologies.bmad import BMADRunner
         from apps.backend.methodologies.protocols import Phase
 
-        runner = BMADRunner()
-        runner.initialize(mock_context)
-
-        phases = runner.get_phases()
+        phases = initialized_runner.get_phases()
         for phase in phases:
             assert isinstance(phase, Phase)
 
-    def test_get_phases_correct_order(self, mock_context: Any) -> None:
+    def test_get_phases_correct_order(self, initialized_runner: Any) -> None:
         """Test that phases are in correct execution order."""
-        from apps.backend.methodologies.bmad import BMADRunner
-
-        runner = BMADRunner()
-        runner.initialize(mock_context)
-
-        phases = runner.get_phases()
+        phases = initialized_runner.get_phases()
         expected_ids = [
             "analyze",
             "prd",
@@ -452,15 +459,10 @@ class TestBMADRunnerGetPhases:
 
         assert actual_ids == expected_ids
 
-    def test_get_phases_returns_copy(self, mock_context: Any) -> None:
+    def test_get_phases_returns_copy(self, initialized_runner: Any) -> None:
         """Test that get_phases() returns a copy, not the internal list."""
-        from apps.backend.methodologies.bmad import BMADRunner
-
-        runner = BMADRunner()
-        runner.initialize(mock_context)
-
-        phases1 = runner.get_phases()
-        phases2 = runner.get_phases()
+        phases1 = initialized_runner.get_phases()
+        phases2 = initialized_runner.get_phases()
 
         assert phases1 is not phases2
         assert phases1 == phases2
@@ -474,47 +476,28 @@ class TestBMADRunnerGetPhases:
 class TestBMADRunnerGetCheckpoints:
     """Tests for BMADRunner.get_checkpoints() method."""
 
-    def test_get_checkpoints_returns_list(self, mock_context: Any) -> None:
+    def test_get_checkpoints_returns_list(self, initialized_runner: Any) -> None:
         """Test that get_checkpoints() returns a list."""
-        from apps.backend.methodologies.bmad import BMADRunner
-
-        runner = BMADRunner()
-        runner.initialize(mock_context)
-
-        checkpoints = runner.get_checkpoints()
+        checkpoints = initialized_runner.get_checkpoints()
         assert isinstance(checkpoints, list)
 
-    def test_get_checkpoints_has_entries(self, mock_context: Any) -> None:
+    def test_get_checkpoints_has_entries(self, initialized_runner: Any) -> None:
         """Test that get_checkpoints() returns checkpoint entries."""
-        from apps.backend.methodologies.bmad import BMADRunner
-
-        runner = BMADRunner()
-        runner.initialize(mock_context)
-
-        checkpoints = runner.get_checkpoints()
+        checkpoints = initialized_runner.get_checkpoints()
         assert len(checkpoints) > 0
 
-    def test_get_checkpoints_returns_checkpoint_objects(self, mock_context: Any) -> None:
+    def test_get_checkpoints_returns_checkpoint_objects(self, initialized_runner: Any) -> None:
         """Test that get_checkpoints() returns Checkpoint objects."""
-        from apps.backend.methodologies.bmad import BMADRunner
         from apps.backend.methodologies.protocols import Checkpoint
 
-        runner = BMADRunner()
-        runner.initialize(mock_context)
-
-        checkpoints = runner.get_checkpoints()
+        checkpoints = initialized_runner.get_checkpoints()
         for checkpoint in checkpoints:
             assert isinstance(checkpoint, Checkpoint)
 
-    def test_get_checkpoints_returns_copy(self, mock_context: Any) -> None:
+    def test_get_checkpoints_returns_copy(self, initialized_runner: Any) -> None:
         """Test that get_checkpoints() returns a copy, not the internal list."""
-        from apps.backend.methodologies.bmad import BMADRunner
-
-        runner = BMADRunner()
-        runner.initialize(mock_context)
-
-        checkpoints1 = runner.get_checkpoints()
-        checkpoints2 = runner.get_checkpoints()
+        checkpoints1 = initialized_runner.get_checkpoints()
+        checkpoints2 = initialized_runner.get_checkpoints()
 
         assert checkpoints1 is not checkpoints2
 
@@ -527,46 +510,27 @@ class TestBMADRunnerGetCheckpoints:
 class TestBMADRunnerGetArtifacts:
     """Tests for BMADRunner.get_artifacts() method."""
 
-    def test_get_artifacts_returns_list(self, mock_context: Any) -> None:
+    def test_get_artifacts_returns_list(self, initialized_runner: Any) -> None:
         """Test that get_artifacts() returns a list."""
-        from apps.backend.methodologies.bmad import BMADRunner
-
-        runner = BMADRunner()
-        runner.initialize(mock_context)
-
-        artifacts = runner.get_artifacts()
+        artifacts = initialized_runner.get_artifacts()
         assert isinstance(artifacts, list)
 
-    def test_get_artifacts_has_entries(self, mock_context: Any) -> None:
+    def test_get_artifacts_has_entries(self, initialized_runner: Any) -> None:
         """Test that get_artifacts() returns artifact entries."""
-        from apps.backend.methodologies.bmad import BMADRunner
-
-        runner = BMADRunner()
-        runner.initialize(mock_context)
-
-        artifacts = runner.get_artifacts()
+        artifacts = initialized_runner.get_artifacts()
         assert len(artifacts) > 0
 
-    def test_get_artifacts_returns_artifact_objects(self, mock_context: Any) -> None:
+    def test_get_artifacts_returns_artifact_objects(self, initialized_runner: Any) -> None:
         """Test that get_artifacts() returns Artifact objects."""
-        from apps.backend.methodologies.bmad import BMADRunner
         from apps.backend.methodologies.protocols import Artifact
 
-        runner = BMADRunner()
-        runner.initialize(mock_context)
-
-        artifacts = runner.get_artifacts()
+        artifacts = initialized_runner.get_artifacts()
         for artifact in artifacts:
             assert isinstance(artifact, Artifact)
 
-    def test_get_artifacts_includes_expected_artifacts(self, mock_context: Any) -> None:
+    def test_get_artifacts_includes_expected_artifacts(self, initialized_runner: Any) -> None:
         """Test that artifacts include expected outputs."""
-        from apps.backend.methodologies.bmad import BMADRunner
-
-        runner = BMADRunner()
-        runner.initialize(mock_context)
-
-        artifacts = runner.get_artifacts()
+        artifacts = initialized_runner.get_artifacts()
         artifact_ids = {artifact.id for artifact in artifacts}
 
         # Expected artifacts based on the story specification
@@ -599,69 +563,51 @@ class TestBMADRunnerExecutePhase:
         with pytest.raises(RuntimeError, match="not initialized"):
             runner.execute_phase("analyze")
 
-    def test_execute_phase_unknown_phase_returns_skipped(self, mock_context: Any) -> None:
+    def test_execute_phase_unknown_phase_returns_skipped(self, initialized_runner: Any) -> None:
         """Test that execute_phase() returns skipped for unknown phase.
 
         The BMAD methodology treats unknown phases as skipped based on
         complexity level filtering, returning success=True with skipped metadata.
         """
-        from apps.backend.methodologies.bmad import BMADRunner
-
-        runner = BMADRunner()
-        runner.initialize(mock_context)
-
-        result = runner.execute_phase("unknown_phase")
+        result = initialized_runner.execute_phase("unknown_phase")
 
         # Unknown phases are treated as skipped with success=True
         assert result.success is True
         assert result.metadata.get("skipped") is True
 
-    def test_execute_phase_analyze_requires_spec_dir(self, mock_context: Any) -> None:
+    def test_execute_phase_analyze_requires_spec_dir(self, initialized_runner: Any) -> None:
         """Test that analyze phase requires spec_dir to be configured.
 
         The BMAD methodology requires spec_dir in task_config.metadata
         for artifact storage.
         """
-        from apps.backend.methodologies.bmad import BMADRunner
-
-        runner = BMADRunner()
-        runner.initialize(mock_context)
-
-        result = runner.execute_phase("analyze")
+        result = initialized_runner.execute_phase("analyze")
 
         # Without spec_dir, the phase fails with configuration error
         assert result.success is False
         assert "output directory" in result.error.lower() or "spec_dir" in result.error.lower()
 
-    def test_execute_phase_returns_phase_result(self, mock_context: Any) -> None:
+    def test_execute_phase_returns_phase_result(self, initialized_runner: Any) -> None:
         """Test that execute_phase() returns PhaseResult."""
-        from apps.backend.methodologies.bmad import BMADRunner
         from apps.backend.methodologies.protocols import PhaseResult
 
-        runner = BMADRunner()
-        runner.initialize(mock_context)
-
-        result = runner.execute_phase("analyze")
+        result = initialized_runner.execute_phase("analyze")
 
         assert isinstance(result, PhaseResult)
         assert result.phase_id == "analyze"
 
-    def test_execute_phase_all_phases_return_result(self, mock_context: Any) -> None:
+    def test_execute_phase_all_phases_return_result(self, initialized_runner: Any) -> None:
         """Test that all 7 phases return PhaseResult.
 
         Without spec_dir configured, phases requiring output will fail,
         but all should return proper PhaseResult objects.
         """
-        from apps.backend.methodologies.bmad import BMADRunner
         from apps.backend.methodologies.protocols import PhaseResult
-
-        runner = BMADRunner()
-        runner.initialize(mock_context)
 
         phase_ids = ["analyze", "prd", "architecture", "epics", "stories", "dev", "review"]
 
         for phase_id in phase_ids:
-            result = runner.execute_phase(phase_id)
+            result = initialized_runner.execute_phase(phase_id)
             # All phases should return PhaseResult with correct phase_id
             assert isinstance(result, PhaseResult), f"Phase {phase_id} should return PhaseResult"
             assert result.phase_id == phase_id

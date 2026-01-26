@@ -29,12 +29,24 @@ import yaml
 
 logger = logging.getLogger(__name__)
 
-# Project-level documentation paths (stored at root, synced to worktrees)
+# Project-level documentation paths (stored at root, copied to worktrees)
+# These describe the PROJECT, not a specific task
+# Task-level artifacts (planning-artifacts/, implementation-artifacts/) are NOT copied
 PROJECT_LEVEL_DOC_PATHS = [
-    "_bmad-output/project_knowledge",  # From document-project workflow
-    "_bmad-output/project-scan-report.json",
-    "_bmad-output/product-brief.md",  # From product-brief workflow
-    "_bmad-output/research",  # Market/domain research
+    # Core project-level docs (relative to _bmad-output/)
+    "project-context.md",      # Critical rules and patterns for AI agents
+    "product-brief.md",        # Product vision, goals, success metrics
+    "architecture.md",         # System design, tech stack, deployment
+    "ux-design.md",            # UX patterns, user flows, design system
+    "research.md",             # Market/technical research findings
+    "research",                # Research directory (if used)
+
+    # Brownfield project docs (from document-project workflow)
+    "project-overview.md",     # Executive summary and high-level architecture
+    "source-tree-analysis.md", # Annotated directory structure
+    "development-guide.md",    # Local setup and development workflow
+    "api-contracts.md",        # API endpoints and schemas
+    "data-models.md",          # Database schema and models
 ]
 
 
@@ -150,71 +162,102 @@ def is_worktree(project_dir: Path) -> bool:
         return False
 
 
-def sync_project_docs_to_worktree(
+def copy_project_docs_to_worktree(
     root_project_dir: Path,
     worktree_dir: Path,
     force: bool = False,
 ) -> list[str]:
-    """Sync project-level documentation from root project to a worktree.
+    """Copy project-level documentation from root project to a worktree.
 
-    Project-level docs (from document-project, product-brief, research) are
-    stored at the root project level and synced to each worktree so that
-    task-specific agents can access them.
+    Copies ONLY project-level docs (not task artifacts) from root's _bmad-output/
+    to the worktree's _bmad-output/. This allows BMAD agents running in the
+    worktree to access project context while keeping task artifacts isolated.
+
+    Task-level directories (planning-artifacts/, implementation-artifacts/) are
+    NOT copied - they are created empty for the new task.
 
     Args:
         root_project_dir: Root project directory containing source docs
-        worktree_dir: Worktree directory to sync docs to
+        worktree_dir: Worktree directory to copy docs to
         force: If True, overwrite existing docs in worktree
 
     Returns:
-        List of paths that were synced
+        List of document names that were copied
 
     Example:
-        Syncs:
-        - root/_bmad-output/project_knowledge/ → worktree/_bmad-output/project_knowledge/
-        - root/_bmad-output/product-brief.md → worktree/_bmad-output/product-brief.md
+        Copies:
+        - root/_bmad-output/project-context.md → worktree/_bmad-output/project-context.md
+        - root/_bmad-output/architecture.md → worktree/_bmad-output/architecture.md
+
+        Creates empty:
+        - worktree/_bmad-output/planning-artifacts/
+        - worktree/_bmad-output/implementation-artifacts/
     """
     if root_project_dir == worktree_dir:
-        # Not a worktree, nothing to sync
+        # Not a worktree, nothing to copy
         return []
 
-    synced = []
+    root_bmad_output = root_project_dir / "_bmad-output"
+    worktree_bmad_output = worktree_dir / "_bmad-output"
 
-    for rel_path in PROJECT_LEVEL_DOC_PATHS:
-        source = root_project_dir / rel_path
-        target = worktree_dir / rel_path
+    # Create worktree _bmad-output directory structure
+    worktree_bmad_output.mkdir(parents=True, exist_ok=True)
+
+    # Create empty task artifact directories for the new task
+    (worktree_bmad_output / "planning-artifacts").mkdir(exist_ok=True)
+    (worktree_bmad_output / "implementation-artifacts").mkdir(exist_ok=True)
+
+    # If root _bmad-output doesn't exist, nothing to copy
+    if not root_bmad_output.exists():
+        logger.debug(f"No _bmad-output at root: {root_bmad_output}")
+        return []
+
+    copied = []
+
+    # Copy only whitelisted project-level docs
+    for doc_name in PROJECT_LEVEL_DOC_PATHS:
+        source = root_bmad_output / doc_name
+        target = worktree_bmad_output / doc_name
 
         if not source.exists():
             continue
 
         # Skip if target exists and force is False
         if target.exists() and not force:
+            logger.debug(f"Skipping {doc_name} - already exists in worktree")
             continue
 
         try:
-            # Create parent directories
-            target.parent.mkdir(parents=True, exist_ok=True)
-
             if source.is_dir():
                 # Copy entire directory
                 if target.exists():
                     shutil.rmtree(target)
                 shutil.copytree(source, target)
-                synced.append(rel_path)
-                logger.debug(f"Synced directory {rel_path} to worktree")
+                copied.append(doc_name)
+                logger.debug(f"Copied directory {doc_name} to worktree")
             else:
                 # Copy single file
                 shutil.copy2(source, target)
-                synced.append(rel_path)
-                logger.debug(f"Synced file {rel_path} to worktree")
+                copied.append(doc_name)
+                logger.debug(f"Copied file {doc_name} to worktree")
 
         except (OSError, shutil.Error) as e:
-            logger.warning(f"Could not sync {rel_path} to worktree: {e}")
+            logger.warning(f"Could not copy {doc_name} to worktree: {e}")
 
-    if synced:
-        logger.info(f"Synced {len(synced)} project doc(s) to worktree")
+    if copied:
+        logger.info(f"Copied {len(copied)} project doc(s) to worktree: {copied}")
 
-    return synced
+    return copied
+
+
+# Backwards compatibility alias
+def sync_project_docs_to_worktree(
+    root_project_dir: Path,
+    worktree_dir: Path,
+    force: bool = False,
+) -> list[str]:
+    """Deprecated: Use copy_project_docs_to_worktree instead."""
+    return copy_project_docs_to_worktree(root_project_dir, worktree_dir, force)
 
 
 class BMADTrack(Enum):

@@ -26,6 +26,7 @@ from apps.backend.core.debug import (
     debug_warning,
 )
 from apps.backend.core.phase_event import ExecutionPhase, emit_phase
+from apps.backend.core.worktree import WorktreeError, WorktreeManager
 from apps.backend.methodologies.protocols import (
     Artifact,
     Checkpoint,
@@ -53,6 +54,7 @@ from apps.backend.agents.bmad_conversation import run_bmad_conversation_loop
 # Import phase executor for agent invocation pattern
 from apps.backend.methodologies.bmad.phase_executor import (
     BMADTrack,
+    copy_project_docs_to_worktree,
     create_phase_prompt,
     get_phase_config,
     get_phases_for_track,
@@ -60,7 +62,6 @@ from apps.backend.methodologies.bmad.phase_executor import (
     has_project_documentation,
     is_worktree,
     log_bmad_phase,
-    sync_project_docs_to_worktree,
 )
 
 logger = logging.getLogger(__name__)
@@ -263,7 +264,11 @@ class BMADRunner:
         self._current_progress_callback: ProgressCallback | None = None
         # Task-scoped output directory (Story 6.9)
         self._output_dir: Path | None = None
-        # Whether we're running in a worktree
+        # Worktree management for task isolation
+        self._worktree_manager: WorktreeManager | None = None
+        self._worktree_path: str | None = None
+        self._worktree_spec_name: str | None = None
+        # Whether we're running in a worktree (for agents, always True after init)
         self._is_worktree: bool = False
         # Status manager for frontend synchronization
         self._status_manager: StatusManager | None = None
@@ -294,6 +299,9 @@ class BMADRunner:
         self._track = None
         self._current_progress_callback = None
         self._output_dir = None
+        self._worktree_manager = None
+        self._worktree_path = None
+        self._worktree_spec_name = None
         self._is_worktree = False
         self._status_manager = None
         self._current_phase_index = 0
@@ -440,6 +448,7 @@ class BMADRunner:
 
         Sets up the runner with access to framework services and
         initializes phase, checkpoint, and artifact definitions.
+        Creates an isolated worktree for task execution.
 
         This method can be called multiple times to reinitialize the runner
         for a new task context. Previous state is reset.
@@ -469,34 +478,44 @@ class BMADRunner:
         if spec_dir_str:
             self._spec_dir = Path(spec_dir_str)
 
-        # Detect worktree status and root project directory
+        # Store root project directory BEFORE creating worktree
         project_path = Path(self._project_dir)
-        self._is_worktree = is_worktree(project_path)
         self._root_project_dir = get_root_project_dir(project_path)
 
         # Check if project has existing documentation at ROOT level (affects phase list)
-        # This is important for worktrees - we check the original project, not the worktree
         has_docs = has_project_documentation(project_path, check_root=True)
 
-        # If running in a worktree and project docs exist at root, sync them
-        if self._is_worktree and has_docs:
-            synced = sync_project_docs_to_worktree(self._root_project_dir, project_path)
-            if synced:
+        # Create worktree for task isolation
+        # This allows BMAD agents to write to {project-root}/_bmad-output/
+        # where {project-root} is the worktree, keeping each task isolated
+        self._init_worktree()
+
+        # Copy project-level docs from root to worktree's _bmad-output/
+        # This gives agents access to project context (architecture.md, etc.)
+        # while keeping task artifacts isolated in the worktree
+        if self._worktree_path and has_docs:
+            worktree_path = Path(self._worktree_path)
+            copied = copy_project_docs_to_worktree(
+                self._root_project_dir, worktree_path
+            )
+            if copied:
                 debug(
                     "bmad.methodology",
-                    f"Synced {len(synced)} project doc(s) from root to worktree",
+                    f"Copied {len(copied)} project doc(s) to worktree",
                     root_project=str(self._root_project_dir),
-                    worktree=str(project_path),
+                    worktree=str(worktree_path),
+                    docs=copied,
                 )
+
+        # Agents will run in the worktree
+        self._is_worktree = True
 
         debug(
             "bmad.methodology",
             "Configuration loaded",
             project_dir=self._project_dir,
-            root_project_dir=str(self._root_project_dir)
-            if self._root_project_dir
-            else "(same)",
-            is_worktree=self._is_worktree,
+            root_project_dir=str(self._root_project_dir),
+            worktree_path=self._worktree_path or "(none)",
             spec_dir=str(self._spec_dir) if self._spec_dir else "(none)",
             complexity=self._complexity.value if self._complexity else "(default)",
             track=self._track.value if self._track else "(default)",
@@ -551,6 +570,7 @@ class BMADRunner:
             "BMAD methodology initialized",
             enabled_phases=self.get_enabled_phases(),
             total_phases=self._total_phases,
+            worktree_path=self._worktree_path or "(none)",
             spec_dir=str(self._spec_dir)
             if self._spec_dir
             else "NOT SET - will not write status!",
@@ -698,10 +718,10 @@ class BMADRunner:
                 emit_phase(
                     ExecutionPhase.COMPLETE, "BMAD methodology complete", progress=100
                 )
-                self._status_manager.write(BuildState.COMPLETE)
+                self._status_manager.update(state=BuildState.COMPLETE)
             else:
                 emit_phase(ExecutionPhase.FAILED, "BMAD methodology failed")
-                self._status_manager.write(BuildState.ERROR)
+                self._status_manager.update(state=BuildState.ERROR)
 
             # Flush any pending writes
             self._status_manager.flush()
@@ -812,7 +832,7 @@ class BMADRunner:
                 phase_id=self._current_phase_index,
                 total=self._total_phases,
             )
-            self._status_manager.write(build_state)
+            self._status_manager.update(state=build_state)
 
         debug_section(
             "bmad.methodology",
@@ -827,12 +847,20 @@ class BMADRunner:
                 error="No spec_dir configured. Set spec_dir in task_config.metadata.",
             )
 
-        project_dir = Path(self._project_dir)
+        # Use worktree path for agent execution if available
+        # This ensures agents write to worktree/_bmad-output/ which is isolated per task
+        # Falls back to project_dir if worktree wasn't created
+        if self._worktree_path:
+            project_dir = Path(self._worktree_path)
+        else:
+            project_dir = Path(self._project_dir)
 
         debug(
             "bmad.methodology",
             "Phase configuration",
             project_dir=str(project_dir),
+            root_project_dir=str(self._root_project_dir),
+            worktree_path=self._worktree_path or "(none)",
             spec_dir=str(self._spec_dir),
             agent=phase_config.agent,
             workflow=phase_config.workflow,
@@ -966,7 +994,7 @@ class BMADRunner:
                     ExecutionPhase.COMPLETE, "BMAD workflow complete", progress=100
                 )
                 if self._status_manager:
-                    self._status_manager.write(BuildState.COMPLETE)
+                    self._status_manager.update(state=BuildState.COMPLETE)
 
                 # Write human_review status for frontend kanban transition
                 if self._spec_dir:
@@ -1027,7 +1055,7 @@ class BMADRunner:
                 progress=progress_percent,
             )
             if self._status_manager:
-                self._status_manager.write(BuildState.ERROR)
+                self._status_manager.update(state=BuildState.ERROR)
 
             return PhaseResult(
                 success=False,
@@ -1420,6 +1448,79 @@ class BMADRunner:
         return self.get_complexity_level() == ComplexityLevel.COMPLEX
 
     # =========================================================================
+    # Worktree Initialization for Task Isolation
+    # =========================================================================
+
+    def _init_worktree(self) -> None:
+        """Initialize git worktree for task isolation.
+
+        Creates a git worktree for the BMAD task to isolate file operations.
+        This allows BMAD agents to write to {project-root}/_bmad-output/
+        where {project-root} is the worktree, keeping each task's artifacts
+        isolated from other parallel tasks.
+
+        The worktree path is stored for use as the agent's working directory.
+
+        Raises:
+            RuntimeError: If worktree creation fails
+        """
+        project_path = Path(self._project_dir)
+
+        # Generate spec name from task config
+        task_name = self._task_config.task_name if self._task_config else None
+        task_id = self._task_config.task_id if self._task_config else None
+
+        # Prefer spec_dir name for worktree, then task_name, then task_id
+        if self._spec_dir:
+            self._worktree_spec_name = self._spec_dir.name
+        elif task_name:
+            self._worktree_spec_name = task_name
+        elif task_id:
+            self._worktree_spec_name = task_id
+        else:
+            self._worktree_spec_name = "bmad-task"
+
+        # Sanitize spec name for use in branch names
+        self._worktree_spec_name = (
+            self._worktree_spec_name.lower()
+            .replace(" ", "-")
+            .replace("_", "-")
+        )
+
+        debug(
+            "bmad.methodology",
+            "Creating worktree for task isolation",
+            spec_name=self._worktree_spec_name,
+            project_dir=str(project_path),
+        )
+
+        try:
+            self._worktree_manager = WorktreeManager(project_path)
+            self._worktree_manager.setup()
+
+            worktree_info = self._worktree_manager.get_or_create_worktree(
+                self._worktree_spec_name
+            )
+            self._worktree_path = str(worktree_info.path)
+
+            debug_success(
+                "bmad.methodology",
+                "Worktree created for task isolation",
+                worktree_path=self._worktree_path,
+                branch=worktree_info.branch,
+            )
+
+        except WorktreeError as e:
+            debug_error(
+                "bmad.methodology",
+                f"Failed to create worktree: {e}",
+                spec_name=self._worktree_spec_name,
+            )
+            raise RuntimeError(
+                f"Failed to create worktree for task '{self._worktree_spec_name}': {e}"
+            ) from e
+
+    # =========================================================================
     # Story 6.9: Task-Scoped Output Directory Methods
     # =========================================================================
 
@@ -1649,17 +1750,20 @@ class BMADRunner:
     # =========================================================================
 
     def _init_skills(self) -> None:
-        """Initialize BMAD skills in the target project via symlink.
+        """Initialize BMAD skills in the target project/worktree via symlink.
 
         Creates a symlink from the target project's `_bmad/` directory to the
         BMAD skills in the Auto Claude installation. This allows agents running
         in the target project to access BMAD workflows via slash commands.
 
+        If a worktree was created, the symlink is created in the worktree so
+        agents running there can access BMAD skills.
+
         The source `_bmad/` folder is located relative to this methodology file:
         autonomous-coding/_bmad/
 
         The symlink is created at:
-        {project_dir}/_bmad/ -> {auto_claude_root}/_bmad/
+        {worktree_path or project_dir}/_bmad/ -> {auto_claude_root}/_bmad/
 
         Cross-platform handling:
         - macOS/Linux: Uses relative symlinks for portability
@@ -1679,7 +1783,11 @@ class BMADRunner:
             logger.warning("No project_dir configured. BMAD skills will not be linked.")
             return
 
-        project_dir = Path(self._project_dir)
+        # Use worktree path if available - agents run there
+        if self._worktree_path:
+            project_dir = Path(self._worktree_path)
+        else:
+            project_dir = Path(self._project_dir)
 
         # Determine the Auto Claude root directory
         # This file is at: autonomous-coding/apps/backend/methodologies/bmad/methodology.py

@@ -132,7 +132,18 @@
     "failedToOpen": "Failed to open project",
     "failedToCreate": "Failed to create project",
     "openExistingAriaLabel": "Open existing project folder",
-    "createNewAriaLabel": "Create new project"
+    "createNewAriaLabel": "Create new project",
+    "existingSetupTitle": "Project Setup",
+    "existingSetupSubtitle": "Configure Auto Claude for your existing project",
+    "selectedFolder": "Selected Folder",
+    "projectStatus": "Project Status",
+    "gitInitialized": "Git repository detected",
+    "gitNotInitialized": "Not a Git repository (will be initialized)",
+    "autoClaudeExists": "Auto Claude already configured",
+    "autoClaudeWillInit": "Auto Claude will be initialized",
+    "methodologyNote": "You can change the methodology later in project settings.",
+    "adding": "Adding...",
+    "addProject": "Add Project"
   },
   "customModel": {
     "title": "Custom Model Configuration",

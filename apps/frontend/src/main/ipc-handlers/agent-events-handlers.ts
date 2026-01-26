@@ -48,9 +48,11 @@ function validateStatusTransition(
   // Can't validate without task data - allow the transition
   if (!task) return true;
 
-  // Don't allow human_review without subtasks
+  // Don't allow human_review without subtasks (for native methodology only)
   // This prevents tasks from jumping to review before planning is complete
-  if (newStatus === "human_review" && (!task.subtasks || task.subtasks.length === 0)) {
+  // FIX: BMAD methodology doesn't use subtasks - it uses phases instead
+  const isBmadMethodology = task.metadata?.methodology === 'bmad';
+  if (newStatus === "human_review" && (!task.subtasks || task.subtasks.length === 0) && !isBmadMethodology) {
     console.warn(
       `[validateStatusTransition] Blocking human_review - task ${task.id} has no subtasks (phase: ${phase})`
     );
@@ -254,10 +256,12 @@ export function registerAgenteventsHandlers(
           // This prevents tasks from getting stuck in ai_review status
           // FIX (ACS-71): Only move to human_review if subtasks exist AND are all completed
           // If no subtasks exist, the task is still in planning and shouldn't move to human_review
+          // FIX: BMAD methodology doesn't use subtasks - it uses phases instead
           const isActiveStatus = task.status === "in_progress" || task.status === "ai_review";
           const hasSubtasks = task.subtasks && task.subtasks.length > 0;
           const hasIncompleteSubtasks =
             hasSubtasks && task.subtasks.some((s) => s.status !== "completed");
+          const isBmadMethodology = task.metadata?.methodology === 'bmad';
 
           if (isActiveStatus && hasSubtasks && !hasIncompleteSubtasks) {
             // All subtasks completed - safe to move to human_review
@@ -273,8 +277,21 @@ export function registerAgenteventsHandlers(
               "human_review" as TaskStatus,
               projectId
             );
-          } else if (isActiveStatus && !hasSubtasks) {
-            // No subtasks yet - task is still in planning phase, don't change status
+          } else if (isActiveStatus && isBmadMethodology && !hasSubtasks) {
+            // BMAD methodology completed - safe to move to human_review (BMAD doesn't use subtasks)
+            console.warn(
+              `[Task ${taskId}] Fallback: Moving BMAD task to human_review (process exited successfully, methodology: bmad)`
+            );
+            persistStatus("human_review");
+            safeSendToRenderer(
+              getMainWindow,
+              IPC_CHANNELS.TASK_STATUS_CHANGE,
+              taskId,
+              "human_review" as TaskStatus,
+              projectId
+            );
+          } else if (isActiveStatus && !hasSubtasks && !isBmadMethodology) {
+            // No subtasks yet (native methodology) - task is still in planning phase, don't change status
             // This prevents the bug where tasks jump to human_review before planning completes
             console.warn(
               `[Task ${taskId}] Process exited but no subtasks created yet - keeping current status (${task.status})`

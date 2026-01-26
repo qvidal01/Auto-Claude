@@ -132,7 +132,18 @@
     "failedToOpen": "Échec de l'ouverture du projet",
     "failedToCreate": "Échec de la création du projet",
     "openExistingAriaLabel": "Ouvrir un dossier de projet existant",
-    "createNewAriaLabel": "Créer un nouveau projet"
+    "createNewAriaLabel": "Créer un nouveau projet",
+    "existingSetupTitle": "Configuration du projet",
+    "existingSetupSubtitle": "Configurer Auto Claude pour votre projet existant",
+    "selectedFolder": "Dossier sélectionné",
+    "projectStatus": "État du projet",
+    "gitInitialized": "Dépôt Git détecté",
+    "gitNotInitialized": "Pas un dépôt Git (sera initialisé)",
+    "autoClaudeExists": "Auto Claude déjà configuré",
+    "autoClaudeWillInit": "Auto Claude sera initialisé",
+    "methodologyNote": "Vous pouvez changer la méthodologie plus tard dans les paramètres du projet.",
+    "adding": "Ajout en cours...",
+    "addProject": "Ajouter le projet"
   },
   "customModel": {
     "title": "Configuration du modèle personnalisé",

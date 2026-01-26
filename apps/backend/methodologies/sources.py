@@ -73,8 +73,8 @@ METHODOLOGY_SOURCES: dict[str, MethodologySource] = {
         type=SourceType.NPM,
         verification=VerificationStatus.VERIFIED,
         package_name="bmad-method",
-        install_command="npx bmad-method@alpha install",
-        version_command="npx bmad-method@alpha --version",
+        install_command="npx bmad-method install",
+        version_command="npx bmad-method --version",
         min_version="1.0.0",
     ),
 }
