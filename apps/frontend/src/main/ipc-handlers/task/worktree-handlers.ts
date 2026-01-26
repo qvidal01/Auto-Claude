@@ -20,7 +20,7 @@ import {
   findTaskWorktree,
 } from '../../worktree-paths';
 import { persistPlanStatus, updateTaskMetadataPrUrl } from './plan-file-utils';
-import { getIsolatedGitEnv, refreshGitIndex } from '../../utils/git-isolation';
+import { getIsolatedGitEnv, detectWorktreeBranch, refreshGitIndex } from '../../utils/git-isolation';
 import { killProcessGracefully } from '../../platform';
 import { stripAnsiCodes } from '../../../shared/utils/ansi-sanitizer';
 import { taskStateManager } from '../../task-state-manager';
@@ -2701,45 +2701,39 @@ export function registerWorktreeHandlers(
           };
         }
 
-        // Use the shared cleanup utility for robust, cross-platform worktree deletion
-        const cleanupResult = await cleanupWorktree({
-          worktreePath,
-          projectPath: project.path,
-          specId: task.specId,
-          commitMessage: 'Auto-save before discard',
-          logPrefix: '[TASK_WORKTREE_DISCARD]',
-          deleteBranch: true
-        });
+        try {
+          // Get the branch name before removing
+          // Use shared utility to validate detected branch matches expected pattern
+          // This prevents deleting wrong branch when worktree is corrupted/orphaned
+          const { branch, usingFallback } = detectWorktreeBranch(
+            worktreePath,
+            task.specId,
+            { timeout: 30000, logPrefix: '[TASK_WORKTREE_DISCARD]' }
+          );
 
-        if (!cleanupResult.success) {
-          log.error('[TASK_WORKTREE_DISCARD] Cleanup failed:', cleanupResult.warnings);
-          return {
-            success: false,
-            error: `Failed to discard worktree: ${cleanupResult.warnings.join('; ')}`
-          };
-        }
+          // Remove the worktree
+          execFileSync(getToolPath('git'), ['worktree', 'remove', '--force', worktreePath], {
+            cwd: project.path,
+            encoding: 'utf-8',
+            env: getIsolatedGitEnv(),
+            timeout: 30000
+          });
 
-        // Log any non-fatal warnings
-        if (cleanupResult.warnings.length > 0) {
-          log.warn('[TASK_WORKTREE_DISCARD] Cleanup warnings:', cleanupResult.warnings);
-        }
-        if (cleanupResult.autoCommitted) {
-          log.warn('[TASK_WORKTREE_DISCARD] Auto-committed uncommitted work before discard');
-        }
-
-
-        // Only send status change to backlog if not skipped
-        // (skip when caller will set a different status, e.g., 'done')
-        if (!skipStatusChange) {
-          // Route through TaskStateManager (XState) to avoid dual emission
-          taskStateManager.handleManualStatusChange(taskId, 'backlog', task, project);
-        }
-
-        return {
-          success: true,
-          data: {
-            success: true,
-            message: 'Worktree discarded successfully'
+          // Delete the branch
+          try {
+            execFileSync(getToolPath('git'), ['branch', '-D', branch], {
+              cwd: project.path,
+              encoding: 'utf-8',
+              env: getIsolatedGitEnv(),
+              timeout: 30000
+            });
+          } catch (branchDeleteError) {
+            // Branch might already be deleted or not exist
+            if (usingFallback) {
+              console.warn(`[TASK_WORKTREE_DISCARD] Could not delete branch ${branch} using fallback pattern. Actual branch may still exist and need manual cleanup.`, branchDeleteError);
+            } else {
+              console.warn(`[TASK_WORKTREE_DISCARD] Could not delete branch ${branch} (may not exist or be checked out elsewhere)`, branchDeleteError);
+            }
           }
         };
       } catch (error) {
