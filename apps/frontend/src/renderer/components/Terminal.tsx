@@ -432,13 +432,6 @@ export const Terminal = forwardRef<TerminalHandle, TerminalProps>(function Termi
   // Uses transitionend event listener and RAF-based retry logic instead of fixed timeout
   // for more reliable resizing after CSS transitions complete
   useEffect(() => {
-    // Detect if this is an actual expansion state change vs initial mount
-    // Only force PTY resize on actual state changes to avoid resizing with invalid dimensions on mount
-    const isFirstMount = prevIsExpandedRef.current === undefined;
-    const expansionStateChanged = !isFirstMount && prevIsExpandedRef.current !== isExpanded;
-    debugLog(`[Terminal ${id}] Expansion effect: isExpanded=${isExpanded}, isFirstMount=${isFirstMount}, expansionStateChanged=${expansionStateChanged}, prevIsExpanded=${prevIsExpandedRef.current}`);
-    prevIsExpandedRef.current = isExpanded;
-
     // RAF fallback for test environments where requestAnimationFrame may not be defined
     const raf = typeof requestAnimationFrame !== 'undefined'
       ? requestAnimationFrame
@@ -473,20 +466,9 @@ export const Terminal = forwardRef<TerminalHandle, TerminalProps>(function Termi
 
         // fit() returns boolean indicating success (true if container had valid dimensions)
         const success = fit();
-        debugLog(`[Terminal ${id}] performFit: fit returned success=${success}, expansionStateChanged=${expansionStateChanged}, isCreatedRef=${isCreatedRef.current}`);
 
         if (success) {
           fitSucceeded = true;
-          // Force PTY resize only on actual expansion state changes (not initial mount)
-          // This ensures PTY stays in sync even when xterm.onResize() doesn't fire
-          // Read fresh dimensions from xterm ref after fit() to avoid stale closure values
-          const freshCols = xtermRef.current?.cols;
-          const freshRows = xtermRef.current?.rows;
-          if (expansionStateChanged && isCreatedRef.current && freshCols !== undefined && freshRows !== undefined && freshCols >= MIN_COLS && freshRows >= MIN_ROWS) {
-            debugLog(`[Terminal ${id}] performFit: Forcing PTY resize to cols=${freshCols}, rows=${freshRows}`);
-            // Use helper to resize PTY with proper tracking and race condition prevention
-            resizePtyWithTracking(freshCols, freshRows, 'performFit');
-          }
         } else if (retryCount < MAX_RETRIES) {
           // Container not ready yet, retry after a short delay
           retryCount++;
@@ -554,7 +536,7 @@ export const Terminal = forwardRef<TerminalHandle, TerminalProps>(function Termi
         container.parentElement?.removeEventListener('transitionend', handleTransitionEnd);
       }
     };
-  }, [isExpanded, fit, id, resizePtyWithTracking]);
+  }, [isExpanded, fit]);
 
   // Trigger deferred Claude resume when terminal becomes active
   // This ensures Claude sessions are only resumed when the user actually views the terminal,
