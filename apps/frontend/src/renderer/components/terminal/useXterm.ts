@@ -5,11 +5,17 @@ import { WebLinksAddon } from '@xterm/addon-web-links';
 import { SerializeAddon } from '@xterm/addon-serialize';
 import { terminalBufferManager } from '../../lib/terminal-buffer-manager';
 import { registerOutputCallback, unregisterOutputCallback } from '../../stores/terminal-store';
-import { useTerminalFontSettingsStore } from '../../stores/terminal-font-settings-store';
-import { isWindows as checkIsWindows, isLinux as checkIsLinux } from '../../lib/os-detection';
-import { debounce } from '../../lib/debounce';
-import { DEFAULT_TERMINAL_THEME } from '../../lib/terminal-theme';
 import { debugLog, debugError } from '../../../shared/utils/debug-logger';
+
+// Type augmentation for navigator.userAgentData (modern User-Agent Client Hints API)
+interface NavigatorUAData {
+  platform: string;
+}
+declare global {
+  interface Navigator {
+    userAgentData?: NavigatorUAData;
+  }
+}
 
 interface UseXtermOptions {
   terminalId: string;
@@ -71,13 +77,6 @@ export function useXterm({ terminalId, onCommandEnter, onResize, onDimensionsRea
       debugLog(`[useXterm] Skipping xterm initialization for terminal: ${terminalId} - already initialized or container not ready`);
       return;
     }
-
-    // Reset refs when (re)initializing xterm
-    // This is critical for React StrictMode which unmounts/remounts components,
-    // causing dispose() to set isDisposedRef.current = true on the first unmount.
-    // Without this reset, the remounted component would still have isDisposed = true.
-    isDisposedRef.current = false;
-    dimensionsReadyCalledRef.current = false;
 
     debugLog(`[useXterm] Initializing xterm for terminal: ${terminalId}`);
 
@@ -249,7 +248,7 @@ export function useXterm({ terminalId, onCommandEnter, onResize, onDimensionsRea
             // Call onDimensionsReady once when we have valid dimensions
             if (!dimensionsReadyCalledRef.current && cols > 0 && rows > 0) {
               dimensionsReadyCalledRef.current = true;
-              debugLog(`[useXterm] Dimensions ready for terminal: ${terminalId}, cols: ${cols}, rows: ${rows}, containerWidth: ${rect.width}, containerHeight: ${rect.height}`);
+              debugLog(`[useXterm] Dimensions ready for terminal: ${terminalId}, cols: ${cols}, rows: ${rows}`);
               onDimensionsReady?.(cols, rows);
             }
           } else {

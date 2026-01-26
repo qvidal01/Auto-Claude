@@ -5,8 +5,7 @@
   },
   "resume": {
     "pending": "Resume Available",
-    "pendingTooltip": "Click to resume previous Claude session",
-    "resumeAllSessions": "Resume All"
+    "pendingTooltip": "Click to resume previous Claude session"
   },
   "auth": {
     "terminalTitle": "Auth: {{profileName}}",
