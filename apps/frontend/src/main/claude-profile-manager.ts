@@ -42,7 +42,7 @@ import {
   shouldProactivelySwitch as shouldProactivelySwitchImpl,
   getProfilesSortedByAvailability as getProfilesSortedByAvailabilityImpl
 } from './claude-profile/profile-scorer';
-import { getCredentialsFromKeychain, normalizeWindowsPath, updateProfileSubscriptionMetadata } from './claude-profile/credential-utils';
+import { getCredentialsFromKeychain } from './claude-profile/credential-utils';
 import {
   CLAUDE_PROFILES_DIR,
   generateProfileId as generateProfileIdImpl,
@@ -732,7 +732,10 @@ export class ClaudeProfileManager {
       });
     }
 
-    return {
+    // Retrieve OAuth token from Keychain and pass it to subprocess
+    // This ensures the backend Python agent can authenticate even when
+    // there's no .credentials.json file in the profile directory
+    const env: Record<string, string> = {
       CLAUDE_CONFIG_DIR: expandedConfigDir
     };
 
