@@ -429,8 +429,8 @@ class WorktreeManager:
                     if current_path.exists() and resolved_path.exists():
                         if os.path.samefile(resolved_path, current_path):
                             return line[len("branch refs/heads/") :]
-                except OSError:  # Files may not exist or be inaccessible; fall through to case comparison
-                    pass  # no-op: fall through to case comparison
+                except OSError:
+                    pass
                 # Fallback to normalized case comparison
                 if os.path.normcase(str(resolved_path)) == os.path.normcase(
                     str(current_path)
