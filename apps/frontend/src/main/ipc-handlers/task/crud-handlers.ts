@@ -331,51 +331,53 @@ export function registerTaskCRUDHandlers(agentManager: AgentManager): void {
 
         // Update implementation_plan.json
         const planPath = path.join(specDir, AUTO_BUILD_PATHS.IMPLEMENTATION_PLAN);
-        if (existsSync(planPath)) {
-          try {
-            const planContent = readFileSync(planPath, 'utf-8');
-            const plan = JSON.parse(planContent);
+        try {
+          const planContent = readFileSync(planPath, 'utf-8');
+          const plan = JSON.parse(planContent);
 
-            if (finalTitle !== undefined) {
-              plan.feature = finalTitle;
-            }
-            if (updates.description !== undefined) {
-              plan.description = updates.description;
-            }
-            plan.updated_at = new Date().toISOString();
+          if (finalTitle !== undefined) {
+            plan.feature = finalTitle;
+          }
+          if (updates.description !== undefined) {
+            plan.description = updates.description;
+          }
+          plan.updated_at = new Date().toISOString();
 
-            writeFileSync(planPath, JSON.stringify(plan, null, 2), 'utf-8');
-          } catch {
-            // Plan file might not be valid JSON, continue anyway
+          writeFileSync(planPath, JSON.stringify(plan, null, 2), 'utf-8');
+        } catch (planErr: unknown) {
+          // File missing or invalid JSON - continue anyway
+          if ((planErr as NodeJS.ErrnoException).code !== 'ENOENT') {
+            // Log non-ENOENT errors (malformed JSON, permission issues)
           }
         }
 
         // Update spec.md if it exists
         const specPath = path.join(specDir, AUTO_BUILD_PATHS.SPEC_FILE);
-        if (existsSync(specPath)) {
-          try {
-            let specContent = readFileSync(specPath, 'utf-8');
+        try {
+          let specContent = readFileSync(specPath, 'utf-8');
 
-            // Update title (first # heading)
-            if (finalTitle !== undefined) {
-              specContent = specContent.replace(
-                /^#\s+.*$/m,
-                `# ${finalTitle}`
-              );
-            }
+          // Update title (first # heading)
+          if (finalTitle !== undefined) {
+            specContent = specContent.replace(
+              /^#\s+.*$/m,
+              `# ${finalTitle}`
+            );
+          }
 
-            // Update description (## Overview section content)
-            if (updates.description !== undefined) {
-              // Replace content between ## Overview and the next ## section
-              specContent = specContent.replace(
-                /(## Overview\n)([\s\S]*?)((?=\n## )|$)/,
-                `$1${updates.description}\n\n$3`
-              );
-            }
+          // Update description (## Overview section content)
+          if (updates.description !== undefined) {
+            // Replace content between ## Overview and the next ## section
+            specContent = specContent.replace(
+              /(## Overview\n)([\s\S]*?)((?=\n## )|$)/,
+              `$1${updates.description}\n\n$3`
+            );
+          }
 
-            writeFileSync(specPath, specContent, 'utf-8');
-          } catch {
-            // Spec file update failed, continue anyway
+          writeFileSync(specPath, specContent, 'utf-8');
+        } catch (specErr: unknown) {
+          // File missing or update failed - continue anyway
+          if ((specErr as NodeJS.ErrnoException).code !== 'ENOENT') {
+            // Log non-ENOENT errors
           }
         }
 
@@ -428,20 +430,20 @@ export function registerTaskCRUDHandlers(agentManager: AgentManager): void {
 
           // Update requirements.json if it exists
           const requirementsPath = path.join(specDir, 'requirements.json');
-          if (existsSync(requirementsPath)) {
-            try {
-              const requirementsContent = readFileSync(requirementsPath, 'utf-8');
-              const requirements = JSON.parse(requirementsContent);
+          try {
+            const requirementsContent = readFileSync(requirementsPath, 'utf-8');
+            const requirements = JSON.parse(requirementsContent);
 
-              if (updates.description !== undefined) {
-                requirements.task_description = updates.description;
-              }
-              if (updates.metadata.category) {
-                requirements.workflow_type = updates.metadata.category;
-              }
+            if (updates.description !== undefined) {
+              requirements.task_description = updates.description;
+            }
+            if (updates.metadata.category) {
+              requirements.workflow_type = updates.metadata.category;
+            }
 
-              writeFileSync(requirementsPath, JSON.stringify(requirements, null, 2), 'utf-8');
-            } catch (err) {
+            writeFileSync(requirementsPath, JSON.stringify(requirements, null, 2), 'utf-8');
+          } catch (err) {
+            if ((err as NodeJS.ErrnoException).code !== 'ENOENT') {
               console.error('Failed to update requirements.json:', err);
             }
           }

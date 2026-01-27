@@ -9,6 +9,7 @@ import type { Project, TaskMetadata } from '../../../shared/types';
 import { withSpecNumberLock } from '../../utils/spec-number-lock';
 import { debugLog } from './utils/logger';
 import { labelMatchesWholeWord } from '../shared/label-utils';
+import { sanitizeText, sanitizeStringArray, sanitizeUrl } from '../shared/sanitize';
 
 export interface SpecCreationData {
   specId: string;
@@ -107,11 +108,17 @@ export async function createSpecForIssue(
     mkdirSync(specsDir, { recursive: true });
   }
 
+  // Sanitize network-sourced data before writing to disk
+  const safeTitle = sanitizeText(issueTitle, 500);
+  const safeDescription = sanitizeText(taskDescription, 50000, true);
+  const safeGithubUrl = sanitizeUrl(githubUrl);
+  const safeLabels = sanitizeStringArray(labels, 50, 200);
+
   // Use coordinated spec numbering with lock to prevent collisions
   return await withSpecNumberLock(project.path, async (lock) => {
     // Get next spec number from global scan (main + all worktrees)
     const specNumber = lock.getNextSpecNumber(project.autoBuildPath);
-    const slugifiedTitle = slugifyTitle(issueTitle);
+    const slugifiedTitle = slugifyTitle(safeTitle);
     const specId = `${String(specNumber).padStart(3, '0')}-${slugifiedTitle}`;
 
     // Create spec directory (inside lock to ensure atomicity)
@@ -123,8 +130,8 @@ export async function createSpecForIssue(
 
     // implementation_plan.json
     const implementationPlan = {
-      feature: issueTitle,
-      description: taskDescription,
+      feature: safeTitle,
+      description: safeDescription,
       created_at: now,
       updated_at: now,
       status: 'pending',
@@ -138,7 +145,7 @@ export async function createSpecForIssue(
 
     // requirements.json
     const requirements = {
-      task_description: taskDescription,
+      task_description: safeDescription,
       workflow_type: 'feature'
     };
     writeFileSync(
@@ -148,13 +155,13 @@ export async function createSpecForIssue(
     );
 
     // Determine category from GitHub issue labels
-    const category = determineCategoryFromLabels(labels);
+    const category = determineCategoryFromLabels(safeLabels);
 
     // task_metadata.json
     const metadata: TaskMetadata = {
       sourceType: 'github',
       githubIssueNumber: issueNumber,
-      githubUrl,
+      githubUrl: safeGithubUrl,
       category,
       // Store baseBranch for worktree creation and QA comparison
       // This comes from project.settings.mainBranch or task-level override
@@ -169,7 +176,7 @@ export async function createSpecForIssue(
     return {
       specId,
       specDir,
-      taskDescription,
+      taskDescription: safeDescription,
       metadata
     };
   });

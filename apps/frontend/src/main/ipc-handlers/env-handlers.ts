@@ -562,10 +562,13 @@ ${existingVars['GRAPHITI_DB_PATH'] ? `GRAPHITI_DB_PATH=${existingVars['GRAPHITI_
       const envPath = path.join(project.path, project.autoBuildPath, '.env');
 
       try {
-        // Read existing content if file exists
+        // Read existing content if file exists (atomic read, no TOCTOU)
         let existingContent: string | undefined;
-        if (existsSync(envPath)) {
+        try {
           existingContent = readFileSync(envPath, 'utf-8');
+        } catch (readErr: unknown) {
+          if ((readErr as NodeJS.ErrnoException).code !== 'ENOENT') throw readErr;
+          // File doesn't exist yet - existingContent stays undefined
         }
 
         // Generate new content

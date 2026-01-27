@@ -378,12 +378,16 @@ export function registerRoadmapHandlers(
         AUTO_BUILD_PATHS.ROADMAP_FILE
       );
 
-      if (!existsSync(roadmapPath)) {
-        return { success: false, error: "Roadmap not found" };
-      }
-
       try {
-        const content = readFileSync(roadmapPath, "utf-8");
+        let content: string;
+        try {
+          content = readFileSync(roadmapPath, "utf-8");
+        } catch (readErr: unknown) {
+          if ((readErr as NodeJS.ErrnoException).code === 'ENOENT') {
+            return { success: false, error: "Roadmap not found" };
+          }
+          throw readErr;
+        }
         const existingRoadmap = JSON.parse(content);
 
         // Transform camelCase features back to snake_case for JSON file
@@ -439,12 +443,16 @@ export function registerRoadmapHandlers(
         AUTO_BUILD_PATHS.ROADMAP_FILE
       );
 
-      if (!existsSync(roadmapPath)) {
-        return { success: false, error: "Roadmap not found" };
-      }
-
       try {
-        const content = readFileSync(roadmapPath, "utf-8");
+        let content: string;
+        try {
+          content = readFileSync(roadmapPath, "utf-8");
+        } catch (readErr: unknown) {
+          if ((readErr as NodeJS.ErrnoException).code === 'ENOENT') {
+            return { success: false, error: "Roadmap not found" };
+          }
+          throw readErr;
+        }
         const roadmap = JSON.parse(content);
 
         // Find and update the feature
@@ -483,12 +491,16 @@ export function registerRoadmapHandlers(
         AUTO_BUILD_PATHS.ROADMAP_FILE
       );
 
-      if (!existsSync(roadmapPath)) {
-        return { success: false, error: "Roadmap not found" };
-      }
-
       try {
-        const content = readFileSync(roadmapPath, "utf-8");
+        let content: string;
+        try {
+          content = readFileSync(roadmapPath, "utf-8");
+        } catch (readErr: unknown) {
+          if ((readErr as NodeJS.ErrnoException).code === 'ENOENT') {
+            return { success: false, error: "Roadmap not found" };
+          }
+          throw readErr;
+        }
         const roadmap = JSON.parse(content);
 
         // Find the feature

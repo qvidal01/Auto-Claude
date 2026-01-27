@@ -6,6 +6,7 @@ import path from 'path';
 import { existsSync, readFileSync, mkdirSync, writeFileSync, readdirSync } from 'fs';
 import { projectStore } from '../project-store';
 import { parseEnvFile } from './utils';
+import { sanitizeText, sanitizeUrl } from './shared/sanitize';
 
 
 import { AgentManager } from '../agent';
@@ -446,18 +447,27 @@ export function registerLinearHandlers(
         // Create tasks for each imported issue
         for (const issue of data.issues.nodes) {
           try {
-            // Build description from Linear issue
-            const labels = issue.labels.nodes.map(l => l.name).join(', ');
-            const description = `# ${issue.title}
+            // Sanitize network-sourced data before writing to disk
+            const safeTitle = sanitizeText(issue.title, 500);
+            const safeIdentifier = sanitizeText(issue.identifier, 50);
+            const safeDescription = sanitizeText(issue.description ?? '', 50000, true);
+            const safePriorityLabel = sanitizeText(issue.priorityLabel, 100);
+            const safeStateName = sanitizeText(issue.state.name, 100);
+            const safeUrl = sanitizeUrl(issue.url);
+            const safeLabels = issue.labels.nodes.map(l => sanitizeText(l.name, 200)).filter(Boolean);
 
-**Linear Issue:** [${issue.identifier}](${issue.url})
-**Priority:** ${issue.priorityLabel}
-**Status:** ${issue.state.name}
-${labels ? `**Labels:** ${labels}` : ''}
+            // Build description from Linear issue
+            const labelsStr = safeLabels.join(', ');
+            const description = `# ${safeTitle}
+
+**Linear Issue:** [${safeIdentifier}](${safeUrl})
+**Priority:** ${safePriorityLabel}
+**Status:** ${safeStateName}
+${labelsStr ? `**Labels:** ${labelsStr}` : ''}
 
 ## Description
 
-${issue.description || 'No description provided.'}
+${safeDescription || 'No description provided.'}
 `;
 
             // Find next available spec number
@@ -476,7 +486,7 @@ ${issue.description || 'No description provided.'}
             }
 
             // Create spec ID with zero-padded number and slugified title
-            const slugifiedTitle = issue.title
+            const slugifiedTitle = safeTitle
               .toLowerCase()
               .replace(/[^a-z0-9]+/g, '-')
               .replace(/^-|-$/g, '')
@@ -490,7 +500,7 @@ ${issue.description || 'No description provided.'}
             // Create initial implementation_plan.json
             const now = new Date().toISOString();
             const implementationPlan = {
-              feature: issue.title,
+              feature: safeTitle,
               description: description,
               created_at: now,
               updated_at: now,
@@ -509,9 +519,9 @@ ${issue.description || 'No description provided.'}
             // Build metadata
             const metadata: TaskMetadata = {
               sourceType: 'linear',
-              linearIssueId: issue.id,
-              linearIdentifier: issue.identifier,
-              linearUrl: issue.url,
+              linearIssueId: sanitizeText(issue.id, 100),
+              linearIdentifier: safeIdentifier,
+              linearUrl: safeUrl,
               category: 'feature'
             };
             writeFileSync(path.join(specDir, 'task_metadata.json'), JSON.stringify(metadata, null, 2), 'utf-8');
