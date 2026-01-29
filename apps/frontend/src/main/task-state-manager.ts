@@ -56,7 +56,15 @@ export class TaskStateManager {
     return true;
   }
 
-  handleProcessExited(taskId: string, exitCode: number | null): void {
+  handleProcessExited(
+    taskId: string,
+    exitCode: number | null,
+    task?: Task,
+    project?: Project
+  ): void {
+    if (task && project) {
+      this.setTaskContext(taskId, task, project);
+    }
     if (this.terminalEventSeen.has(taskId)) {
       return;
     }
@@ -132,7 +140,13 @@ export class TaskStateManager {
       return existing;
     }
 
-    const actor = createActor(taskMachine);
+    const contextEntry = this.taskContextById.get(taskId);
+    const snapshot = contextEntry
+      ? this.buildSnapshotFromTask(contextEntry.task)
+      : undefined;
+    const actor = snapshot
+      ? createActor(taskMachine, { snapshot })
+      : createActor(taskMachine);
     actor.subscribe((snapshot) => {
       const stateValue = String(snapshot.value);
       const lastState = this.lastStateByTask.get(taskId);
@@ -204,6 +218,47 @@ export class TaskStateManager {
   private isNewSequence(taskId: string, sequence: number): boolean {
     const last = this.lastSequenceByTask.get(taskId);
     return last === undefined || sequence > last;
+  }
+
+  private buildSnapshotFromTask(task: Task) {
+    const status = task.status;
+    const reviewReason = task.reviewReason;
+    let stateValue: string = 'backlog';
+    let contextReviewReason: ReviewReason | undefined;
+
+    switch (status) {
+      case 'in_progress':
+        stateValue = 'coding';
+        break;
+      case 'ai_review':
+        stateValue = 'qa_review';
+        break;
+      case 'human_review':
+        stateValue = reviewReason === 'plan_review' ? 'plan_review' : 'human_review';
+        contextReviewReason = reviewReason;
+        break;
+      case 'pr_created':
+        stateValue = 'pr_created';
+        break;
+      case 'done':
+        stateValue = 'done';
+        break;
+      case 'error':
+        stateValue = 'error';
+        contextReviewReason = reviewReason ?? 'errors';
+        break;
+      case 'backlog':
+      default:
+        stateValue = 'backlog';
+        break;
+    }
+
+    return taskMachine.resolveState({
+      value: stateValue,
+      context: {
+        reviewReason: contextReviewReason
+      }
+    });
   }
 }
 

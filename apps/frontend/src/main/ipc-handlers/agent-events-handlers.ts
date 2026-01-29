@@ -83,10 +83,11 @@ export function registerAgenteventsHandlers(
   });
 
   agentManager.on("exit", (taskId: string, code: number | null, processType: ProcessType) => {
-    taskStateManager.handleProcessExited(taskId, code);
-    // Get project info early for multi-project filtering (issue #723)
-    const { project: exitProject } = findTaskAndProject(taskId);
+    // Get task + project for context and multi-project filtering (issue #723)
+    const { task: exitTask, project: exitProject } = findTaskAndProject(taskId);
     const exitProjectId = exitProject?.id;
+
+    taskStateManager.handleProcessExited(taskId, code, exitTask, exitProject);
 
     // Send final plan state to renderer BEFORE unwatching
     // This ensures the renderer has the final subtask data (fixes 0/0 subtask bug)
