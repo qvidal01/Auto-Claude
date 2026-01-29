@@ -118,9 +118,14 @@ export function useTaskDetail({ task }: UseTaskDetailOptions) {
 
     // Task is active from here on
 
-    // 'planning' phase: Skip stuck check but don't set hasCheckedRunning
-    // (allows stuck detection when task transitions to 'coding')
-    if (executionPhase === 'planning') {
+    // Skip stuck check for certain phases:
+    // - 'planning': Initial phase, process may still be spawning
+    // - 'qa_review'/'qa_fixing': Process may have just exited, XState handles transition
+    // When process exits unexpectedly during QA, XState will transition to error state.
+    // We skip stuck detection here to avoid race conditions where stuck check fires
+    // before the status update IPC reaches the renderer.
+    const skipPhases = ['planning', 'qa_review', 'qa_fixing'];
+    if (executionPhase && skipPhases.includes(executionPhase)) {
       setIsStuck(false);
       return;
     }
@@ -132,14 +137,15 @@ export function useTaskDetail({ task }: UseTaskDetailOptions) {
       return;
     }
 
-    // Active task in coding/validation phase - check if stuck
+    // Active task in coding phase - check if stuck
     if (!hasCheckedRunning) {
       // Wait 2 seconds before checking - gives process time to spawn and register
       timeoutId = setTimeout(() => {
         checkTaskRunning(task.id).then((actuallyRunning) => {
           // Double-check the phase in case it changed while waiting
           const latestPhase = task.executionProgress?.phase;
-          if (latestPhase === 'complete' || latestPhase === 'failed' || latestPhase === 'planning') {
+          const skipPhasesInCallback = ['complete', 'failed', 'planning', 'qa_review', 'qa_fixing'];
+          if (latestPhase && skipPhasesInCallback.includes(latestPhase)) {
             setIsStuck(false);
           } else {
             setIsStuck(!actuallyRunning);

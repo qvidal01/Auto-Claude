@@ -47,9 +47,15 @@ const CategoryIcon: Record<TaskCategory, typeof Zap> = {
   testing: FileCode
 };
 
-// Phases where stuck detection should be skipped (terminal states + initial planning)
+// Phases where stuck detection should be skipped:
+// - Terminal states (complete, failed): Task is finished
+// - Planning: Initial phase, process may still be spawning
+// - QA phases (qa_review, qa_fixing): Process may have just exited, XState handles transition
+// When process exits unexpectedly during QA, XState will transition to error state and update
+// the task status. We skip stuck detection here to avoid race conditions where the stuck check
+// fires before the status update IPC reaches the renderer.
 // Defined outside component to avoid recreation on every render
-const STUCK_CHECK_SKIP_PHASES = ['complete', 'failed', 'planning'] as const;
+const STUCK_CHECK_SKIP_PHASES = ['complete', 'failed', 'planning', 'qa_review', 'qa_fixing'] as const;
 
 function shouldSkipStuckCheck(phase: string | undefined): boolean {
   return STUCK_CHECK_SKIP_PHASES.includes(phase as typeof STUCK_CHECK_SKIP_PHASES[number]);
@@ -356,7 +362,11 @@ export const TaskCard = memo(function TaskCard({
     }
   };
 
-  const reviewReasonInfo = task.status === 'human_review' ? getReviewReasonLabel(task.reviewReason) : null;
+  // When executionPhase is 'complete', always show 'completed' badge regardless of reviewReason
+  // This ensures the user sees "Complete" when the task finished successfully
+  const effectiveReviewReason: ReviewReason | undefined =
+    executionPhase === 'complete' ? 'completed' : task.reviewReason;
+  const reviewReasonInfo = task.status === 'human_review' ? getReviewReasonLabel(effectiveReviewReason) : null;
 
   const isArchived = !!task.metadata?.archivedAt;
 
