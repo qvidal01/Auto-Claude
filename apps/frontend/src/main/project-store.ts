@@ -438,7 +438,7 @@ export class ProjectStore {
         // Tasks with JSON errors go to human_review with errors reason
         const { status: finalStatus, reviewReason: finalReviewReason } = hasJsonError
           ? { status: 'human_review' as TaskStatus, reviewReason: 'errors' as ReviewReason }
-          : this.determineTaskStatusAndReason(plan, specPath, metadata);
+          : this.determineTaskStatusAndReason(plan);
 
         // Extract subtasks from plan (handle both 'subtasks' and 'chunks' naming)
         const subtasks = plan?.phases?.flatMap((phase) => {
@@ -505,30 +505,19 @@ export class ProjectStore {
   }
 
   /**
-   * Determine task status and review reason based on plan and files.
+   * Determine task status and review reason from the plan file.
    *
-   * PRIORITY ORDER (to prevent status flip-flop during execution):
-   * 1. Terminal statuses (done, pr_created, error) - ALWAYS respected
-   * 2. Active process statuses (planning, coding, in_progress) - respected during execution
-   * 3. Explicit human_review with reviewReason - respected to prevent recalculation
-   * 4. QA report file status
-   * 5. Calculated status from subtask analysis (fallback only)
-   *
-   * Review reasons:
-   * - 'completed': All subtasks done, QA passed - ready for merge
-   * - 'errors': Subtasks failed during execution - needs attention
-   * - 'qa_rejected': QA found issues that need fixing
-   * - 'plan_review': Spec creation complete, awaiting user approval
+   * With the XState refactor, status and reviewReason are authoritative fields
+   * written by the TaskStateManager. The renderer should not recompute status
+   * from subtasks or QA files.
    */
   private determineTaskStatusAndReason(
-    plan: ImplementationPlan | null,
-    specPath: string,
-    metadata?: TaskMetadata
+    plan: ImplementationPlan | null
   ): { status: TaskStatus; reviewReason?: ReviewReason } {
-    // Handle both 'subtasks' and 'chunks' naming conventions, filter out undefined
-    const allSubtasks = plan?.phases?.flatMap((p) => p.subtasks || (p as { chunks?: PlanSubtask[] }).chunks || []).filter(Boolean) || [];
+    if (!plan?.status) {
+      return { status: 'backlog' };
+    }
 
-    // Status mapping from plan.status values to TaskStatus
     const statusMap: Record<string, TaskStatus> = {
       'pending': 'backlog',
       'planning': 'in_progress',
@@ -544,117 +533,10 @@ export class ProjectStore {
       'error': 'error'
     };
 
-    // Terminal statuses that should NEVER be overridden by calculation
-    const TERMINAL_STATUSES = new Set<TaskStatus>(['done', 'pr_created', 'error']);
+    const storedStatus = statusMap[plan.status] || 'backlog';
+    const reviewReason = storedStatus === 'human_review' ? plan.reviewReason : undefined;
 
-    // ========================================================================
-    // STEP 1: Check for terminal statuses (highest priority - always respected)
-    // ========================================================================
-    if (plan?.status) {
-      const storedStatus = statusMap[plan.status];
-      if (storedStatus && TERMINAL_STATUSES.has(storedStatus)) {
-        return { status: storedStatus };
-      }
-    }
-
-    // ========================================================================
-    // STEP 2: Check for active process statuses during execution
-    // These prevent status flip-flop while backend is actively running
-    // ========================================================================
-    if (plan?.status) {
-      const storedStatus = statusMap[plan.status];
-      const rawStatus = plan.status as string;
-      const isActiveProcessStatus = rawStatus === 'planning' || rawStatus === 'coding' || rawStatus === 'in_progress';
-
-      // Check if this is a plan review stage (spec creation complete, awaiting approval)
-      const isPlanReviewStage = (plan as unknown as { planStatus?: string })?.planStatus === 'review';
-
-      // During active execution, respect the stored status to prevent jumping
-      if (isActiveProcessStatus && storedStatus === 'in_progress') {
-        return { status: 'in_progress' };
-      }
-
-      // Plan review stage (human approval of spec before coding starts)
-      if (isPlanReviewStage && storedStatus === 'human_review') {
-        return { status: 'human_review', reviewReason: 'plan_review' };
-      }
-
-      // Explicit human_review status should be preserved unless we have evidence to change it
-      if (storedStatus === 'human_review') {
-        // Infer review reason from subtask/QA state
-        const hasFailedSubtasks = allSubtasks.some((s) => s.status === 'failed');
-        const allCompleted = allSubtasks.length > 0 && allSubtasks.every((s) => s.status === 'completed');
-        let reviewReason: ReviewReason | undefined;
-        if (hasFailedSubtasks) {
-          reviewReason = 'errors';
-        } else if (allCompleted) {
-          reviewReason = 'completed';
-        }
-        return { status: 'human_review', reviewReason };
-      }
-
-      // Explicit ai_review status should be preserved
-      if (storedStatus === 'ai_review') {
-        return { status: 'ai_review' };
-      }
-    }
-
-    // ========================================================================
-    // STEP 3: Check QA report file for status info
-    // ========================================================================
-    const qaReportPath = path.join(specPath, AUTO_BUILD_PATHS.QA_REPORT);
-    if (existsSync(qaReportPath)) {
-      try {
-        const content = readFileSync(qaReportPath, 'utf-8');
-        if (content.includes('REJECTED') || content.includes('FAILED')) {
-          return { status: 'human_review', reviewReason: 'qa_rejected' };
-        }
-        if (content.includes('PASSED') || content.includes('APPROVED')) {
-          // QA passed - if all subtasks done, move to human_review
-          if (allSubtasks.length > 0 && allSubtasks.every((s) => s.status === 'completed')) {
-            return { status: 'human_review', reviewReason: 'completed' };
-          }
-        }
-      } catch {
-        // Ignore read errors
-      }
-    }
-
-    // ========================================================================
-    // STEP 4: Calculate status from subtask analysis (fallback only)
-    // This is the lowest priority - only used when no explicit status is set
-    // ========================================================================
-    let calculatedStatus: TaskStatus = 'backlog';
-    let reviewReason: ReviewReason | undefined;
-
-    if (allSubtasks.length > 0) {
-      const completed = allSubtasks.filter((s) => s.status === 'completed').length;
-      const inProgress = allSubtasks.filter((s) => s.status === 'in_progress').length;
-      const failed = allSubtasks.filter((s) => s.status === 'failed').length;
-
-      if (completed === allSubtasks.length) {
-        // All subtasks completed - check QA status
-        const qaSignoff = (plan as unknown as Record<string, unknown>)?.qa_signoff as { status?: string } | undefined;
-        if (qaSignoff?.status === 'approved') {
-          calculatedStatus = 'human_review';
-          reviewReason = 'completed';
-        } else {
-          // Manual tasks skip AI review and go directly to human review
-          calculatedStatus = metadata?.sourceType === 'manual' ? 'human_review' : 'ai_review';
-          if (metadata?.sourceType === 'manual') {
-            reviewReason = 'completed';
-          }
-        }
-      } else if (failed > 0) {
-        // Some subtasks failed - needs human attention
-        calculatedStatus = 'human_review';
-        reviewReason = 'errors';
-      } else if (inProgress > 0 || completed > 0) {
-        calculatedStatus = 'in_progress';
-      }
-    }
-
-    return { status: calculatedStatus, reviewReason: calculatedStatus === 'human_review' ? reviewReason : undefined };
+    return { status: storedStatus, reviewReason };
   }
 
   /**

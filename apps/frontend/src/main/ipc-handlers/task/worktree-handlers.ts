@@ -2191,6 +2191,7 @@ export function registerWorktreeHandlers(
               }
 
               debug('Merge result. isStageOnly:', isStageOnly, 'newStatus:', newStatus, 'staged:', staged);
+              const reviewReason = newStatus === 'human_review' ? 'completed' : undefined;
 
               // Read suggested commit message if staging succeeded
               // OPTIMIZATION: Use async I/O to prevent blocking
@@ -2238,6 +2239,7 @@ export function registerWorktreeHandlers(
                       const plan = JSON.parse(planContent);
                       plan.status = newStatus;
                       plan.planStatus = planStatus;
+                      plan.reviewReason = reviewReason;
                       plan.updated_at = new Date().toISOString();
                       if (staged) {
                         plan.stagedAt = new Date().toISOString();
@@ -2298,7 +2300,13 @@ export function registerWorktreeHandlers(
 
               const mainWindow = getMainWindow();
               if (mainWindow) {
-                mainWindow.webContents.send(IPC_CHANNELS.TASK_STATUS_CHANGE, taskId, newStatus);
+                mainWindow.webContents.send(
+                  IPC_CHANNELS.TASK_STATUS_CHANGE,
+                  taskId,
+                  newStatus,
+                  project.id,
+                  reviewReason
+                );
               }
 
               resolve({
@@ -2629,7 +2637,7 @@ export function registerWorktreeHandlers(
           if (!skipStatusChange) {
             const mainWindow = getMainWindow();
             if (mainWindow) {
-              mainWindow.webContents.send(IPC_CHANNELS.TASK_STATUS_CHANGE, taskId, 'backlog');
+              mainWindow.webContents.send(IPC_CHANNELS.TASK_STATUS_CHANGE, taskId, 'backlog', project.id);
             }
           }
 

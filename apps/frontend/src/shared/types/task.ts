@@ -279,6 +279,13 @@ export interface ImplementationPlan {
   // Added for UI status persistence
   status?: TaskStatus;
   planStatus?: string;
+  reviewReason?: ReviewReason;
+  lastEvent?: {
+    eventId: string;
+    sequence: number;
+    type: string;
+    timestamp: string;
+  };
   recoveryNote?: string;
   description?: string;
 }

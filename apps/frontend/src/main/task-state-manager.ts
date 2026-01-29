@@ -68,9 +68,38 @@ export class TaskStateManager {
     } satisfies TaskEvent);
   }
 
-  handleUiEvent(taskId: string, event: TaskEvent): void {
+  handleUiEvent(taskId: string, event: TaskEvent, task: Task, project: Project): void {
+    this.setTaskContext(taskId, task, project);
     const actor = this.getOrCreateActor(taskId);
     actor.send(event);
+  }
+
+  handleManualStatusChange(taskId: string, status: TaskStatus, task: Task, project: Project): boolean {
+    switch (status) {
+      case 'done':
+        this.handleUiEvent(taskId, { type: 'MARK_DONE' }, task, project);
+        return true;
+      case 'pr_created':
+        this.handleUiEvent(
+          taskId,
+          { type: 'PR_CREATED', prUrl: task.metadata?.prUrl ?? '' },
+          task,
+          project
+        );
+        return true;
+      case 'in_progress':
+        if (task.reviewReason === 'plan_review') {
+          this.handleUiEvent(taskId, { type: 'PLAN_APPROVED' }, task, project);
+        } else {
+          this.handleUiEvent(taskId, { type: 'USER_RESUMED' }, task, project);
+        }
+        return true;
+      case 'backlog':
+        this.handleUiEvent(taskId, { type: 'USER_STOPPED', hasPlan: false }, task, project);
+        return true;
+      default:
+        return false;
+    }
   }
 
   setLastSequence(taskId: string, sequence: number): void {
