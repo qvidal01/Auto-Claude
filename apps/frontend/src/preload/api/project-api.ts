@@ -12,8 +12,7 @@ import type {
   GraphitiValidationResult,
   GraphitiConnectionTestResult,
   GitStatus,
-  KanbanPreferences,
-  GitBranchDetail
+  KanbanPreferences
 } from '../../shared/types';
 
 // Tab state interface (persisted in main process)

@@ -2,8 +2,8 @@ import { app } from 'electron';
 import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, Dirent } from 'fs';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
-import type { Project, ProjectSettings, Task, TaskStatus, TaskMetadata, ImplementationPlan, ReviewReason, PlanSubtask, KanbanPreferences, ExecutionPhase } from '../shared/types';
-import { DEFAULT_PROJECT_SETTINGS, AUTO_BUILD_PATHS, getSpecsDir, JSON_ERROR_PREFIX, JSON_ERROR_TITLE_SUFFIX, TASK_STATUS_PRIORITY } from '../shared/constants';
+import type { Project, ProjectSettings, Task, TaskStatus, TaskMetadata, ImplementationPlan, ReviewReason, PlanSubtask, KanbanPreferences } from '../shared/types';
+import { DEFAULT_PROJECT_SETTINGS, AUTO_BUILD_PATHS, getSpecsDir, JSON_ERROR_PREFIX, JSON_ERROR_TITLE_SUFFIX } from '../shared/constants';
 import { getAutoBuildPath, isInitialized } from './project-initializer';
 import { getTaskWorktreeDir } from './worktree-paths';
 import { isValidTaskId, findAllSpecPaths } from './utils/spec-path-helpers';
@@ -185,6 +185,24 @@ export class ProjectStore {
         : null,
       tabOrder: tabState.tabOrder.filter(id => validProjectIds.includes(id))
     };
+    this.save();
+  }
+
+  /**
+   * Get kanban column preferences for a specific project
+   */
+  getKanbanPreferences(projectId: string): KanbanPreferences | null {
+    return this.data.kanbanPreferences?.[projectId] ?? null;
+  }
+
+  /**
+   * Save kanban column preferences for a specific project
+   */
+  saveKanbanPreferences(projectId: string, preferences: KanbanPreferences): void {
+    if (!this.data.kanbanPreferences) {
+      this.data.kanbanPreferences = {};
+    }
+    this.data.kanbanPreferences[projectId] = preferences;
     this.save();
   }
 
