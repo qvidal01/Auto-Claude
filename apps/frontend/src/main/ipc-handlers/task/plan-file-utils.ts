@@ -22,6 +22,7 @@ import { readFileSync, writeFileSync, mkdirSync } from 'fs';
 import { AUTO_BUILD_PATHS, getSpecsDir } from '../../../shared/constants';
 import type { TaskStatus, Project, Task } from '../../../shared/types';
 import { projectStore } from '../../project-store';
+import type { TaskEventPayload } from '../../agent/task-event-schema';
 
 // In-memory locks for plan file operations
 // Key: plan file path, Value: Promise chain for serializing operations
@@ -181,6 +182,36 @@ export function persistPlanStatusSync(planPath: string, status: TaskStatus, proj
       return false;
     }
     console.warn(`[plan-file-utils] Could not persist status to ${planPath}:`, err);
+    return false;
+  }
+}
+
+/**
+ * Persist lastEvent metadata synchronously.
+ *
+ * WARNING: This bypasses async locking. Use only in sync event handlers where
+ * async isn't practical. Prefer updatePlanFile when possible.
+ */
+export function persistPlanLastEventSync(planPath: string, event: TaskEventPayload): boolean {
+  try {
+    const planContent = readFileSync(planPath, 'utf-8');
+    const plan = JSON.parse(planContent);
+
+    plan.lastEvent = {
+      eventId: event.eventId,
+      sequence: event.sequence,
+      type: event.type,
+      timestamp: event.timestamp
+    };
+    plan.updated_at = new Date().toISOString();
+
+    writeFileSync(planPath, JSON.stringify(plan, null, 2), 'utf-8');
+    return true;
+  } catch (err) {
+    if (isFileNotFoundError(err)) {
+      return false;
+    }
+    console.warn(`[plan-file-utils] Could not persist lastEvent to ${planPath}:`, err);
     return false;
   }
 }

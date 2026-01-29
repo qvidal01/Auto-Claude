@@ -1,6 +1,6 @@
 import type { BrowserWindow } from "electron";
 import path from "path";
-import { existsSync } from "fs";
+import { existsSync, readFileSync } from "fs";
 import { IPC_CHANNELS, AUTO_BUILD_PATHS, getSpecsDir } from "../../shared/constants";
 import {
   wouldPhaseRegress,
@@ -23,11 +23,12 @@ import { titleGenerator } from "../title-generator";
 import { fileWatcher } from "../file-watcher";
 import { projectStore } from "../project-store";
 import { notificationService } from "../notification-service";
-import { persistPlanStatusSync, getPlanPath } from "./task/plan-file-utils";
+import { persistPlanLastEventSync, persistPlanStatusSync, getPlanPath } from "./task/plan-file-utils";
 import { findTaskWorktree } from "../worktree-paths";
 import { findTaskAndProject } from "./task/shared";
 import { safeSendToRenderer } from "./utils";
 import { getClaudeProfileManager } from "../claude-profile-manager";
+import { taskStateManager } from "../task-state-manager";
 
 /**
  * Validates status transitions to prevent invalid state changes.
@@ -295,6 +296,52 @@ export function registerAgenteventsHandlers(
       }
     } catch (error) {
       console.error(`[Task ${taskId}] Exit handler error:`, error);
+    }
+  });
+
+  agentManager.on("task-event", (taskId: string, event) => {
+    if (taskStateManager.getLastSequence(taskId) === undefined) {
+      const { task, project } = findTaskAndProject(taskId);
+      if (task && project) {
+        try {
+          const planPath = getPlanPath(project, task);
+          const planContent = readFileSync(planPath, "utf-8");
+          const plan = JSON.parse(planContent);
+          const lastSeq = plan?.lastEvent?.sequence;
+          if (typeof lastSeq === "number" && lastSeq >= 0) {
+            taskStateManager.setLastSequence(taskId, lastSeq);
+          }
+        } catch {
+          // Ignore missing/invalid plan files
+        }
+      }
+    }
+
+    const accepted = taskStateManager.handleTaskEvent(taskId, event);
+    if (!accepted) {
+      return;
+    }
+
+    const { task, project } = findTaskAndProject(taskId);
+    if (!task || !project) {
+      return;
+    }
+
+    const mainPlanPath = getPlanPath(project, task);
+    persistPlanLastEventSync(mainPlanPath, event);
+
+    const worktreePath = findTaskWorktree(project.path, task.specId);
+    if (worktreePath) {
+      const specsBaseDir = getSpecsDir(project.autoBuildPath);
+      const worktreePlanPath = path.join(
+        worktreePath,
+        specsBaseDir,
+        task.specId,
+        AUTO_BUILD_PATHS.IMPLEMENTATION_PLAN
+      );
+      if (existsSync(worktreePlanPath)) {
+        persistPlanLastEventSync(worktreePlanPath, event);
+      }
     }
   });
 

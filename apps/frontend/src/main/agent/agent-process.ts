@@ -12,6 +12,7 @@ import { AgentState } from './agent-state';
 import { AgentEvents } from './agent-events';
 import { ProcessType, ExecutionProgressData } from './types';
 import type { CompletablePhase } from '../../shared/constants/phase-protocol';
+import { parseTaskEvent } from './task-event-parser';
 import { detectRateLimit, createSDKRateLimitInfo, getBestAvailableProfileEnv, detectAuthFailure } from '../rate-limit-detector';
 import { getAPIProfileEnv } from '../services/profile';
 import { projectStore } from '../project-store';
@@ -615,6 +616,11 @@ export class AgentProcessManager {
       const hasMarker = line.includes('__EXEC_PHASE__');
       if (isDebug && hasMarker) {
         console.log(`[PhaseDebug:${taskId}] Found marker in line: "${line.substring(0, 200)}"`);
+      }
+
+      const taskEvent = parseTaskEvent(line);
+      if (taskEvent) {
+        this.emitter.emit('task-event', taskId, taskEvent);
       }
 
       const phaseUpdate = this.events.parseExecutionPhase(line, currentPhase, isSpecRunner);
