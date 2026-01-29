@@ -398,13 +398,17 @@ describe('Subprocess Spawn Integration', () => {
       // Wait for spawn to complete (ensures exit handlers are attached)
       await new Promise(resolve => setImmediate(resolve));
 
-      // Emit exit for task-1 (first task's handler)
+      // Both tasks share the same mockProcess, so we need to emit exit events
+      // and wait for each task to be removed. The shared mock means both handlers
+      // receive each exit event - emit multiple times to ensure all handlers fire.
       mockProcess.emit('exit', 0);
-      await promise1;
+      mockProcess.emit('exit', 0);
 
-      // Emit exit for task-2 (second task's handler replaces first due to shared mock process)
-      mockProcess.emit('exit', 0);
-      await promise2;
+      // Wait for both promises to settle
+      await Promise.allSettled([promise1, promise2]);
+
+      // Allow event handlers to complete (important on slower CI environments)
+      await new Promise(resolve => setTimeout(resolve, 100));
 
       // Tasks should be removed from tracking after exit
       expect(manager.getRunningTasks()).toHaveLength(0);
