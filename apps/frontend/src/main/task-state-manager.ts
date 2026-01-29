@@ -2,7 +2,7 @@ import { createActor } from 'xstate';
 import type { ActorRefFrom } from 'xstate';
 import type { BrowserWindow } from 'electron';
 import type { TaskEventPayload } from './agent/task-event-schema';
-import type { Project, Task, TaskStatus, ReviewReason } from '../shared/types';
+import type { Project, Task, TaskStatus, ReviewReason, ExecutionPhase } from '../shared/types';
 import { taskMachine, type TaskEvent } from '../shared/state-machines';
 import { IPC_CHANNELS } from '../shared/constants';
 import { safeSendToRenderer } from './ipc-handlers/utils';
@@ -41,7 +41,11 @@ export class TaskStateManager {
   }
 
   handleTaskEvent(taskId: string, event: TaskEventPayload, task: Task, project: Project): boolean {
+    const lastSeq = this.lastSequenceByTask.get(taskId);
+    console.log(`[TaskStateManager] handleTaskEvent: ${event.type} seq=${event.sequence}, lastSeq=${lastSeq}`);
+
     if (!this.isNewSequence(taskId, event.sequence)) {
+      console.log(`[TaskStateManager] Event ${event.type} DROPPED - sequence ${event.sequence} not newer than ${lastSeq}`);
       return false;
     }
     this.setTaskContext(taskId, task, project);
@@ -52,7 +56,11 @@ export class TaskStateManager {
     }
 
     const actor = this.getOrCreateActor(taskId);
+    const stateBefore = String(actor.getSnapshot().value);
+    console.log(`[TaskStateManager] Sending ${event.type} to actor in state: ${stateBefore}`);
     actor.send(event as TaskEvent);
+    const stateAfter = String(actor.getSnapshot().value);
+    console.log(`[TaskStateManager] After ${event.type}: state ${stateBefore} -> ${stateAfter}`);
     return true;
   }
 
@@ -77,9 +85,14 @@ export class TaskStateManager {
   }
 
   handleUiEvent(taskId: string, event: TaskEvent, task: Task, project: Project): void {
+    console.log(`[TaskStateManager] handleUiEvent: ${event.type} for task ${taskId}`);
     this.setTaskContext(taskId, task, project);
     const actor = this.getOrCreateActor(taskId);
+    const stateBefore = String(actor.getSnapshot().value);
+    console.log(`[TaskStateManager] Sending UI event ${event.type} to actor in state: ${stateBefore}`);
     actor.send(event);
+    const stateAfter = String(actor.getSnapshot().value);
+    console.log(`[TaskStateManager] After UI event ${event.type}: state ${stateBefore} -> ${stateAfter}`);
   }
 
   handleManualStatusChange(taskId: string, status: TaskStatus, task: Task, project: Project): boolean {
@@ -96,7 +109,14 @@ export class TaskStateManager {
         );
         return true;
       case 'in_progress':
-        if (task.reviewReason === 'plan_review') {
+        // Use XState as source of truth for determining correct event
+        const currentState = this.getCurrentState(taskId);
+        if (currentState === 'plan_review') {
+          this.handleUiEvent(taskId, { type: 'PLAN_APPROVED' }, task, project);
+        } else if (currentState === 'human_review' || currentState === 'error') {
+          this.handleUiEvent(taskId, { type: 'USER_RESUMED' }, task, project);
+        } else if (!currentState && task.reviewReason === 'plan_review') {
+          // Fallback: No actor exists (e.g., after app restart), use task data
           this.handleUiEvent(taskId, { type: 'PLAN_APPROVED' }, task, project);
         } else {
           this.handleUiEvent(taskId, { type: 'USER_RESUMED' }, task, project);
@@ -118,6 +138,26 @@ export class TaskStateManager {
     return this.lastSequenceByTask.get(taskId);
   }
 
+  /**
+   * Get the current XState state for a task.
+   * Returns undefined if no actor exists for the task.
+   */
+  getCurrentState(taskId: string): string | undefined {
+    const actor = this.actors.get(taskId);
+    if (!actor) {
+      return undefined;
+    }
+    return String(actor.getSnapshot().value);
+  }
+
+  /**
+   * Check if the task is currently in plan_review state.
+   * Used by TASK_START to determine correct event to send.
+   */
+  isInPlanReview(taskId: string): boolean {
+    return this.getCurrentState(taskId) === 'plan_review';
+  }
+
   clearTask(taskId: string): void {
     this.lastSequenceByTask.delete(taskId);
     this.lastStateByTask.delete(taskId);
@@ -130,6 +170,22 @@ export class TaskStateManager {
     }
   }
 
+  /**
+   * Clear all task state. Called when tasks are force-refreshed from disk.
+   * This ensures actors are recreated with fresh task data.
+   */
+  clearAllTasks(): void {
+    for (const [taskId, actor] of this.actors) {
+      actor.stop();
+    }
+    this.actors.clear();
+    this.lastSequenceByTask.clear();
+    this.lastStateByTask.clear();
+    this.terminalEventSeen.clear();
+    this.taskContextById.clear();
+    console.log('[TaskStateManager] Cleared all task state for refresh');
+  }
+
   private setTaskContext(taskId: string, task: Task, project: Project): void {
     this.taskContextById.set(taskId, { task, project });
   }
@@ -137,6 +193,7 @@ export class TaskStateManager {
   private getOrCreateActor(taskId: string): TaskActor {
     const existing = this.actors.get(taskId);
     if (existing) {
+      console.log(`[TaskStateManager] Using existing actor for ${taskId}, current state:`, String(existing.getSnapshot().value));
       return existing;
     }
 
@@ -144,12 +201,32 @@ export class TaskStateManager {
     const snapshot = contextEntry
       ? this.buildSnapshotFromTask(contextEntry.task)
       : undefined;
+
+    if (contextEntry) {
+      console.log(`[TaskStateManager] Creating new actor for ${taskId} from task:`, {
+        status: contextEntry.task.status,
+        reviewReason: contextEntry.task.reviewReason,
+        phase: contextEntry.task.executionProgress?.phase,
+        initialState: snapshot ? String(snapshot.value) : 'default (backlog)'
+      });
+    } else {
+      console.log(`[TaskStateManager] Creating new actor for ${taskId} with default state (no context entry)`);
+    }
+
     const actor = snapshot
       ? createActor(taskMachine, { snapshot })
       : createActor(taskMachine);
     actor.subscribe((snapshot) => {
       const stateValue = String(snapshot.value);
       const lastState = this.lastStateByTask.get(taskId);
+
+      // Debug: Log all state transitions
+      console.log(`[TaskStateManager] XState transition for ${taskId}:`, {
+        from: lastState,
+        to: stateValue,
+        contextReviewReason: snapshot.context.reviewReason
+      });
+
       if (lastState === stateValue) {
         return;
       }
@@ -165,8 +242,24 @@ export class TaskStateManager {
         snapshot.context.reviewReason
       );
 
-      this.persistStatus(task, project, status, reviewReason);
+      // Map XState state to execution phase for persistence
+      const executionPhase = this.mapStateToExecutionPhase(stateValue);
+
+      // Debug: Log the mapped status and reviewReason
+      console.log(`[TaskStateManager] Emitting status for ${taskId}:`, {
+        status,
+        reviewReason,
+        xstateState: stateValue,
+        executionPhase,
+        projectId: project.id
+      });
+
+      this.persistStatus(task, project, status, reviewReason, stateValue, executionPhase);
       this.emitStatus(taskId, status, reviewReason, project.id);
+
+      // Also emit execution progress to sync phase display with column
+      // This ensures crisp transitions - phase and column update together
+      this.emitPhaseFromState(taskId, stateValue, project.id);
     });
 
     actor.start();
@@ -178,10 +271,12 @@ export class TaskStateManager {
     task: Task,
     project: Project,
     status: TaskStatus,
-    reviewReason?: ReviewReason
+    reviewReason?: ReviewReason,
+    xstateState?: string,
+    executionPhase?: string
   ): void {
     const mainPlanPath = getPlanPath(project, task);
-    persistPlanStatusAndReasonSync(mainPlanPath, status, reviewReason, project.id);
+    persistPlanStatusAndReasonSync(mainPlanPath, status, reviewReason, project.id, xstateState, executionPhase);
 
     const worktreePath = findTaskWorktree(project.path, task.specId);
     if (!worktreePath) return;
@@ -194,8 +289,28 @@ export class TaskStateManager {
       AUTO_BUILD_PATHS.IMPLEMENTATION_PLAN
     );
     if (existsSync(worktreePlanPath)) {
-      persistPlanStatusAndReasonSync(worktreePlanPath, status, reviewReason, project.id);
+      persistPlanStatusAndReasonSync(worktreePlanPath, status, reviewReason, project.id, xstateState, executionPhase);
     }
+  }
+
+  /**
+   * Map XState state to execution phase string
+   */
+  private mapStateToExecutionPhase(xstateState: string): string {
+    const phaseMap: Record<string, string> = {
+      'backlog': 'idle',
+      'planning': 'planning',
+      'plan_review': 'planning',
+      'coding': 'coding',
+      'qa_review': 'qa_review',
+      'qa_fixing': 'qa_fixing',
+      'human_review': 'complete',
+      'error': 'failed',
+      'creating_pr': 'complete',
+      'pr_created': 'complete',
+      'done': 'complete'
+    };
+    return phaseMap[xstateState] || 'idle';
   }
 
   private emitStatus(
@@ -204,7 +319,11 @@ export class TaskStateManager {
     reviewReason: ReviewReason | undefined,
     projectId?: string
   ): void {
-    if (!this.getMainWindow) return;
+    if (!this.getMainWindow) {
+      console.warn(`[TaskStateManager] emitStatus: No main window, cannot emit status ${status} for ${taskId}`);
+      return;
+    }
+    console.log(`[TaskStateManager] emitStatus: Sending TASK_STATUS_CHANGE for ${taskId}:`, { status, reviewReason, projectId });
     safeSendToRenderer(
       this.getMainWindow,
       IPC_CHANNELS.TASK_STATUS_CHANGE,
@@ -215,20 +334,79 @@ export class TaskStateManager {
     );
   }
 
+  /**
+   * Emit execution progress to sync phase display with XState state.
+   * This ensures the card shows the correct phase when XState transitions.
+   */
+  private emitPhaseFromState(
+    taskId: string,
+    xstateState: string,
+    projectId?: string
+  ): void {
+    if (!this.getMainWindow) return;
+
+    // Map XState state to execution phase
+    const phaseMap: Record<string, ExecutionPhase> = {
+      'backlog': 'idle',
+      'planning': 'planning',
+      'plan_review': 'planning',  // Still in planning phase, awaiting approval
+      'coding': 'coding',
+      'qa_review': 'qa_review',
+      'qa_fixing': 'qa_fixing',
+      'human_review': 'complete',
+      'error': 'failed',
+      'creating_pr': 'complete',
+      'pr_created': 'complete',
+      'done': 'complete'
+    };
+
+    const phase = phaseMap[xstateState] || 'idle';
+
+    // Emit execution progress with the phase derived from XState
+    safeSendToRenderer(
+      this.getMainWindow,
+      IPC_CHANNELS.TASK_EXECUTION_PROGRESS,
+      taskId,
+      {
+        phase,
+        phaseProgress: phase === 'complete' ? 100 : 50,
+        overallProgress: phase === 'complete' ? 100 : 50,
+        message: `State: ${xstateState}`,
+        sequenceNumber: Date.now()  // Use timestamp as sequence to ensure it's newer
+      },
+      projectId
+    );
+  }
+
   private isNewSequence(taskId: string, sequence: number): boolean {
     const last = this.lastSequenceByTask.get(taskId);
-    return last === undefined || sequence > last;
+    // Use >= to accept the first event when sequence equals last (e.g., both are 0)
+    // This handles the case where we reload lastSequence from plan file and the next
+    // event has the same sequence number (which shouldn't happen, but we should be lenient)
+    return last === undefined || sequence >= last;
   }
 
   private buildSnapshotFromTask(task: Task) {
     const status = task.status;
     const reviewReason = task.reviewReason;
+    const executionPhase = task.executionProgress?.phase;
     let stateValue: string = 'backlog';
     let contextReviewReason: ReviewReason | undefined;
 
     switch (status) {
       case 'in_progress':
-        stateValue = 'coding';
+        // Use executionProgress.phase to determine if we're in planning or coding
+        // This is important because both phases have status 'in_progress'
+        if (executionPhase === 'planning') {
+          stateValue = 'planning';
+        } else if (executionPhase === 'qa_review') {
+          stateValue = 'qa_review';
+        } else if (executionPhase === 'qa_fixing') {
+          stateValue = 'qa_fixing';
+        } else {
+          // Default to coding for 'coding', 'complete', or unknown phases
+          stateValue = 'coding';
+        }
         break;
       case 'ai_review':
         stateValue = 'qa_review';

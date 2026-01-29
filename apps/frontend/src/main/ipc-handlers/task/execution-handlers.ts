@@ -178,7 +178,42 @@ export function registerTaskExecutionHandlers(
         return;
       }
 
-      console.warn('[TASK_START] Found task:', task.specId, 'status:', task.status, 'subtasks:', task.subtasks.length);
+      console.warn('[TASK_START] Found task:', task.specId, 'status:', task.status, 'reviewReason:', task.reviewReason, 'subtasks:', task.subtasks.length);
+
+      // Immediately mark as started so the UI moves the card to In Progress.
+      // Use XState actor state as source of truth (if actor exists), with task data as fallback.
+      // - plan_review: User approved the plan, send PLAN_APPROVED to transition to coding
+      // - human_review/error: User resuming, send USER_RESUMED
+      // - backlog/other: Fresh start, send PLANNING_STARTED
+      const currentXState = taskStateManager.getCurrentState(taskId);
+      console.warn('[TASK_START] Current XState:', currentXState, '| Task status:', task.status, task.reviewReason);
+
+      if (currentXState === 'plan_review') {
+        // XState says plan_review - send PLAN_APPROVED
+        console.warn('[TASK_START] XState: plan_review -> coding via PLAN_APPROVED');
+        taskStateManager.handleUiEvent(taskId, { type: 'PLAN_APPROVED' }, task, project);
+      } else if (currentXState === 'human_review' || currentXState === 'error') {
+        // XState says human_review or error - send USER_RESUMED
+        console.warn('[TASK_START] XState:', currentXState, '-> coding via USER_RESUMED');
+        taskStateManager.handleUiEvent(taskId, { type: 'USER_RESUMED' }, task, project);
+      } else if (currentXState) {
+        // XState actor exists but in another state (coding, planning, etc.)
+        // This shouldn't happen normally, but handle gracefully
+        console.warn('[TASK_START] XState in unexpected state:', currentXState, '- sending PLANNING_STARTED');
+        taskStateManager.handleUiEvent(taskId, { type: 'PLANNING_STARTED' }, task, project);
+      } else if (task.status === 'human_review' && task.reviewReason === 'plan_review') {
+        // No XState actor - fallback to task data (e.g., after app restart)
+        console.warn('[TASK_START] No XState actor, task data: plan_review -> coding via PLAN_APPROVED');
+        taskStateManager.handleUiEvent(taskId, { type: 'PLAN_APPROVED' }, task, project);
+      } else if (task.status === 'human_review' || task.status === 'error') {
+        // No XState actor - fallback to task data for resuming
+        console.warn('[TASK_START] No XState actor, task data:', task.status, '-> coding via USER_RESUMED');
+        taskStateManager.handleUiEvent(taskId, { type: 'USER_RESUMED' }, task, project);
+      } else {
+        // Fresh start - PLANNING_STARTED transitions from backlog to planning
+        console.warn('[TASK_START] Fresh start via PLANNING_STARTED');
+        taskStateManager.handleUiEvent(taskId, { type: 'PLANNING_STARTED' }, task, project);
+      }
 
       // Start file watcher for this task
       const specsBaseDir = getSpecsDir(project.autoBuildPath);

@@ -54,6 +54,39 @@ function findTaskIndex(tasks: Task[], taskId: string): number {
 const taskStatusChangeListeners = new Set<(taskId: string, oldStatus: TaskStatus | undefined, newStatus: TaskStatus) => void>();
 
 /**
+ * Track last activity timestamp per task for stuck detection.
+ * If we've received activity (execution progress, status update) within a threshold,
+ * the task is considered active even if the process check fails.
+ * This prevents race conditions where stuck detection fires before process is registered.
+ */
+const taskLastActivity = new Map<string, number>();
+const STUCK_ACTIVITY_THRESHOLD_MS = 5000; // 5 seconds
+
+/**
+ * Record activity for a task (call this when we receive execution progress or status updates)
+ */
+export function recordTaskActivity(taskId: string): void {
+  taskLastActivity.set(taskId, Date.now());
+}
+
+/**
+ * Check if a task has had recent activity within the threshold.
+ * Used by stuck detection to avoid false positives.
+ */
+export function hasRecentActivity(taskId: string): boolean {
+  const lastActivity = taskLastActivity.get(taskId);
+  if (!lastActivity) return false;
+  return Date.now() - lastActivity < STUCK_ACTIVITY_THRESHOLD_MS;
+}
+
+/**
+ * Clear activity tracking for a task (call when task completes or is deleted)
+ */
+export function clearTaskActivity(taskId: string): void {
+  taskLastActivity.delete(taskId);
+}
+
+/**
  * Notify all registered listeners when a task status changes
  */
 function notifyTaskStatusChange(taskId: string, oldStatus: TaskStatus | undefined, newStatus: TaskStatus): void {
@@ -348,7 +381,10 @@ export const useTaskStore = create<TaskState>((set, get) => ({
       };
     }),
 
-  updateExecutionProgress: (taskId, progress) =>
+  updateExecutionProgress: (taskId, progress) => {
+    // Record activity for stuck detection (outside of set() to avoid triggering extra renders)
+    recordTaskActivity(taskId);
+
     set((state) => {
       const index = findTaskIndex(state.tasks, taskId);
       if (index === -1) return state;
@@ -392,7 +428,8 @@ export const useTaskStore = create<TaskState>((set, get) => ({
           };
         })
       };
-    }),
+    });
+  },
 
   appendLog: (taskId, log) =>
     set((state) => {
@@ -966,7 +1003,8 @@ export function isIncompleteHumanReview(task: Task): boolean {
   if (task.status !== 'human_review') return false;
 
   // JSON error tasks are intentionally in human_review with no subtasks - not incomplete
-  if (task.reviewReason === 'errors' || task.reviewReason === 'stopped') return false;
+  // plan_review tasks are waiting for human approval before coding - not incomplete
+  if (task.reviewReason === 'errors' || task.reviewReason === 'stopped' || task.reviewReason === 'plan_review') return false;
 
   // If no subtasks defined, task hasn't been planned yet (shouldn't be in human_review)
   if (!task.subtasks || task.subtasks.length === 0) return true;

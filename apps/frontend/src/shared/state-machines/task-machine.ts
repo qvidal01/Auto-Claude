@@ -50,6 +50,8 @@ export const taskMachine = createMachine(
       backlog: {
         on: {
           PLANNING_STARTED: 'planning',
+          // Fallback: if coding starts from backlog (e.g., resumed task), go to coding
+          CODING_STARTED: 'coding',
           USER_STOPPED: 'backlog'
         }
       },
@@ -63,6 +65,14 @@ export const taskMachine = createMachine(
             },
             { target: 'coding', actions: 'clearReviewReason' }
           ],
+          // Fallback: if CODING_STARTED arrives while in planning, transition to coding
+          CODING_STARTED: { target: 'coding', actions: 'clearReviewReason' },
+          // Fallback: if ALL_SUBTASKS_DONE arrives while in planning, go directly to qa_review
+          ALL_SUBTASKS_DONE: 'qa_review',
+          // Fallback: if QA_STARTED arrives while in planning, go to qa_review
+          QA_STARTED: 'qa_review',
+          // Fallback: if QA_PASSED arrives while in planning (entire build completed), go to human_review
+          QA_PASSED: { target: 'human_review', actions: 'setReviewReasonCompleted' },
           PLANNING_FAILED: { target: 'error', actions: ['setReviewReasonErrors', 'setError'] },
           USER_STOPPED: [
             { target: 'backlog', guard: 'noPlanYet', actions: 'clearReviewReason' },
@@ -81,7 +91,11 @@ export const taskMachine = createMachine(
       coding: {
         on: {
           QA_STARTED: 'qa_review',
-          ALL_SUBTASKS_DONE: { target: 'human_review', actions: 'setReviewReasonCompleted' },
+          // ALL_SUBTASKS_DONE means coder finished but QA hasn't started yet
+          // Transition to qa_review - QA will emit QA_PASSED or QA_FAILED
+          ALL_SUBTASKS_DONE: 'qa_review',
+          // Fallback: if QA_PASSED arrives while still in coding (missed QA_STARTED), go to human_review
+          QA_PASSED: { target: 'human_review', actions: 'setReviewReasonCompleted' },
           CODING_FAILED: { target: 'error', actions: ['setReviewReasonErrors', 'setError'] },
           USER_STOPPED: { target: 'human_review', actions: 'setReviewReasonStopped' },
           PROCESS_EXITED: { target: 'error', guard: 'unexpectedExit', actions: 'setReviewReasonErrors' }

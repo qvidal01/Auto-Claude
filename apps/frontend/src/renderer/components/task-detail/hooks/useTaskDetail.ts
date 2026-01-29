@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useProjectStore } from '../../../stores/project-store';
-import { checkTaskRunning, isIncompleteHumanReview, getTaskProgress, useTaskStore, loadTasks } from '../../../stores/task-store';
+import { checkTaskRunning, isIncompleteHumanReview, getTaskProgress, useTaskStore, loadTasks, hasRecentActivity } from '../../../stores/task-store';
 import type { Task, TaskLogs, TaskLogPhase, WorktreeStatus, WorktreeDiff, MergeConflict, MergeStats, GitConflictInfo, ImageAttachment } from '../../../../shared/types';
 
 /**
@@ -137,15 +137,32 @@ export function useTaskDetail({ task }: UseTaskDetailOptions) {
       return;
     }
 
+    // Check for recent activity first - if we've received progress updates within 5s,
+    // the task is active even if process check might fail due to timing
+    if (hasRecentActivity(task.id)) {
+      setIsStuck(false);
+      return;
+    }
+
     // Active task in coding phase - check if stuck
     if (!hasCheckedRunning) {
       // Wait 2 seconds before checking - gives process time to spawn and register
       timeoutId = setTimeout(() => {
+        // Re-check for recent activity after the timeout
+        if (hasRecentActivity(task.id)) {
+          setIsStuck(false);
+          setHasCheckedRunning(true);
+          return;
+        }
+
         checkTaskRunning(task.id).then((actuallyRunning) => {
           // Double-check the phase in case it changed while waiting
           const latestPhase = task.executionProgress?.phase;
           const skipPhasesInCallback = ['complete', 'failed', 'planning', 'qa_review', 'qa_fixing'];
           if (latestPhase && skipPhasesInCallback.includes(latestPhase)) {
+            setIsStuck(false);
+          } else if (hasRecentActivity(task.id)) {
+            // Final check for recent activity
             setIsStuck(false);
           } else {
             setIsStuck(!actuallyRunning);

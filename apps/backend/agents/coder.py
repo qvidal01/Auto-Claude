@@ -344,6 +344,15 @@ async def run_autonomous_agent(
                 is_planning_phase = False
                 current_log_phase = LogPhase.CODING
                 emit_phase(ExecutionPhase.CODING, "Starting implementation")
+                # Emit CODING_STARTED event for XState machine transition
+                # This signals the frontend to move from planning to coding state
+                task_event_emitter.emit(
+                    "CODING_STARTED",
+                    {
+                        "subtaskId": subtask_id or "",
+                        "subtaskDescription": next_subtask.get("description", "") if next_subtask else "",
+                    },
+                )
                 if task_logger:
                     task_logger.end_phase(
                         LogPhase.PLANNING,

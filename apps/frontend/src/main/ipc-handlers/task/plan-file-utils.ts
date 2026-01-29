@@ -217,21 +217,51 @@ export function persistPlanLastEventSync(planPath: string, event: TaskEventPaylo
 }
 
 /**
- * Persist task status and reviewReason synchronously.
+ * Persist task status, reviewReason, XState state, and execution phase synchronously.
+ * The xstateState and executionPhase are used to restore the exact machine state on reload,
+ * distinguishing between e.g. 'planning' vs 'coding' when both have status 'in_progress'.
+ *
+ * If the plan file doesn't exist, creates a minimal plan with the status fields.
+ * This ensures XState state is persisted even during early phases like spec creation.
  */
 export function persistPlanStatusAndReasonSync(
   planPath: string,
   status: TaskStatus,
   reviewReason?: string,
-  projectId?: string
+  projectId?: string,
+  xstateState?: string,
+  executionPhase?: string
 ): boolean {
   try {
-    const planContent = readFileSync(planPath, 'utf-8');
-    const plan = JSON.parse(planContent);
+    let plan: Record<string, unknown>;
+
+    try {
+      const planContent = readFileSync(planPath, 'utf-8');
+      plan = JSON.parse(planContent);
+    } catch (readErr) {
+      if (!isFileNotFoundError(readErr)) {
+        throw readErr;
+      }
+      // File doesn't exist - create a minimal plan with just status fields
+      // The spec runner will populate the full plan later
+      const planDir = path.dirname(planPath);
+      mkdirSync(planDir, { recursive: true });
+      plan = {
+        created_at: new Date().toISOString(),
+        phases: []
+      };
+      console.log(`[plan-file-utils] Creating minimal plan for XState persistence: ${planPath}`);
+    }
 
     plan.status = status;
     plan.planStatus = mapStatusToPlanStatus(status);
     plan.reviewReason = reviewReason;
+    if (xstateState) {
+      plan.xstateState = xstateState;
+    }
+    if (executionPhase) {
+      plan.executionPhase = executionPhase;
+    }
     plan.updated_at = new Date().toISOString();
 
     writeFileSync(planPath, JSON.stringify(plan, null, 2), 'utf-8');
@@ -242,10 +272,70 @@ export function persistPlanStatusAndReasonSync(
 
     return true;
   } catch (err) {
-    if (isFileNotFoundError(err)) {
-      return false;
-    }
     console.warn(`[plan-file-utils] Could not persist status/reason to ${planPath}:`, err);
+    return false;
+  }
+}
+
+/**
+ * Persist execution phase to the plan file synchronously.
+ * This is called when execution progress updates to ensure the phase
+ * is persisted for restoration on app refresh.
+ */
+export function persistPlanPhaseSync(
+  planPath: string,
+  phase: string,
+  projectId?: string
+): boolean {
+  try {
+    let plan: Record<string, unknown>;
+
+    try {
+      const planContent = readFileSync(planPath, 'utf-8');
+      plan = JSON.parse(planContent);
+    } catch (readErr) {
+      if (!isFileNotFoundError(readErr)) {
+        throw readErr;
+      }
+      // File doesn't exist - create minimal plan
+      const planDir = path.dirname(planPath);
+      mkdirSync(planDir, { recursive: true });
+      plan = {
+        created_at: new Date().toISOString(),
+        phases: []
+      };
+    }
+
+    // Store the execution phase for restoration
+    plan.executionPhase = phase;
+
+    // Also update status to match the phase so the card stays in the correct column on refresh
+    // Map execution phase to TaskStatus for column placement
+    const phaseToStatus: Record<string, TaskStatus> = {
+      'planning': 'in_progress',
+      'coding': 'in_progress',
+      'qa_review': 'in_progress',
+      'qa_fixing': 'in_progress',
+      'complete': 'human_review',
+      'failed': 'error'
+    };
+    const mappedStatus = phaseToStatus[phase];
+    if (mappedStatus) {
+      plan.status = mappedStatus;
+      plan.planStatus = mapStatusToPlanStatus(mappedStatus);
+    }
+
+    plan.updated_at = new Date().toISOString();
+
+    writeFileSync(planPath, JSON.stringify(plan, null, 2), 'utf-8');
+
+    if (projectId) {
+      projectStore.invalidateTasksCache(projectId);
+    }
+
+    return true;
+  } catch (err) {
+    console.warn(`[plan-file-utils] Could not persist phase to ${planPath}:`, err);
     return false;
   }
 }
@@ -293,11 +383,13 @@ export async function updatePlanFile<T extends Record<string, unknown>>(
  * @param planPath - Path to the implementation_plan.json file
  * @param task - The task to create the plan for
  * @param status - Initial status for the plan
+ * @param xstateState - Optional XState machine state for restoration
  */
 export async function createPlanIfNotExists(
   planPath: string,
   task: Task,
-  status: TaskStatus
+  status: TaskStatus,
+  xstateState?: string
 ): Promise<void> {
   return withPlanLock(planPath, async () => {
     // Try to read the file first - if it exists, do nothing
@@ -311,7 +403,7 @@ export async function createPlanIfNotExists(
       // File doesn't exist, continue to create it
     }
 
-    const plan = {
+    const plan: Record<string, unknown> = {
       feature: task.title,
       description: task.description || '',
       created_at: task.createdAt.toISOString(),
@@ -320,6 +412,11 @@ export async function createPlanIfNotExists(
       planStatus: mapStatusToPlanStatus(status),
       phases: []
     };
+
+    // Include xstateState for accurate restoration on reload
+    if (xstateState) {
+      plan.xstateState = xstateState;
+    }
 
     // Ensure directory exists - use try/catch pattern
     const planDir = path.dirname(planPath);

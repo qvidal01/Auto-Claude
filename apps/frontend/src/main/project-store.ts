@@ -2,7 +2,7 @@ import { app } from 'electron';
 import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, Dirent } from 'fs';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
-import type { Project, ProjectSettings, Task, TaskStatus, TaskMetadata, ImplementationPlan, ReviewReason, PlanSubtask } from '../shared/types';
+import type { Project, ProjectSettings, Task, TaskStatus, TaskMetadata, ImplementationPlan, ReviewReason, PlanSubtask, ExecutionPhase } from '../shared/types';
 import { DEFAULT_PROJECT_SETTINGS, AUTO_BUILD_PATHS, getSpecsDir, JSON_ERROR_PREFIX, JSON_ERROR_TITLE_SUFFIX } from '../shared/constants';
 import { getAutoBuildPath, isInitialized } from './project-initializer';
 import { getTaskWorktreeDir } from './worktree-paths';
@@ -477,6 +477,16 @@ export class ProjectStore {
           }
         }
 
+        // Use persisted executionPhase (from text parser) or xstateState for exact restoration
+        // Priority: executionPhase > xstateState > inferred from status
+        const persistedPhase = (plan as { executionPhase?: string } | null)?.executionPhase as ExecutionPhase | undefined;
+        const xstateState = (plan as { xstateState?: string } | null)?.xstateState;
+        const executionProgress = persistedPhase
+          ? { phase: persistedPhase, phaseProgress: 50, overallProgress: 50 }
+          : xstateState
+            ? this.inferExecutionProgressFromXState(xstateState)
+            : this.inferExecutionProgress(plan?.status);
+
         tasks.push({
           id: dir.name, // Use spec directory name as ID
           specId: dir.name,
@@ -488,6 +498,7 @@ export class ProjectStore {
           logs: [],
           metadata,
           ...(finalReviewReason !== undefined && { reviewReason: finalReviewReason }),
+          ...(executionProgress && { executionProgress }),
           stagedInMainProject,
           stagedAt,
           location, // Add location metadata (main vs worktree)
@@ -537,6 +548,71 @@ export class ProjectStore {
     const reviewReason = storedStatus === 'human_review' ? plan.reviewReason : undefined;
 
     return { status: storedStatus, reviewReason };
+  }
+
+  /**
+   * Infer execution progress from plan status for XState snapshot restoration.
+   * Maps plan status values to ExecutionPhase so buildSnapshotFromTask can
+   * correctly determine the XState state (planning vs coding vs qa_review, etc.).
+   */
+  private inferExecutionProgress(planStatus: string | undefined): { phase: ExecutionPhase; phaseProgress: number; overallProgress: number } | undefined {
+    if (!planStatus) return undefined;
+
+    // Map plan status to execution phase
+    const phaseMap: Record<string, ExecutionPhase> = {
+      'pending': 'idle',
+      'backlog': 'idle',
+      'planning': 'planning',
+      'coding': 'coding',
+      'in_progress': 'coding', // Default in_progress to coding
+      'review': 'qa_review',
+      'ai_review': 'qa_review',
+      'qa_review': 'qa_review',
+      'qa_fixing': 'qa_fixing',
+      'human_review': 'complete',
+      'completed': 'complete',
+      'done': 'complete',
+      'error': 'failed'
+    };
+
+    const phase = phaseMap[planStatus];
+    if (!phase) return undefined;
+
+    return {
+      phase,
+      phaseProgress: 50,
+      overallProgress: 50
+    };
+  }
+
+  /**
+   * Infer execution progress from persisted XState state.
+   * This is more precise than inferring from plan status since it uses the exact machine state.
+   */
+  private inferExecutionProgressFromXState(xstateState: string): { phase: ExecutionPhase; phaseProgress: number; overallProgress: number } | undefined {
+    // Map XState state directly to execution phase
+    const phaseMap: Record<string, ExecutionPhase> = {
+      'backlog': 'idle',
+      'planning': 'planning',
+      'plan_review': 'planning',
+      'coding': 'coding',
+      'qa_review': 'qa_review',
+      'qa_fixing': 'qa_fixing',
+      'human_review': 'complete',
+      'error': 'failed',
+      'creating_pr': 'complete',
+      'pr_created': 'complete',
+      'done': 'complete'
+    };
+
+    const phase = phaseMap[xstateState];
+    if (!phase) return undefined;
+
+    return {
+      phase,
+      phaseProgress: phase === 'complete' ? 100 : 50,
+      overallProgress: phase === 'complete' ? 100 : 50
+    };
   }
 
   /**

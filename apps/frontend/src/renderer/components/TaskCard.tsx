@@ -31,7 +31,7 @@ import {
   JSON_ERROR_PREFIX,
   JSON_ERROR_TITLE_SUFFIX
 } from '../../shared/constants';
-import { startTask, stopTask, checkTaskRunning, recoverStuckTask, isIncompleteHumanReview, archiveTasks } from '../stores/task-store';
+import { startTask, stopTask, checkTaskRunning, recoverStuckTask, isIncompleteHumanReview, archiveTasks, hasRecentActivity } from '../stores/task-store';
 import type { Task, TaskCategory, ReviewReason, TaskStatus } from '../../shared/types';
 
 // Category icon mapping
@@ -207,12 +207,25 @@ export const TaskCard = memo(function TaskCard({
       return;
     }
 
+    // Check for recent activity first - if we've received progress updates within 5s,
+    // the task is active even if process check might fail due to timing
+    if (hasRecentActivity(task.id)) {
+      if (window.DEBUG) {
+        console.log(`[TaskCard] Stuck check skipped for ${task.id} - has recent activity`);
+      }
+      setIsStuck(false);
+      return;
+    }
+
     // Use requestIdleCallback for non-blocking check when available
     const doCheck = () => {
       checkTaskRunning(task.id).then((actuallyRunning) => {
         // Double-check the phase again in case it changed while waiting
         const latestPhase = task.executionProgress?.phase;
         if (shouldSkipStuckCheck(latestPhase)) {
+          setIsStuck(false);
+        } else if (hasRecentActivity(task.id)) {
+          // Re-check for recent activity after the async check
           setIsStuck(false);
         } else {
           setIsStuck(!actuallyRunning);

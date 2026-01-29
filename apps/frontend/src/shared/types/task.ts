@@ -280,6 +280,7 @@ export interface ImplementationPlan {
   status?: TaskStatus;
   planStatus?: string;
   reviewReason?: ReviewReason;
+  xstateState?: string;  // Persisted XState machine state for restoration (e.g., 'planning', 'coding')
   lastEvent?: {
     eventId: string;
     sequence: number;

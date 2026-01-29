@@ -12,7 +12,7 @@ import type { ProcessType, ExecutionProgressData } from "../agent";
 import { titleGenerator } from "../title-generator";
 import { fileWatcher } from "../file-watcher";
 import { notificationService } from "../notification-service";
-import { persistPlanLastEventSync, getPlanPath } from "./task/plan-file-utils";
+import { persistPlanLastEventSync, getPlanPath, persistPlanPhaseSync } from "./task/plan-file-utils";
 import { findTaskWorktree } from "../worktree-paths";
 import { findTaskAndProject } from "./task/shared";
 import { safeSendToRenderer } from "./utils";
@@ -121,6 +121,8 @@ export function registerAgenteventsHandlers(
   });
 
   agentManager.on("task-event", (taskId: string, event) => {
+    console.log(`[agent-events-handlers] Received task-event for ${taskId}:`, event.type, event);
+
     if (taskStateManager.getLastSequence(taskId) === undefined) {
       const { task, project } = findTaskAndProject(taskId);
       if (task && project) {
@@ -139,9 +141,19 @@ export function registerAgenteventsHandlers(
     }
 
     const { task, project } = findTaskAndProject(taskId);
-    if (!task || !project) return;
+    if (!task || !project) {
+      console.log(`[agent-events-handlers] No task/project found for ${taskId}`);
+      return;
+    }
+
+    console.log(`[agent-events-handlers] Task state before handleTaskEvent:`, {
+      status: task.status,
+      reviewReason: task.reviewReason,
+      phase: task.executionProgress?.phase
+    });
 
     const accepted = taskStateManager.handleTaskEvent(taskId, event, task, project);
+    console.log(`[agent-events-handlers] Event ${event.type} accepted: ${accepted}`);
     if (!accepted) {
       return;
     }
@@ -168,6 +180,28 @@ export function registerAgenteventsHandlers(
     // Use shared helper to find task and project (issue #723 - deduplicate lookup)
     const { task, project } = findTaskAndProject(taskId);
     const taskProjectId = project?.id;
+
+    // Persist phase to plan file for restoration on app refresh
+    // Must persist to BOTH main project and worktree (if exists) since task may be loaded from either
+    if (task && project && progress.phase) {
+      const mainPlanPath = getPlanPath(project, task);
+      persistPlanPhaseSync(mainPlanPath, progress.phase, project.id);
+
+      // Also persist to worktree if task has one
+      const worktreePath = findTaskWorktree(project.path, task.specId);
+      if (worktreePath) {
+        const specsBaseDir = getSpecsDir(project.autoBuildPath);
+        const worktreePlanPath = path.join(
+          worktreePath,
+          specsBaseDir,
+          task.specId,
+          AUTO_BUILD_PATHS.IMPLEMENTATION_PLAN
+        );
+        if (existsSync(worktreePlanPath)) {
+          persistPlanPhaseSync(worktreePlanPath, progress.phase, project.id);
+        }
+      }
+    }
 
     // Include projectId in execution progress event for multi-project filtering
     safeSendToRenderer(
