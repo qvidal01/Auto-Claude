@@ -108,7 +108,7 @@ export class TaskStateManager {
           project
         );
         return true;
-      case 'in_progress':
+      case 'in_progress': {
         // Use XState as source of truth for determining correct event
         const currentState = this.getCurrentState(taskId);
         if (currentState === 'plan_review') {
@@ -122,6 +122,7 @@ export class TaskStateManager {
           this.handleUiEvent(taskId, { type: 'USER_RESUMED' }, task, project);
         }
         return true;
+      }
       case 'backlog':
         this.handleUiEvent(taskId, { type: 'USER_STOPPED', hasPlan: false }, task, project);
         return true;

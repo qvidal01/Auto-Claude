@@ -350,7 +350,9 @@ async def run_autonomous_agent(
                     "CODING_STARTED",
                     {
                         "subtaskId": subtask_id or "",
-                        "subtaskDescription": next_subtask.get("description", "") if next_subtask else "",
+                        "subtaskDescription": next_subtask.get("description", "")
+                        if next_subtask
+                        else "",
                     },
                 )
                 if task_logger:

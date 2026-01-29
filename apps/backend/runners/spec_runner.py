@@ -256,9 +256,12 @@ Examples:
     # This must be specific: check for run.py FILE (not dir) AND core/client.py to confirm
     # we're in the actual backend source tree, not just a project named "auto-claude".
     run_py_path = project_dir / "run.py"
-    if (project_dir.name == "auto-claude" and
-        run_py_path.exists() and run_py_path.is_file() and
-        (project_dir / "core" / "client.py").exists()):
+    if (
+        project_dir.name == "auto-claude"
+        and run_py_path.exists()
+        and run_py_path.is_file()
+        and (project_dir / "core" / "client.py").exists()
+    ):
         # Running from within auto-claude/apps/backend/ source directory, go up 1 level
         project_dir = project_dir.parent
     elif not (project_dir / ".auto-claude").exists():
