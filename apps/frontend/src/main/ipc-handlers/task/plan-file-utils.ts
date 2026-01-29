@@ -217,6 +217,40 @@ export function persistPlanLastEventSync(planPath: string, event: TaskEventPaylo
 }
 
 /**
+ * Persist task status and reviewReason synchronously.
+ */
+export function persistPlanStatusAndReasonSync(
+  planPath: string,
+  status: TaskStatus,
+  reviewReason?: string,
+  projectId?: string
+): boolean {
+  try {
+    const planContent = readFileSync(planPath, 'utf-8');
+    const plan = JSON.parse(planContent);
+
+    plan.status = status;
+    plan.planStatus = mapStatusToPlanStatus(status);
+    plan.reviewReason = reviewReason;
+    plan.updated_at = new Date().toISOString();
+
+    writeFileSync(planPath, JSON.stringify(plan, null, 2), 'utf-8');
+
+    if (projectId) {
+      projectStore.invalidateTasksCache(projectId);
+    }
+
+    return true;
+  } catch (err) {
+    if (isFileNotFoundError(err)) {
+      return false;
+    }
+    console.warn(`[plan-file-utils] Could not persist status/reason to ${planPath}:`, err);
+    return false;
+  }
+}
+
+/**
  * Read and update the plan file atomically.
  *
  * @param planPath - Path to the implementation_plan.json file

@@ -110,6 +110,8 @@ export function registerAgenteventsHandlers(
   agentManager: AgentManager,
   getMainWindow: () => BrowserWindow | null
 ): void {
+  taskStateManager.configure(getMainWindow);
+
   // ============================================
   // Agent Manager Events → Renderer
   // ============================================
@@ -165,6 +167,7 @@ export function registerAgenteventsHandlers(
   });
 
   agentManager.on("exit", (taskId: string, code: number | null, processType: ProcessType) => {
+    taskStateManager.handleProcessExited(taskId, code);
     // Get project info early for multi-project filtering (issue #723)
     const { project: exitProject } = findTaskAndProject(taskId);
     const exitProjectId = exitProject?.id;
@@ -317,13 +320,11 @@ export function registerAgenteventsHandlers(
       }
     }
 
-    const accepted = taskStateManager.handleTaskEvent(taskId, event);
-    if (!accepted) {
-      return;
-    }
-
     const { task, project } = findTaskAndProject(taskId);
-    if (!task || !project) {
+    if (!task || !project) return;
+
+    const accepted = taskStateManager.handleTaskEvent(taskId, event, task, project);
+    if (!accepted) {
       return;
     }
 
