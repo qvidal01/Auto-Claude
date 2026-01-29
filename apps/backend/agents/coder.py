@@ -11,6 +11,7 @@ import os
 from pathlib import Path
 
 from core.client import create_client
+from core.task_event import TaskEventEmitter
 from linear_updater import (
     LinearTaskState,
     is_linear_enabled,
@@ -18,7 +19,7 @@ from linear_updater import (
     linear_task_started,
     linear_task_stuck,
 )
-from phase_config import get_phase_model, get_phase_thinking_budget
+from phase_config import get_phase_model, get_phase_thinking_budget, load_task_metadata
 from phase_event import ExecutionPhase, emit_phase
 from progress import (
     count_subtasks,
@@ -105,6 +106,7 @@ async def run_autonomous_agent(
 
     # Initialize task logger for persistent logging
     task_logger = get_task_logger(spec_dir)
+    task_event_emitter = TaskEventEmitter.from_spec_dir(spec_dir)
 
     # Debug: Print memory system status at startup
     debug_memory_system_status()
@@ -139,6 +141,22 @@ async def run_autonomous_agent(
     planning_retry_context: str | None = None
     planning_validation_failures = 0
     max_planning_validation_retries = 3
+    planning_complete_emitted = False
+
+    def _get_require_review_before_coding() -> bool:
+        metadata = load_task_metadata(spec_dir) or {}
+        return bool(metadata.get("requireReviewBeforeCoding", False))
+
+    def _get_plan_subtask_counts() -> tuple[int, bool]:
+        plan = load_implementation_plan(spec_dir)
+        if not plan:
+            return 0, False
+        all_subtasks = [
+            subtask
+            for phase in plan.get("phases", [])
+            for subtask in phase.get("subtasks", [])
+        ]
+        return len(all_subtasks), len(all_subtasks) > 0
 
     def _validate_and_fix_implementation_plan() -> tuple[bool, list[str]]:
         from spec.validate_pkg import SpecValidator, auto_fix_plan
@@ -173,6 +191,7 @@ async def run_autonomous_agent(
         # Update status for planning phase
         status_manager.update(state=BuildState.PLANNING)
         emit_phase(ExecutionPhase.PLANNING, "Creating implementation plan")
+        task_event_emitter.emit("PLANNING_STARTED")
         is_planning_phase = True
         current_log_phase = LogPhase.PLANNING
 
@@ -412,6 +431,15 @@ async def run_autonomous_agent(
                 print_status(f"Previous attempts: {attempt_count}", "warning")
             print()
 
+        if subtask_id and current_log_phase == LogPhase.CODING:
+            task_event_emitter.emit(
+                "CODING_STARTED",
+                {
+                    "subtaskId": subtask_id,
+                    "subtaskDescription": next_subtask.get("description", ""),
+                },
+            )
+
         # Set subtask info in logger
         if task_logger and subtask_id:
             task_logger.set_subtask(subtask_id)
@@ -429,6 +457,17 @@ async def run_autonomous_agent(
             if valid:
                 plan_validated = True
                 planning_retry_context = None
+                if not planning_complete_emitted:
+                    subtask_count, has_subtasks = _get_plan_subtask_counts()
+                    task_event_emitter.emit(
+                        "PLANNING_COMPLETE",
+                        {
+                            "hasSubtasks": has_subtasks,
+                            "subtaskCount": subtask_count,
+                            "requireReviewBeforeCoding": _get_require_review_before_coding(),
+                        },
+                    )
+                    planning_complete_emitted = True
             else:
                 planning_validation_failures += 1
                 if planning_validation_failures >= max_planning_validation_retries:
@@ -439,6 +478,13 @@ async def run_autonomous_agent(
                     for err in errors:
                         print(f"  - {err}")
                     status_manager.update(state=BuildState.ERROR)
+                    task_event_emitter.emit(
+                        "PLANNING_FAILED",
+                        {
+                            "error": "implementation_plan.json validation failed",
+                            "recoverable": False,
+                        },
+                    )
                     return
 
                 print_status(
@@ -477,6 +523,7 @@ async def run_autonomous_agent(
                 linear_enabled=linear_is_enabled,
                 status_manager=status_manager,
                 source_spec_dir=source_spec_dir,
+                task_event_emitter=task_event_emitter,
             )
 
             # Check for stuck subtasks
@@ -511,6 +558,13 @@ async def run_autonomous_agent(
             # QA loop will emit COMPLETE after actual approval
             print_build_complete_banner(spec_dir)
             status_manager.update(state=BuildState.COMPLETE)
+            _completed, total = count_subtasks(spec_dir)
+            task_event_emitter.emit(
+                "ALL_SUBTASKS_DONE",
+                {
+                    "totalCount": total,
+                },
+            )
 
             if task_logger:
                 task_logger.end_phase(
@@ -556,6 +610,28 @@ async def run_autonomous_agent(
 
         elif status == "error":
             emit_phase(ExecutionPhase.FAILED, "Session encountered an error")
+            if is_planning_phase:
+                task_event_emitter.emit(
+                    "PLANNING_FAILED",
+                    {
+                        "error": "planner session error",
+                        "recoverable": True,
+                    },
+                )
+            else:
+                attempt_count = (
+                    recovery_manager.get_attempt_count(subtask_id) + 1
+                    if subtask_id
+                    else 0
+                )
+                task_event_emitter.emit(
+                    "CODING_FAILED",
+                    {
+                        "subtaskId": subtask_id or "",
+                        "error": "coding session error",
+                        "attemptCount": attempt_count,
+                    },
+                )
             print_status("Session encountered an error", "error")
             print(muted("Will retry with a fresh session..."))
             status_manager.update(state=BuildState.ERROR)

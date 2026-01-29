@@ -10,6 +10,7 @@ import logging
 from pathlib import Path
 
 from claude_agent_sdk import ClaudeSDKClient
+from core.task_event import TaskEventEmitter
 from debug import debug, debug_detailed, debug_error, debug_section, debug_success
 from insight_extractor import extract_session_insights
 from linear_updater import (
@@ -57,6 +58,7 @@ async def post_session_processing(
     linear_enabled: bool = False,
     status_manager: StatusManager | None = None,
     source_spec_dir: Path | None = None,
+    task_event_emitter: TaskEventEmitter | None = None,
 ) -> bool:
     """
     Process session results and update memory automatically.
@@ -143,6 +145,17 @@ async def post_session_processing(
                 total_count=subtasks_detail["total"],
             )
             print_status("Linear progress recorded", "success")
+
+        if task_event_emitter:
+            subtasks_detail = count_subtasks_detailed(spec_dir)
+            task_event_emitter.emit(
+                "SUBTASK_COMPLETED",
+                {
+                    "subtaskId": subtask_id,
+                    "completedCount": subtasks_detail["completed"],
+                    "totalCount": subtasks_detail["total"],
+                },
+            )
 
         # Extract rich insights from session (LLM-powered analysis)
         try:
