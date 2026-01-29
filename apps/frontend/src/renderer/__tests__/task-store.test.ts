@@ -272,7 +272,7 @@ describe('Task Store', () => {
       expect(useTaskStore.getState().tasks[0].status).toBe('in_progress');
     });
 
-    it('should apply status and reviewReason from plan when provided', () => {
+    it('should NOT modify status from plan (XState is source of truth)', () => {
       useTaskStore.setState({
         tasks: [createTestTask({ id: 'task-1', status: 'ai_review' })]
       });
@@ -284,11 +284,11 @@ describe('Task Store', () => {
 
       useTaskStore.getState().updateTaskFromPlan('task-1', plan);
 
-      expect(useTaskStore.getState().tasks[0].status).toBe('human_review');
-      expect(useTaskStore.getState().tasks[0].reviewReason).toBe('completed');
+      // Status should remain unchanged - XState controls status via TASK_STATUS_CHANGE
+      expect(useTaskStore.getState().tasks[0].status).toBe('ai_review');
     });
 
-    it('should clear reviewReason when plan status is not human_review', () => {
+    it('should preserve existing status and reviewReason when plan has different values', () => {
       useTaskStore.setState({
         tasks: [createTestTask({ id: 'task-1', status: 'human_review', reviewReason: 'errors' })]
       });
@@ -297,8 +297,9 @@ describe('Task Store', () => {
 
       useTaskStore.getState().updateTaskFromPlan('task-1', plan);
 
-      expect(useTaskStore.getState().tasks[0].status).toBe('ai_review');
-      expect(useTaskStore.getState().tasks[0].reviewReason).toBeUndefined();
+      // Status and reviewReason should remain unchanged - XState is source of truth
+      expect(useTaskStore.getState().tasks[0].status).toBe('human_review');
+      expect(useTaskStore.getState().tasks[0].reviewReason).toBe('errors');
     });
 
     it('should skip update when plan is invalid', () => {

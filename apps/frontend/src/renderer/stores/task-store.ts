@@ -360,21 +360,16 @@ export const useTaskStore = create<TaskState>((set, get) => ({
             }))
           });
 
-          const planStatus = plan.status;
-          const status: TaskStatus = planStatus ?? t.status;
-          let reviewReason: ReviewReason | undefined = t.reviewReason;
-          if (planStatus) {
-            reviewReason = planStatus === 'human_review'
-              ? (plan.reviewReason ?? t.reviewReason)
-              : undefined;
-          }
+          // NOTE: We do NOT update status from plan anymore.
+          // XState is the source of truth for status - it emits TASK_STATUS_CHANGE.
+          // Plan updates only update subtasks, title, and other non-status fields.
+          // This prevents race conditions where a stale plan overwrites XState status.
 
           return {
             ...t,
             title: plan.feature || t.title,
             subtasks,
-            status,
-            reviewReason,
+            // Keep existing status and reviewReason - XState manages these via TASK_STATUS_CHANGE
             updatedAt: new Date()
           };
         })
