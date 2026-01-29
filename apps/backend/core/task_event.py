@@ -73,7 +73,7 @@ class TaskEventEmitter:
         self._sequence = context.sequence_start
 
     @classmethod
-    def from_spec_dir(cls, spec_dir: Path) -> "TaskEventEmitter":
+    def from_spec_dir(cls, spec_dir: Path) -> TaskEventEmitter:
         return cls(load_task_event_context(spec_dir))
 
     def emit(self, event_type: str, payload: dict | None = None) -> None:
