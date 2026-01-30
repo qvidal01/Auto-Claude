@@ -12,10 +12,10 @@
  */
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Loader2, ChevronDown, ChevronUp, RotateCcw, FolderTree, GitBranch, Info, Cloud } from 'lucide-react';
+import { Loader2, ChevronDown, ChevronUp, RotateCcw, FolderTree, GitBranch, Info } from 'lucide-react';
 import { Button } from './ui/button';
 import { Label } from './ui/label';
-import { Combobox, type ComboboxOption } from './ui/combobox';
+import { Combobox } from './ui/combobox';
 import { TaskModalLayout } from './task-form/TaskModalLayout';
 import { TaskFormFields } from './task-form/TaskFormFields';
 import { type FileReferenceData } from './task-form/useImageUpload';
@@ -23,6 +23,7 @@ import { TaskFileExplorerDrawer } from './TaskFileExplorerDrawer';
 import { FileAutocomplete } from './FileAutocomplete';
 import { createTask, saveDraft, loadDraft, clearDraft, isDraftEmpty } from '../stores/task-store';
 import { useProjectStore } from '../stores/project-store';
+import { buildBranchOptions } from '../lib/branch-utils';
 import { cn } from '../lib/utils';
 import type { TaskCategory, TaskPriority, TaskComplexity, TaskImpact, TaskMetadata, ImageAttachment, TaskDraft, ModelType, ThinkingLevel, ReferencedFile, BranchInfo } from '../../shared/types';
 import type { PhaseModelConfig, PhaseThinkingConfig } from '../../shared/types/settings';
@@ -77,65 +78,19 @@ export function TaskCreationWizard({
     return project?.path ?? null;
   }, [projects, projectId]);
 
-  // Convert branches to ComboboxOption[] format - grouped by local/remote with type indicators
-  const branchOptions: ComboboxOption[] = useMemo(() => {
-    // Separate local and remote branches
-    const localBranches = branches.filter((b) => b.type === 'local');
-    const remoteBranches = branches.filter((b) => b.type === 'remote');
-
-    // Create options with group headers, icons, and badges
-    const localOptions: ComboboxOption[] = localBranches
-      .filter((b) => b.name !== projectDefaultBranch)
-      .map((branch) => ({
-        value: branch.name,
-        label: branch.displayName,
-        group: t('tasks:wizard.gitOptions.branchGroups.local'),
-        icon: <GitBranch className="h-3.5 w-3.5" />,
-        badge: (
-          <span className="text-xs px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
-            {t('tasks:wizard.gitOptions.branchType.local')}
-          </span>
-        ),
-      }));
-
-    const remoteOptions: ComboboxOption[] = remoteBranches
-      .filter((b) => b.name !== projectDefaultBranch)
-      .map((branch) => ({
-        value: branch.name,
-        label: branch.displayName,
-        group: t('tasks:wizard.gitOptions.branchGroups.remote'),
-        icon: <Cloud className="h-3.5 w-3.5" />,
-        badge: (
-          <span className="text-xs px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-600 dark:text-blue-400">
-            {t('tasks:wizard.gitOptions.branchType.remote')}
-          </span>
-        ),
-      }));
-
-    // Build final options: project default first, then local branches, then remote branches
-    const options: ComboboxOption[] = [
-      {
+  // Build branch options using shared utility - groups by local/remote with type indicators
+  const branchOptions = useMemo(() => {
+    return buildBranchOptions(branches, {
+      t,
+      translationPrefix: 'tasks:wizard.gitOptions',
+      includeProjectDefault: {
         value: PROJECT_DEFAULT_BRANCH,
-        label: projectDefaultBranch
-          ? t('tasks:wizard.gitOptions.useProjectDefaultWithBranch', { branch: projectDefaultBranch })
-          : t('tasks:wizard.gitOptions.useProjectDefault')
+        branchName: projectDefaultBranch,
+        labelKey: projectDefaultBranch
+          ? 'tasks:wizard.gitOptions.useProjectDefaultWithBranch'
+          : 'tasks:wizard.gitOptions.useProjectDefault',
       },
-      ...localOptions,
-      ...remoteOptions,
-    ];
-
-    // If the project default branch is not in the list of existing branches, add it
-    const branchExists = branches.some((b) => b.name === projectDefaultBranch);
-    if (projectDefaultBranch && !branchExists) {
-      options.push({
-        value: projectDefaultBranch,
-        label: projectDefaultBranch,
-        group: t('tasks:wizard.gitOptions.branchGroups.local'),
-        icon: <GitBranch className="h-3.5 w-3.5" />,
-      });
-    }
-
-    return options;
+    });
   }, [branches, projectDefaultBranch, t]);
 
   // Determine if the selected branch is local (for useLocalBranch flag)
