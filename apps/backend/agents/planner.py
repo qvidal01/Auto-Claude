@@ -10,7 +10,7 @@ from pathlib import Path
 
 from core.client import create_client
 from phase_config import get_phase_model, get_phase_thinking_budget
-from phase_event import ExecutionPhase, emit_phase
+from core.phase_event import ExecutionPhase, emit_phase
 from task_logger import (
     LogPhase,
     get_task_logger,

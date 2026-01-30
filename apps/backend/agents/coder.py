@@ -19,7 +19,7 @@ from linear_updater import (
     linear_task_stuck,
 )
 from phase_config import get_phase_model, get_phase_thinking_budget
-from phase_event import ExecutionPhase, emit_phase
+from core.phase_event import ExecutionPhase, emit_phase
 from progress import (
     count_subtasks,
     count_subtasks_detailed,
