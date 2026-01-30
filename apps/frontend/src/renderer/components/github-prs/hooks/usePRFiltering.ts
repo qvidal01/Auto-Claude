@@ -102,9 +102,9 @@ export function usePRFiltering(
     );
   }, [prs]);
 
-  // Filter PRs based on current filters
+  // Filter and sort PRs based on current filters
   const filteredPRs = useMemo(() => {
-    return prs.filter(pr => {
+    const filtered = prs.filter(pr => {
       // Search filter - matches title or body
       if (filters.searchQuery) {
         const query = filters.searchQuery.toLowerCase();
@@ -146,6 +146,26 @@ export function usePRFiltering(
 
       return true;
     });
+
+    // Sort the filtered results
+    return filtered.sort((a, b) => {
+      switch (filters.sortBy) {
+        case 'newest':
+          // Sort by createdAt descending (most recent first)
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        case 'oldest':
+          // Sort by createdAt ascending (oldest first)
+          return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+        case 'largest': {
+          // Sort by total changes (additions + deletions) descending
+          const aChanges = (a.additions || 0) + (a.deletions || 0);
+          const bChanges = (b.additions || 0) + (b.deletions || 0);
+          return bChanges - aChanges;
+        }
+        default:
+          return 0;
+      }
+    });
   }, [prs, filters, getReviewStateForPR]);
 
   // Filter setters
@@ -159,6 +179,10 @@ export function usePRFiltering(
 
   const setStatuses = useCallback((statuses: PRStatusFilter[]) => {
     setFiltersState(prev => ({ ...prev, statuses }));
+  }, []);
+
+  const setSortBy = useCallback((sortBy: PRSortOption) => {
+    setFiltersState(prev => ({ ...prev, sortBy }));
   }, []);
 
   const clearFilters = useCallback(() => {
@@ -180,6 +204,7 @@ export function usePRFiltering(
     setSearchQuery,
     setContributors,
     setStatuses,
+    setSortBy,
     clearFilters,
     hasActiveFilters,
   };
