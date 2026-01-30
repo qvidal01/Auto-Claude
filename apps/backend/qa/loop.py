@@ -30,12 +30,22 @@ from task_logger import (
     get_task_logger,
 )
 
-# Imports moved to function level to avoid circular import:
-# from .criteria import get_qa_iteration_count, get_qa_signoff_status, is_qa_approved
-# from .fixer import run_qa_fixer_session
-# from .report import (create_manual_test_plan, escalate_to_human, get_iteration_history,
-#                      get_recurring_issue_summary, has_recurring_issues, is_no_test_project, record_iteration)
-# from .reviewer import run_qa_agent_session
+from .criteria import (
+    get_qa_iteration_count,
+    get_qa_signoff_status,
+    is_qa_approved,
+)
+from .fixer import run_qa_fixer_session
+from .report import (
+    create_manual_test_plan,
+    escalate_to_human,
+    get_iteration_history,
+    get_recurring_issue_summary,
+    has_recurring_issues,
+    is_no_test_project,
+    record_iteration,
+)
+from .reviewer import run_qa_agent_session
 
 # Configuration
 MAX_QA_ITERATIONS = 50
@@ -591,27 +601,3 @@ async def run_qa_validation_loop(
 
     print("\nManual intervention required.")
     return False
-
-
-# =============================================================================
-# MODULE-LEVEL IMPORTS (for testing and external access)
-# =============================================================================
-# These are imported here (after all function definitions) to avoid circular imports
-# while still making them available for testing and external modules.
-
-from .criteria import (
-    get_qa_iteration_count,
-    get_qa_signoff_status,
-    is_qa_approved,
-)
-from .fixer import run_qa_fixer_session
-from .report import (
-    create_manual_test_plan,
-    escalate_to_human,
-    get_iteration_history,
-    get_recurring_issue_summary,
-    has_recurring_issues,
-    is_no_test_project,
-    record_iteration,
-)
-from .reviewer import run_qa_agent_session

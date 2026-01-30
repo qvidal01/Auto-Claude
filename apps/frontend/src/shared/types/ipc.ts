@@ -46,6 +46,7 @@ import type {
   TaskLogs,
   TaskLogStreamChunk,
   ImageAttachment,
+  ReviewReason,
   MergeProgress
 } from './task';
 import type {

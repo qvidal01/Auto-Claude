@@ -10,6 +10,7 @@ import type {
   TaskMetadata,
   TaskLogs,
   TaskLogStreamChunk,
+  ReviewReason,
   MergeProgress,
   SupportedIDE,
   SupportedTerminal,

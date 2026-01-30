@@ -3,7 +3,7 @@ import type { ActorRefFrom } from 'xstate';
 import type { BrowserWindow } from 'electron';
 import type { TaskEventPayload } from './agent/task-event-schema';
 import type { Project, Task, TaskStatus, ReviewReason, ExecutionPhase } from '../shared/types';
-import { taskMachine, XSTATE_TO_PHASE, mapStateToLegacy, type TaskEvent } from '../shared/state-machines';
+import { taskMachine, type TaskEvent } from '../shared/state-machines';
 import { IPC_CHANNELS } from '../shared/constants';
 import { safeSendToRenderer } from './ipc-handlers/utils';
 import { getPlanPath, persistPlanStatusAndReasonSync } from './ipc-handlers/task/plan-file-utils';
@@ -14,6 +14,21 @@ import path from 'path';
 
 type TaskActor = ActorRefFrom<typeof taskMachine>;
 
+/** Maps XState states to execution phases. Shared by mapStateToExecutionPhase and emitPhaseFromState. */
+const XSTATE_TO_PHASE: Record<string, ExecutionPhase> = {
+  'backlog': 'idle',
+  'planning': 'planning',
+  'plan_review': 'planning',
+  'coding': 'coding',
+  'qa_review': 'qa_review',
+  'qa_fixing': 'qa_fixing',
+  'human_review': 'complete',
+  'error': 'failed',
+  'creating_pr': 'complete',
+  'pr_created': 'complete',
+  'done': 'complete'
+};
+
 interface TaskContextEntry {
   task: Task;
   project: Project;
@@ -21,7 +36,6 @@ interface TaskContextEntry {
 
 const TERMINAL_EVENTS = new Set<string>([
   'QA_PASSED',
-  'PLANNING_COMPLETE',
   'PLANNING_FAILED',
   'CODING_FAILED',
   'QA_MAX_ITERATIONS',
@@ -43,10 +57,10 @@ export class TaskStateManager {
 
   handleTaskEvent(taskId: string, event: TaskEventPayload, task: Task, project: Project): boolean {
     const lastSeq = this.lastSequenceByTask.get(taskId);
-    console.debug(`[TaskStateManager] handleTaskEvent: ${event.type} seq=${event.sequence}, lastSeq=${lastSeq}`);
+    console.log(`[TaskStateManager] handleTaskEvent: ${event.type} seq=${event.sequence}, lastSeq=${lastSeq}`);
 
     if (!this.isNewSequence(taskId, event.sequence)) {
-      console.debug(`[TaskStateManager] Event ${event.type} DROPPED - sequence ${event.sequence} not newer than ${lastSeq}`);
+      console.log(`[TaskStateManager] Event ${event.type} DROPPED - sequence ${event.sequence} not newer than ${lastSeq}`);
       return false;
     }
     this.setTaskContext(taskId, task, project);
@@ -58,10 +72,10 @@ export class TaskStateManager {
 
     const actor = this.getOrCreateActor(taskId);
     const stateBefore = String(actor.getSnapshot().value);
-    console.debug(`[TaskStateManager] Sending ${event.type} to actor in state: ${stateBefore}`);
+    console.log(`[TaskStateManager] Sending ${event.type} to actor in state: ${stateBefore}`);
     actor.send(event as TaskEvent);
     const stateAfter = String(actor.getSnapshot().value);
-    console.debug(`[TaskStateManager] After ${event.type}: state ${stateBefore} -> ${stateAfter}`);
+    console.log(`[TaskStateManager] After ${event.type}: state ${stateBefore} -> ${stateAfter}`);
     return true;
   }
 
@@ -78,26 +92,22 @@ export class TaskStateManager {
       return;
     }
     const actor = this.getOrCreateActor(taskId);
-    // Only mark as unexpected if the process exited with a non-zero code.
-    // A code-0 exit is normal (e.g., spec creation finished, plan created, waiting for review).
-    // Sending unexpected:true for code-0 exits incorrectly transitions plan_review → error.
-    const isUnexpected = exitCode !== 0;
     actor.send({
       type: 'PROCESS_EXITED',
       exitCode: exitCode ?? -1,
-      unexpected: isUnexpected
+      unexpected: true
     } satisfies TaskEvent);
   }
 
   handleUiEvent(taskId: string, event: TaskEvent, task: Task, project: Project): void {
-    console.debug(`[TaskStateManager] handleUiEvent: ${event.type} for task ${taskId}`);
+    console.log(`[TaskStateManager] handleUiEvent: ${event.type} for task ${taskId}`);
     this.setTaskContext(taskId, task, project);
     const actor = this.getOrCreateActor(taskId);
     const stateBefore = String(actor.getSnapshot().value);
-    console.debug(`[TaskStateManager] Sending UI event ${event.type} to actor in state: ${stateBefore}`);
+    console.log(`[TaskStateManager] Sending UI event ${event.type} to actor in state: ${stateBefore}`);
     actor.send(event);
     const stateAfter = String(actor.getSnapshot().value);
-    console.debug(`[TaskStateManager] After UI event ${event.type}: state ${stateBefore} -> ${stateAfter}`);
+    console.log(`[TaskStateManager] After UI event ${event.type}: state ${stateBefore} -> ${stateAfter}`);
   }
 
   handleManualStatusChange(taskId: string, status: TaskStatus, task: Task, project: Project): boolean {
@@ -210,7 +220,7 @@ export class TaskStateManager {
   private getOrCreateActor(taskId: string): TaskActor {
     const existing = this.actors.get(taskId);
     if (existing) {
-      console.debug(`[TaskStateManager] Using existing actor for ${taskId}, current state:`, String(existing.getSnapshot().value));
+      console.log(`[TaskStateManager] Using existing actor for ${taskId}, current state:`, String(existing.getSnapshot().value));
       return existing;
     }
 
@@ -220,14 +230,14 @@ export class TaskStateManager {
       : undefined;
 
     if (contextEntry) {
-      console.debug(`[TaskStateManager] Creating new actor for ${taskId} from task:`, {
+      console.log(`[TaskStateManager] Creating new actor for ${taskId} from task:`, {
         status: contextEntry.task.status,
         reviewReason: contextEntry.task.reviewReason,
         phase: contextEntry.task.executionProgress?.phase,
         initialState: snapshot ? String(snapshot.value) : 'default (backlog)'
       });
     } else {
-      console.debug(`[TaskStateManager] Creating new actor for ${taskId} with default state (no context entry)`);
+      console.log(`[TaskStateManager] Creating new actor for ${taskId} with default state (no context entry)`);
     }
 
     const actor = snapshot
@@ -237,7 +247,8 @@ export class TaskStateManager {
       const stateValue = String(snapshot.value);
       const lastState = this.lastStateByTask.get(taskId);
 
-      console.debug(`[TaskStateManager] XState transition for ${taskId}:`, {
+      // Debug: Log all state transitions
+      console.log(`[TaskStateManager] XState transition for ${taskId}:`, {
         from: lastState,
         to: stateValue,
         contextReviewReason: snapshot.context.reviewReason
@@ -262,7 +273,8 @@ export class TaskStateManager {
       // Map XState state to execution phase for persistence
       const executionPhase = this.mapStateToExecutionPhase(stateValue);
 
-      console.debug(`[TaskStateManager] Emitting status for ${taskId}:`, {
+      // Debug: Log the mapped status and reviewReason
+      console.log(`[TaskStateManager] Emitting status for ${taskId}:`, {
         status,
         reviewReason,
         xstateState: stateValue,
@@ -326,7 +338,7 @@ export class TaskStateManager {
       console.warn(`[TaskStateManager] emitStatus: No main window, cannot emit status ${status} for ${taskId}`);
       return;
     }
-    console.debug(`[TaskStateManager] emitStatus: Sending TASK_STATUS_CHANGE for ${taskId}:`, { status, reviewReason, projectId });
+    console.log(`[TaskStateManager] emitStatus: Sending TASK_STATUS_CHANGE for ${taskId}:`, { status, reviewReason, projectId });
     safeSendToRenderer(
       this.getMainWindow,
       IPC_CHANNELS.TASK_STATUS_CHANGE,
@@ -378,11 +390,9 @@ export class TaskStateManager {
     const status = task.status;
     const reviewReason = task.reviewReason;
     const executionPhase = task.executionProgress?.phase;
+    let stateValue: string = 'backlog';
     let contextReviewReason: ReviewReason | undefined;
 
-    // Determine state value based on task status and execution phase
-    // Default to 'backlog', will be overridden in switch cases
-    let stateValue = 'backlog';
     switch (status) {
       case 'in_progress':
         // Use executionProgress.phase to determine if we're in planning or coding
@@ -415,6 +425,7 @@ export class TaskStateManager {
         stateValue = 'error';
         contextReviewReason = reviewReason ?? 'errors';
         break;
+      case 'backlog':
       default:
         stateValue = 'backlog';
         break;
@@ -430,3 +441,33 @@ export class TaskStateManager {
 }
 
 export const taskStateManager = new TaskStateManager();
+
+function mapStateToLegacy(
+  state: string,
+  reviewReason?: ReviewReason
+): { status: TaskStatus; reviewReason?: ReviewReason } {
+  switch (state) {
+    case 'backlog':
+      return { status: 'backlog' };
+    case 'planning':
+    case 'coding':
+      return { status: 'in_progress' };
+    case 'plan_review':
+      return { status: 'human_review', reviewReason: 'plan_review' };
+    case 'qa_review':
+    case 'qa_fixing':
+      return { status: 'ai_review' };
+    case 'human_review':
+      return { status: 'human_review', reviewReason };
+    case 'error':
+      return { status: 'human_review', reviewReason: 'errors' };
+    case 'creating_pr':
+      return { status: 'human_review', reviewReason: 'completed' };
+    case 'pr_created':
+      return { status: 'pr_created' };
+    case 'done':
+      return { status: 'done' };
+    default:
+      return { status: 'backlog' };
+  }
+}

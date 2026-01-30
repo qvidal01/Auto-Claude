@@ -12,6 +12,7 @@ import { AgentState } from './agent-state';
 import { AgentEvents } from './agent-events';
 import { ProcessType, ExecutionProgressData } from './types';
 import type { CompletablePhase } from '../../shared/constants/phase-protocol';
+import { parseTaskEvent } from './task-event-parser';
 import { detectRateLimit, createSDKRateLimitInfo, getBestAvailableProfileEnv, detectAuthFailure } from '../rate-limit-detector';
 import { getAPIProfileEnv } from '../services/profile';
 import { projectStore } from '../project-store';
@@ -698,7 +699,7 @@ export class AgentProcessManager {
       const taskEvent = parseTaskEvent(line);
       if (taskEvent) {
         console.log(`[AgentProcess:${taskId}] Parsed task event:`, taskEvent.type, taskEvent);
-        this.emitter.emit('task-event', taskId, taskEvent, projectId);
+        this.emitter.emit('task-event', taskId, taskEvent);
       }
 
       const phaseUpdate = this.events.parseExecutionPhase(line, currentPhase, isSpecRunner);

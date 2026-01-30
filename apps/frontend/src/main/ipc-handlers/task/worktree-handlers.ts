@@ -24,6 +24,7 @@ import { getIsolatedGitEnv, detectWorktreeBranch, refreshGitIndex } from '../../
 import { cleanupWorktree } from '../../utils/worktree-cleanup';
 import { killProcessGracefully } from '../../platform';
 import { stripAnsiCodes } from '../../../shared/utils/ansi-sanitizer';
+import { taskStateManager } from '../../task-state-manager';
 
 // Regex pattern for validating git branch names
 export const GIT_BRANCH_REGEX = /^[a-zA-Z0-9][a-zA-Z0-9._/-]*[a-zA-Z0-9]$|^[a-zA-Z0-9]$/;
@@ -2778,10 +2779,8 @@ export function registerWorktreeHandlers(
         // Only send status change to backlog if not skipped
         // (skip when caller will set a different status, e.g., 'done')
         if (!skipStatusChange) {
-          const mainWindow = getMainWindow();
-          if (mainWindow) {
-            mainWindow.webContents.send(IPC_CHANNELS.TASK_STATUS_CHANGE, taskId, 'backlog');
-          }
+          // Route through TaskStateManager (XState) to avoid dual emission
+          taskStateManager.handleManualStatusChange(taskId, 'backlog', task, project);
         }
 
         return {

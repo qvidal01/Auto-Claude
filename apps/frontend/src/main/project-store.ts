@@ -2,7 +2,7 @@ import { app } from 'electron';
 import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, Dirent } from 'fs';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
-import type { Project, ProjectSettings, Task, TaskStatus, TaskMetadata, ImplementationPlan, ReviewReason, PlanSubtask, KanbanPreferences } from '../shared/types';
+import type { Project, ProjectSettings, Task, TaskStatus, TaskMetadata, ImplementationPlan, ReviewReason, PlanSubtask, KanbanPreferences, ExecutionPhase } from '../shared/types';
 import { DEFAULT_PROJECT_SETTINGS, AUTO_BUILD_PATHS, getSpecsDir, JSON_ERROR_PREFIX, JSON_ERROR_TITLE_SUFFIX } from '../shared/constants';
 import { getAutoBuildPath, isInitialized } from './project-initializer';
 import { getTaskWorktreeDir } from './worktree-paths';
@@ -558,7 +558,7 @@ export class ProjectStore {
           subtasks,
           logs: [],
           metadata,
-          ...(correctedReviewReason !== undefined && { reviewReason: correctedReviewReason }),
+          ...(finalReviewReason !== undefined && { reviewReason: finalReviewReason }),
           ...(executionProgress && { executionProgress }),
           stagedInMainProject,
           stagedAt,
@@ -574,75 +574,6 @@ export class ProjectStore {
     }
 
     return tasks;
-  }
-
-  /**
-   * Correct stale task status when all subtasks are completed but status wasn't persisted.
-   * Extracted from loadTasksFromSpecsDir to keep read/write separation clear.
-   *
-   * NOTE: This method intentionally writes to implementation_plan.json to persist the
-   * correction and prevent repeated auto-corrections on every getTasks() call. The plan
-   * object is NOT mutated unless the write succeeds, preserving memory/disk consistency.
-   */
-  private correctStaleTaskStatus(
-    subtasks: { status: string }[],
-    hasJsonError: boolean,
-    finalStatus: TaskStatus,
-    finalReviewReason: ReviewReason | undefined,
-    plan: ImplementationPlan | null,
-    planPath: string,
-    taskName: string
-  ): { status: TaskStatus; reviewReason: ReviewReason | undefined } {
-    if (subtasks.length === 0 || hasJsonError) {
-      return { status: finalStatus, reviewReason: finalReviewReason };
-    }
-
-    const completedCount = subtasks.filter(s => s.status === 'completed').length;
-    const allCompleted = completedCount === subtasks.length;
-
-    // Only auto-correct if all subtasks are done and status is in an incomplete coding state.
-    // Preserve ai_review (QA in progress), error (needs investigation), human_review, done, pr_created.
-    if (!allCompleted || finalStatus === 'human_review' || finalStatus === 'done' || finalStatus === 'pr_created' || finalStatus === 'ai_review' || finalStatus === 'error') {
-      return { status: finalStatus, reviewReason: finalReviewReason };
-    }
-
-    // Skip auto-correction if plan was recently updated (backend may still be writing)
-    if (plan?.updated_at) {
-      const updatedAt = new Date(plan.updated_at).getTime();
-      const ageMs = Date.now() - updatedAt;
-      if (ageMs < 30_000) {
-        return { status: finalStatus, reviewReason: finalReviewReason };
-      }
-    }
-
-    console.warn(`[ProjectStore] Auto-correcting task ${taskName}: all ${subtasks.length} subtasks completed but status was ${finalStatus}. Setting to human_review.`);
-
-    if (plan) {
-      // Clone before mutation — only apply to the original plan object if the write succeeds
-      const correctedPlan = {
-        ...plan,
-        status: 'human_review' as const,
-        planStatus: 'review',
-        reviewReason: 'completed' as ReviewReason,
-        updated_at: new Date().toISOString(),
-        xstateState: 'human_review',
-        executionPhase: 'complete'
-      };
-      try {
-        writeFileSync(planPath, JSON.stringify(correctedPlan, null, 2), 'utf-8');
-        // Write succeeded — apply mutations to the in-memory plan so the rest of
-        // loadTasksFromSpecsDir sees the corrected values (e.g., executionProgress)
-        Object.assign(plan, correctedPlan);
-        console.warn(`[ProjectStore] Persisted corrected status for task ${taskName}`);
-      } catch (writeError) {
-        // Write failed — leave the plan object unchanged and return the original status
-        // so there's no memory/disk inconsistency
-        console.error(`[ProjectStore] Failed to persist corrected status for task ${taskName}:`, writeError);
-        return { status: finalStatus, reviewReason: finalReviewReason };
-      }
-    }
-
-    return { status: 'human_review', reviewReason: 'completed' };
   }
 
   /**
@@ -679,15 +610,8 @@ export class ProjectStore {
     const storedStatus = statusMap[plan.status] || 'backlog';
     const reviewReason = storedStatus === 'human_review' ? plan.reviewReason : undefined;
 
-    // ========================================================================
-    // STEP 1: Check for terminal statuses (highest priority - always respected)
-    // ========================================================================
-    if (plan?.status) {
-      const storedStatus = statusMap[plan.status];
-      if (storedStatus && TERMINAL_STATUSES.has(storedStatus)) {
-        return { status: storedStatus };
-      }
-    }
+    return { status: storedStatus, reviewReason };
+  }
 
   /**
    * Infer execution progress from plan status for XState snapshot restoration.
@@ -716,92 +640,44 @@ export class ProjectStore {
       'error': 'failed'
     };
 
-      // During active execution, respect the stored status to prevent jumping
-      if (isActiveProcessStatus && storedStatus === 'in_progress') {
-        return { status: 'in_progress' };
-      }
+    const phase = phaseMap[planStatus];
+    if (!phase) return undefined;
 
-      // Plan review stage (human approval of spec before coding starts)
-      if (isPlanReviewStage && storedStatus === 'human_review') {
-        return { status: 'human_review', reviewReason: 'plan_review' };
-      }
+    return {
+      phase,
+      phaseProgress: 50,
+      overallProgress: 50
+    };
+  }
 
-      // Explicit human_review status should be preserved unless we have evidence to change it
-      if (storedStatus === 'human_review') {
-        // Infer review reason from subtask/QA state
-        const hasFailedSubtasks = allSubtasks.some((s) => s.status === 'failed');
-        const allCompleted = allSubtasks.length > 0 && allSubtasks.every((s) => s.status === 'completed');
-        let reviewReason: ReviewReason | undefined;
-        if (hasFailedSubtasks) {
-          reviewReason = 'errors';
-        } else if (allCompleted) {
-          reviewReason = 'completed';
-        }
-        return { status: 'human_review', reviewReason };
-      }
+  /**
+   * Infer execution progress from persisted XState state.
+   * This is more precise than inferring from plan status since it uses the exact machine state.
+   */
+  private inferExecutionProgressFromXState(xstateState: string): { phase: ExecutionPhase; phaseProgress: number; overallProgress: number } | undefined {
+    // Map XState state directly to execution phase
+    const phaseMap: Record<string, ExecutionPhase> = {
+      'backlog': 'idle',
+      'planning': 'planning',
+      'plan_review': 'planning',
+      'coding': 'coding',
+      'qa_review': 'qa_review',
+      'qa_fixing': 'qa_fixing',
+      'human_review': 'complete',
+      'error': 'failed',
+      'creating_pr': 'complete',
+      'pr_created': 'complete',
+      'done': 'complete'
+    };
 
-      // Explicit ai_review status should be preserved
-      if (storedStatus === 'ai_review') {
-        return { status: 'ai_review' };
-      }
-    }
+    const phase = phaseMap[xstateState];
+    if (!phase) return undefined;
 
-    // ========================================================================
-    // STEP 3: Check QA report file for status info
-    // ========================================================================
-    const qaReportPath = path.join(specPath, AUTO_BUILD_PATHS.QA_REPORT);
-    if (existsSync(qaReportPath)) {
-      try {
-        const content = readFileSync(qaReportPath, 'utf-8');
-        if (content.includes('REJECTED') || content.includes('FAILED')) {
-          return { status: 'human_review', reviewReason: 'qa_rejected' };
-        }
-        if (content.includes('PASSED') || content.includes('APPROVED')) {
-          // QA passed - if all subtasks done, move to human_review
-          if (allSubtasks.length > 0 && allSubtasks.every((s) => s.status === 'completed')) {
-            return { status: 'human_review', reviewReason: 'completed' };
-          }
-        }
-      } catch {
-        // Ignore read errors
-      }
-    }
-
-    // ========================================================================
-    // STEP 4: Calculate status from subtask analysis (fallback only)
-    // This is the lowest priority - only used when no explicit status is set
-    // ========================================================================
-    let calculatedStatus: TaskStatus = 'backlog';
-    let reviewReason: ReviewReason | undefined;
-
-    if (allSubtasks.length > 0) {
-      const completed = allSubtasks.filter((s) => s.status === 'completed').length;
-      const inProgress = allSubtasks.filter((s) => s.status === 'in_progress').length;
-      const failed = allSubtasks.filter((s) => s.status === 'failed').length;
-
-      if (completed === allSubtasks.length) {
-        // All subtasks completed - check QA status
-        const qaSignoff = (plan as unknown as Record<string, unknown>)?.qa_signoff as { status?: string } | undefined;
-        if (qaSignoff?.status === 'approved') {
-          calculatedStatus = 'human_review';
-          reviewReason = 'completed';
-        } else {
-          // Manual tasks skip AI review and go directly to human review
-          calculatedStatus = metadata?.sourceType === 'manual' ? 'human_review' : 'ai_review';
-          if (metadata?.sourceType === 'manual') {
-            reviewReason = 'completed';
-          }
-        }
-      } else if (failed > 0) {
-        // Some subtasks failed - needs human attention
-        calculatedStatus = 'human_review';
-        reviewReason = 'errors';
-      } else if (inProgress > 0 || completed > 0) {
-        calculatedStatus = 'in_progress';
-      }
-    }
-
-    return { status: calculatedStatus, reviewReason: calculatedStatus === 'human_review' ? reviewReason : undefined };
+    return {
+      phase,
+      phaseProgress: phase === 'complete' ? 100 : 50,
+      overallProgress: phase === 'complete' ? 100 : 50
+    };
   }
 
   /**

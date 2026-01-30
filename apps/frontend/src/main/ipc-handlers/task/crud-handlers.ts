@@ -10,6 +10,7 @@ import { findTaskAndProject } from './shared';
 import { findAllSpecPaths, isValidTaskId } from '../../utils/spec-path-helpers';
 import { isPathWithinBase, findTaskWorktree } from '../../worktree-paths';
 import { cleanupWorktree } from '../../utils/worktree-cleanup';
+import { taskStateManager } from '../../task-state-manager';
 
 /**
  * Register task CRUD (Create, Read, Update, Delete) handlers
