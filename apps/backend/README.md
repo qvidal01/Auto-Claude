@@ -111,6 +111,34 @@ from progress import count_subtasks
 from workspace import setup_workspace
 ```
 
+### Convenience Modules (Facades)
+
+The backend provides several **convenience modules** at the root level (`apps/backend/`) that re-export frequently used utilities from their canonical locations. These are intentionally kept to simplify imports across the codebase.
+
+| Module | Canonical Path | Purpose |
+|--------|----------------|---------|
+| `debug.py` | `core.debug` | Debug logging utilities |
+| `progress.py` | `core.progress` | Build progress tracking |
+| `workspace.py` | `core.workspace` | Workspace/worktree management |
+| `worktree.py` | `core.worktree` | Git worktree operations |
+| `graphiti_config.py` | `integrations.graphiti.config` | Memory system configuration |
+| `graphiti_providers.py` | `integrations.graphiti.providers_pkg` | Graphiti provider utilities |
+| `project_analyzer.py` | `project` | Project analysis utilities |
+| `security.py` | `security` | Security module re-export |
+
+**When to use convenience modules:**
+```python
+# ✓ Preferred for commonly used utilities
+from debug import debug, debug_error
+from progress import count_subtasks
+
+# ✓ Also valid - canonical path for less common imports
+from core.debug import debug_verbose
+from core.progress import get_plan_summary
+```
+
+**Note:** `worktree.py` uses a special import pattern to avoid loading heavy SDK dependencies. Do not remove or simplify this file without understanding its dependency isolation role.
+
 ### Adding Features
 
 1. Create module in appropriate folder
