@@ -236,6 +236,12 @@
     "selectedCount": "{{count}} sélectionné(s)",
     "noResultsFound": "Aucun résultat trouvé",
     "reset": "Réinitialiser",
+    "sort": {
+      "label": "Trier",
+      "newest": "Plus récent",
+      "oldest": "Plus ancien",
+      "largest": "Plus grand"
+    },
     "pullRequests": "Pull Requests",
     "open": "ouvert",
     "selectPRToView": "Sélectionnez une pull request pour voir les détails",

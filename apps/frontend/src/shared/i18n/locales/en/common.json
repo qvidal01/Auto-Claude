@@ -236,6 +236,12 @@
     "selectedCount": "{{count}} selected",
     "noResultsFound": "No results found",
     "reset": "Reset",
+    "sort": {
+      "label": "Sort",
+      "newest": "Newest",
+      "oldest": "Oldest",
+      "largest": "Largest"
+    },
     "pullRequests": "Pull Requests",
     "open": "open",
     "selectPRToView": "Select a pull request to view details",
