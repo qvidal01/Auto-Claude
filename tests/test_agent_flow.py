@@ -932,7 +932,7 @@ class TestQALoopStateTransitions:
 
     def test_qa_not_required_when_build_incomplete(self, test_env):
         """QA should not run when build is incomplete."""
-        from qa_loop import save_implementation_plan
+        from qa import save_implementation_plan
         # Import the real is_build_complete to patch at the right level
         from core.progress import is_build_complete as real_is_build_complete
 
@@ -962,7 +962,7 @@ class TestQALoopStateTransitions:
 
     def test_qa_required_when_build_complete(self, test_env):
         """QA should run when build is complete and not yet approved."""
-        from qa_loop import save_implementation_plan
+        from qa import save_implementation_plan
         from core.progress import is_build_complete as real_is_build_complete
 
         temp_dir, spec_dir, project_dir = test_env
@@ -990,7 +990,7 @@ class TestQALoopStateTransitions:
 
     def test_qa_not_required_when_already_approved(self, test_env):
         """QA should not run when build is already approved."""
-        from qa_loop import save_implementation_plan
+        from qa import save_implementation_plan
         from core.progress import is_build_complete as real_is_build_complete
 
         temp_dir, spec_dir, project_dir = test_env
@@ -1025,7 +1025,7 @@ class TestQAFixerInteraction:
 
     def test_fixer_should_run_when_qa_rejected(self, test_env):
         """Fixer should run when QA rejected the build."""
-        from qa_loop import should_run_fixes, save_implementation_plan
+        from qa import should_run_fixes, save_implementation_plan
 
         temp_dir, spec_dir, project_dir = test_env
 
@@ -1043,7 +1043,7 @@ class TestQAFixerInteraction:
 
     def test_fixer_should_not_run_when_qa_approved(self, test_env):
         """Fixer should not run when QA approved the build."""
-        from qa_loop import should_run_fixes, save_implementation_plan
+        from qa import should_run_fixes, save_implementation_plan
 
         temp_dir, spec_dir, project_dir = test_env
 
@@ -1061,7 +1061,7 @@ class TestQAFixerInteraction:
 
     def test_fixer_should_not_run_at_max_iterations(self, test_env):
         """Fixer should not run when max iterations reached."""
-        from qa_loop import should_run_fixes, save_implementation_plan, MAX_QA_ITERATIONS
+        from qa import should_run_fixes, save_implementation_plan, MAX_QA_ITERATIONS
 
         temp_dir, spec_dir, project_dir = test_env
 
@@ -1079,7 +1079,7 @@ class TestQAFixerInteraction:
 
     def test_fixer_fixes_applied_state(self, test_env):
         """Test transition to fixes_applied state after fixer runs."""
-        from qa_loop import is_fixes_applied, save_implementation_plan
+        from qa import is_fixes_applied, save_implementation_plan
 
         temp_dir, spec_dir, project_dir = test_env
 
@@ -1098,7 +1098,7 @@ class TestQAFixerInteraction:
 
     def test_fixer_fixes_not_ready_for_revalidation(self, test_env):
         """Test fixes_applied but not ready for revalidation."""
-        from qa_loop import is_fixes_applied, save_implementation_plan
+        from qa import is_fixes_applied, save_implementation_plan
 
         temp_dir, spec_dir, project_dir = test_env
 
@@ -1120,7 +1120,7 @@ class TestQAVerdictHandling:
 
     def test_qa_approved_verdict(self, test_env):
         """Test QA approved verdict is correctly detected."""
-        from qa_loop import is_qa_approved, is_qa_rejected, save_implementation_plan
+        from qa import is_qa_approved, is_qa_rejected, save_implementation_plan
 
         temp_dir, spec_dir, project_dir = test_env
 
@@ -1140,7 +1140,7 @@ class TestQAVerdictHandling:
 
     def test_qa_rejected_verdict(self, test_env):
         """Test QA rejected verdict is correctly detected."""
-        from qa_loop import is_qa_approved, is_qa_rejected, save_implementation_plan
+        from qa import is_qa_approved, is_qa_rejected, save_implementation_plan
 
         temp_dir, spec_dir, project_dir = test_env
 
@@ -1160,7 +1160,7 @@ class TestQAVerdictHandling:
 
     def test_qa_no_verdict_yet(self, test_env):
         """Test when no QA verdict has been made yet."""
-        from qa_loop import is_qa_approved, is_qa_rejected, get_qa_signoff_status, save_implementation_plan
+        from qa import is_qa_approved, is_qa_rejected, get_qa_signoff_status, save_implementation_plan
 
         temp_dir, spec_dir, project_dir = test_env
 
@@ -1176,7 +1176,7 @@ class TestQAVerdictHandling:
 
     def test_qa_iteration_count_tracking(self, test_env):
         """Test QA iteration count is tracked correctly."""
-        from qa_loop import get_qa_iteration_count, save_implementation_plan
+        from qa import get_qa_iteration_count, save_implementation_plan
 
         temp_dir, spec_dir, project_dir = test_env
 
@@ -1200,7 +1200,7 @@ class TestQAVerdictHandling:
 
     def test_qa_iteration_count_zero_when_no_signoff(self, test_env):
         """Test iteration count is 0 when no QA sessions yet."""
-        from qa_loop import get_qa_iteration_count, save_implementation_plan
+        from qa import get_qa_iteration_count, save_implementation_plan
 
         temp_dir, spec_dir, project_dir = test_env
 
@@ -1215,7 +1215,7 @@ class TestQALoopWorkflow:
 
     def test_full_qa_workflow_approved_first_try(self, test_env):
         """Test complete QA workflow where build passes on first try."""
-        from qa_loop import (
+        from qa import (
             should_run_qa,
             should_run_fixes,
             is_qa_approved,
@@ -1255,7 +1255,7 @@ class TestQALoopWorkflow:
 
     def test_full_qa_workflow_with_one_rejection(self, test_env):
         """Test QA workflow with one rejection followed by approval."""
-        from qa_loop import (
+        from qa import (
             should_run_qa,
             should_run_fixes,
             is_qa_approved,
@@ -1317,7 +1317,7 @@ class TestQALoopWorkflow:
 
     def test_qa_workflow_multiple_rejections(self, test_env):
         """Test QA workflow with multiple rejections until max iterations."""
-        from qa_loop import (
+        from qa import (
             should_run_fixes,
             is_qa_rejected,
             get_qa_iteration_count,
@@ -1352,7 +1352,7 @@ class TestQASignoffDataStructure:
 
     def test_approved_signoff_has_tests_passed(self, test_env):
         """Test approved signoff includes tests_passed field."""
-        from qa_loop import get_qa_signoff_status, save_implementation_plan
+        from qa import get_qa_signoff_status, save_implementation_plan
 
         temp_dir, spec_dir, project_dir = test_env
 
@@ -1378,7 +1378,7 @@ class TestQASignoffDataStructure:
 
     def test_rejected_signoff_has_issues_found(self, test_env):
         """Test rejected signoff includes issues_found field."""
-        from qa_loop import get_qa_signoff_status, save_implementation_plan
+        from qa import get_qa_signoff_status, save_implementation_plan
 
         temp_dir, spec_dir, project_dir = test_env
 
@@ -1403,7 +1403,7 @@ class TestQASignoffDataStructure:
 
     def test_issues_have_title_and_type(self, test_env):
         """Test that issues in rejected signoff have required fields."""
-        from qa_loop import get_qa_signoff_status, save_implementation_plan
+        from qa import get_qa_signoff_status, save_implementation_plan
 
         temp_dir, spec_dir, project_dir = test_env
 
