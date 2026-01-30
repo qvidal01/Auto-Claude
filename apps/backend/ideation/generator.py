@@ -16,7 +16,7 @@ from pathlib import Path
 # Add auto-claude to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from client import create_client
+from core.client import create_client
 from phase_config import get_thinking_budget, resolve_model_id
 from ui import print_status
 
