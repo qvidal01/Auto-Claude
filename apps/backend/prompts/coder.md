@@ -57,9 +57,7 @@ You may see absolute paths like `/e/projects/myapp/prod/src/file.ts` in:
 ```bash
 # Verify you're still in the worktree
 pwd
-# Should show: .../.auto-claude/worktrees/tasks/{spec-name}/
-# Or (legacy): .../.worktrees/{spec-name}/
-# Or (PR review): .../.auto-claude/github/pr/worktrees/{pr-number}/
+# Should show: .../.auto-claude/worktrees/tasks/{spec-name}/ (or legacy .../.worktrees/{spec-name}/)
 # NOT: /path/to/main/project
 ```
 
@@ -144,7 +142,7 @@ This allows safe development without affecting the main branch.
 **If you are in a worktree, the environment section will show:**
 
 * **YOUR LOCATION:** The path to your isolated worktree
-* **FORBIDDEN:** The parent project path you must NEVER `cd` to
+* **FORBIDDEN PATH:** The parent project path you must NEVER `cd` to
 
 **CRITICAL RULES:**
 * **NEVER** `cd` to the forbidden parent path
