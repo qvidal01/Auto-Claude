@@ -16,10 +16,13 @@ export type PRStatusFilter =
   | 'ready_to_merge'
   | 'ready_for_followup';
 
+export type PRSortOption = 'newest' | 'oldest' | 'largest';
+
 export interface PRFilterState {
   searchQuery: string;
   contributors: string[];
   statuses: PRStatusFilter[];
+  sortBy: PRSortOption;
 }
 
 interface PRReviewInfo {
@@ -32,6 +35,7 @@ const DEFAULT_FILTERS: PRFilterState = {
   searchQuery: '',
   contributors: [],
   statuses: [],
+  sortBy: 'newest',
 };
 
 /**
