@@ -105,11 +105,103 @@ def pytest_collection_modifyitems(session, config, items):
     """
     import importlib
 
-    # Skip test functions that come from standalone test scripts
-    # These scripts are meant to be run directly, not as pytest tests
-    standalone_scripts = [
-        'integrations.graphiti.test_graphiti_memory',
-        'integrations.graphiti.test_ollama_embedding_memory',
+    module_name = item.module.__name__
+
+    # Map of which test modules mock which specific modules
+    # Each test module should only preserve the mocks it installed
+    module_mocks = {
+        'test_qa_criteria': {'claude_agent_sdk', 'ui', 'progress', 'task_logger', 'linear_updater', 'client'},
+        'test_qa_report': {'claude_agent_sdk', 'ui', 'progress', 'task_logger', 'linear_updater', 'client'},
+        'test_qa_report_iteration': {'claude_agent_sdk', 'ui', 'progress', 'task_logger', 'linear_updater', 'client'},
+        'test_qa_report_recurring': {'claude_agent_sdk', 'ui', 'progress', 'task_logger', 'linear_updater', 'client'},
+        'test_qa_report_project_detection': {'claude_agent_sdk', 'ui', 'progress', 'task_logger', 'linear_updater', 'client'},
+        'test_qa_report_manual_plan': {'claude_agent_sdk', 'ui', 'progress', 'task_logger', 'linear_updater', 'client'},
+        'test_qa_report_config': {'claude_agent_sdk', 'ui', 'progress', 'task_logger', 'linear_updater', 'client'},
+        'test_qa_loop': {'claude_code_sdk', 'claude_code_sdk.types', 'claude_agent_sdk', 'claude_agent_sdk.types'},
+        'test_spec_pipeline': {'claude_code_sdk', 'claude_code_sdk.types', 'init', 'client', 'review', 'task_logger', 'ui', 'validate_spec'},
+        'test_spec_complexity': {'claude_code_sdk', 'claude_code_sdk.types', 'claude_agent_sdk', 'claude_agent_sdk.types'},
+        'test_spec_phases': {'claude_code_sdk', 'claude_code_sdk.types', 'claude_agent_sdk', 'graphiti_providers', 'validate_spec', 'client'},
+    }
+
+    # Get the mocks that the current test module needs to preserve
+    preserved_mocks = module_mocks.get(module_name, set())
+
+    # Track if we cleaned up any mocks
+    cleaned_up = False
+
+    # Clean up all mocked modules EXCEPT those needed by the current test module
+    for name in _POTENTIALLY_MOCKED_MODULES:
+        if name in preserved_mocks:
+            continue  # Don't clean up mocks this module needs
+        if name in sys.modules:
+            module = sys.modules[name]
+            if isinstance(module, MagicMock):
+                if name in _original_module_state:
+                    sys.modules[name] = _original_module_state[name]
+                else:
+                    del sys.modules[name]
+                cleaned_up = True
+
+    # If we cleaned up mocks, we need to reload modules that might have cached
+    # references to the mocked versions
+    if cleaned_up and module_name in ('test_qa_loop', 'test_review'):
+        # Reload progress first
+        if 'progress' in sys.modules:
+            importlib.reload(sys.modules['progress'])
+        # Reload the entire qa module chain which imports progress
+        for qa_module in ['qa.criteria', 'qa.report', 'qa.loop', 'qa']:
+            if qa_module in sys.modules:
+                try:
+                    importlib.reload(sys.modules[qa_module])
+                except Exception:
+                    pass  # Some modules may fail to reload due to circular imports
+        # Reload review module chain
+        for review_module in ['review.state', 'review.formatters', 'review']:
+            if review_module in sys.modules:
+                try:
+                    importlib.reload(sys.modules[review_module])
+                except Exception:
+                    # Module reload may fail if dependencies aren't loaded; safe to ignore
+                    pass
+
+
+
+
+# =============================================================================
+# DIRECTORY FIXTURES
+# =============================================================================
+
+@pytest.fixture
+def temp_dir() -> Generator[Path, None, None]:
+    """Create a temporary directory that's cleaned up after the test."""
+    temp_path = Path(tempfile.mkdtemp())
+    yield temp_path
+    shutil.rmtree(temp_path, ignore_errors=True)
+
+
+@pytest.fixture
+def temp_git_repo(temp_dir: Path) -> Generator[Path, None, None]:
+    """Create a temporary git repository with initial commit.
+
+    IMPORTANT: This fixture properly isolates git operations by clearing
+    git environment variables that may be set by pre-commit hooks. Without
+    this isolation, git operations could affect the parent repository when
+    tests run inside a git worktree (e.g., during pre-commit validation).
+
+    See: https://git-scm.com/docs/git#_environment_variables
+    """
+    # Save original environment values to restore later
+    orig_env = {}
+
+    # These git env vars may be set by pre-commit hooks and MUST be cleared
+    # to avoid git operations affecting the parent repository instead of
+    # our isolated test repo. This is critical when running inside worktrees.
+    git_vars_to_clear = [
+        "GIT_DIR",
+        "GIT_WORK_TREE",
+        "GIT_INDEX_FILE",
+        "GIT_OBJECT_DIRECTORY",
+        "GIT_ALTERNATE_OBJECT_DIRECTORIES",
     ]
 
     items_to_skip = []
@@ -1037,58 +1129,109 @@ def approved_state() -> "ReviewState":
         feedback=["Looks good!", "Minor suggestion added."],
     )
 
+    return temp_git_repo
+
+
+# =============================================================================
+# WORKTREE MANAGER FIXTURES - For GitLab/GitHub integration tests
+# =============================================================================
 
 @pytest.fixture
-def pending_state() -> "ReviewState":
-    """Return a pending (not approved) ReviewState instance.
+def temp_project_dir(tmp_path):
+    """Create a temporary project directory with proper git setup.
 
-    Returns:
-        ReviewState: Instance with approved=False, empty approval fields
+    IMPORTANT: This fixture properly isolates git operations by passing
+    a sanitized environment to subprocess.run calls, clearing git environment
+    variables that may be set by pre-commit hooks. Without this isolation,
+    git operations could affect the parent repository when tests run inside
+    a git worktree (e.g., during pre-commit validation).
+
+    See: https://git-scm.com/docs/git#_environment_variables
     """
-    from review import ReviewState
-    return ReviewState(
-        approved=False,
-        approved_by="",
-        approved_at="",
-        spec_hash="",
-        review_count=0,
+    project_dir = tmp_path / "test-project"
+    project_dir.mkdir()
+
+    # Create a sanitized environment for git commands to prevent leaking
+    # into parent repos when running inside git worktrees (e.g., pre-commit)
+    git_env = os.environ.copy()
+    git_vars_to_clear = [
+        "GIT_DIR",
+        "GIT_WORK_TREE",
+        "GIT_INDEX_FILE",
+        "GIT_OBJECT_DIRECTORY",
+        "GIT_ALTERNATE_OBJECT_DIRECTORIES",
+    ]
+    for var in git_vars_to_clear:
+        git_env.pop(var, None)
+
+    # Set GIT_CEILING_DIRECTORIES to prevent git from discovering parent .git
+    git_env["GIT_CEILING_DIRECTORIES"] = str(tmp_path.parent)
+
+    # Initialize git repo
+    subprocess.run(
+        ["git", "init"],
+        cwd=project_dir,
+        capture_output=True,
+        check=True,
+        env=git_env,
+    )
+    subprocess.run(
+        ["git", "config", "user.name", "Test User"],
+        cwd=project_dir,
+        capture_output=True,
+        check=True,
+        env=git_env,
+    )
+    subprocess.run(
+        ["git", "config", "user.email", "test@example.com"],
+        cwd=project_dir,
+        capture_output=True,
+        check=True,
+        env=git_env,
     )
 
+    # Disable GPG signing to prevent hangs in CI
+    subprocess.run(
+        ["git", "config", "commit.gpgsign", "false"],
+        cwd=project_dir,
+        capture_output=True,
+        check=True,
+        env=git_env,
+    )
+
+    # Create initial commit
+    readme = project_dir / "README.md"
+    readme.write_text("# Test Project\n")
+    subprocess.run(
+        ["git", "add", "README.md"],
+        cwd=project_dir,
+        capture_output=True,
+        check=True,
+        env=git_env,
+    )
+    subprocess.run(
+        ["git", "commit", "-m", "Initial commit"],
+        cwd=project_dir,
+        capture_output=True,
+        check=True,
+        env=git_env,
+    )
+
+    return project_dir
+
 
 @pytest.fixture
-def complete_spec_dir(tmp_path: Path) -> Generator[Path, None, None]:
-    """Create a complete spec directory with spec.md and implementation_plan.json for testing.
+def worktree_manager(temp_project_dir):
+    """Create a WorktreeManager instance."""
+    from core.worktree import WorktreeManager
 
-    This is an alias for review_spec_dir since they provide the same structure.
+    # Create .auto-claude directories
+    auto_claude_dir = temp_project_dir / ".auto-claude"
+    auto_claude_dir.mkdir(exist_ok=True)
+    (auto_claude_dir / "specs").mkdir(exist_ok=True)
+    (auto_claude_dir / "worktrees" / "tasks").mkdir(parents=True, exist_ok=True)
 
-    Args:
-        tmp_path: pytest's built-in temporary directory fixture
-
-    Yields:
-        Path: Path to complete spec directory with spec.md and implementation_plan.json files
-    """
-    import json
-
-    complete_dir = tmp_path / "complete_spec"
-    complete_dir.mkdir(exist_ok=True)
-    # Create a spec.md file that tests may modify
-    spec_file = complete_dir / "spec.md"
-    spec_file.write_text("# Complete Spec\n\nThis is a complete spec for testing.")
-    # Create an implementation_plan.json file that tests may modify
-    plan_file = complete_dir / "implementation_plan.json"
-    plan_data = {
-        "feature": "Complete Test Feature",
-        "workflow_type": "feature",
-        "phases": [
-            {
-                "phase": 1,
-                "name": "Test Phase",
-                "chunks": [
-                    {"id": "chunk-1", "description": "Test chunk", "status": "pending"}
-                ],
-            }
-        ],
-    }
-    plan_file.write_text(json.dumps(plan_data, indent=2))
-    yield complete_dir
-    # Cleanup is handled by tmp_path
+    return WorktreeManager(
+        project_dir=temp_project_dir,
+        base_branch="main",
+    )

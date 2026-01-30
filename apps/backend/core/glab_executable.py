@@ -68,10 +68,8 @@ def _run_where_command() -> str | None:
                 and _verify_glab_executable(found_path)
             ):
                 return found_path
-    except (
-        subprocess.TimeoutExpired,
-        OSError,
-    ):  # 'where' command failed or timed out - fall through to return None
+    except (subprocess.TimeoutExpired, OSError):
+        # 'where' command failed or timed out - fall through to return None
         pass
     return None
 
