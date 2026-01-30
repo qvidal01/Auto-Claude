@@ -58,6 +58,7 @@ export function GitHubPRs({ onOpenSettings, isActive = false }: GitHubPRsProps) 
   const {
     prs,
     isLoading,
+    isLoadingMore,
     isLoadingPRDetails,
     error,
     selectedPRNumber,
@@ -78,6 +79,7 @@ export function GitHubPRs({ onOpenSettings, isActive = false }: GitHubPRsProps) 
     assignPR,
     markReviewPosted,
     refresh,
+    loadMore,
     isConnected,
     repoFullName,
     getReviewStateForPR,
@@ -238,6 +240,8 @@ export function GitHubPRs({ onOpenSettings, isActive = false }: GitHubPRsProps) 
               error={error}
               getReviewStateForPR={getReviewStateForPR}
               onSelectPR={selectPR}
+              onLoadMore={loadMore}
+              isLoadingMore={isLoadingMore}
             />
           </div>
         }
