@@ -170,6 +170,10 @@ interface PRListProps {
   error: string | null;
   getReviewStateForPR: (prNumber: number) => PRReviewInfo | null;
   onSelectPR: (prNumber: number) => void;
+  /** Callback to load more PRs when hasMore is true */
+  onLoadMore?: () => void;
+  /** Whether additional PRs are currently being loaded */
+  isLoadingMore?: boolean;
 }
 
 function formatDate(dateString: string): string {
@@ -200,6 +204,8 @@ export function PRList({
   error,
   getReviewStateForPR,
   onSelectPR,
+  onLoadMore,
+  isLoadingMore,
 }: PRListProps) {
   const { t } = useTranslation('common');
 
