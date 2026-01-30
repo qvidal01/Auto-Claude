@@ -373,12 +373,17 @@ Examples:
                     try:
                         with open(task_meta_path, encoding="utf-8") as f:
                             task_meta = json.load(f)
-                        require_review = task_meta.get("requireReviewBeforeCoding", False)
+                        require_review = task_meta.get(
+                            "requireReviewBeforeCoding", False
+                        )
                     except (json.JSONDecodeError, OSError):
                         pass
                 if not require_review:
                     run_cmd.append("--force")
-                    debug("spec_runner", "Adding --force: auto-approved, no review required, spec completed")
+                    debug(
+                        "spec_runner",
+                        "Adding --force: auto-approved, no review required, spec completed",
+                    )
 
             # Pass base branch if specified (for worktree creation)
             if args.base_branch:
