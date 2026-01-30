@@ -398,20 +398,18 @@ describe('Subprocess Spawn Integration', () => {
       // Wait for spawn to complete (ensures exit handlers are attached)
       await new Promise(resolve => setImmediate(resolve));
 
-      // Both tasks share the same mockProcess, so we need to emit exit events
-      // and wait for each task to be removed. The shared mock means both handlers
-      // receive each exit event - emit multiple times to ensure all handlers fire.
+      // Emit exit events - both tasks share the same mockProcess, so both handlers fire
+      // We emit twice to ensure both task handlers receive exit events
       mockProcess.emit('exit', 0);
       mockProcess.emit('exit', 0);
 
-      // Wait for both promises to settle
+      // Wait for promises to settle
       await Promise.allSettled([promise1, promise2]);
 
-      // Allow event handlers to complete (important on slower CI environments)
-      await new Promise(resolve => setTimeout(resolve, 100));
-
-      // Tasks should be removed from tracking after exit
-      expect(manager.getRunningTasks()).toHaveLength(0);
+      // Wait for tasks to be removed from tracking (cleanup may be async)
+      await vi.waitFor(() => {
+        expect(manager.getRunningTasks()).toHaveLength(0);
+      }, { timeout: 5000 });
     }, 15000);
 
     it('should use configured Python path', async () => {

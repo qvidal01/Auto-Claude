@@ -9,8 +9,7 @@ import logging
 from pathlib import Path
 
 from core.client import create_client
-from core.task_event import TaskEventEmitter
-from phase_config import get_phase_model, get_phase_thinking_budget, load_task_metadata
+from phase_config import get_phase_model, get_phase_thinking_budget
 from phase_event import ExecutionPhase, emit_phase
 from task_logger import (
     LogPhase,
@@ -70,8 +69,6 @@ async def run_followup_planner(
     status_manager = StatusManager(project_dir)
     status_manager.set_active(spec_dir.name, BuildState.PLANNING)
     emit_phase(ExecutionPhase.PLANNING, "Follow-up planning")
-    task_event_emitter = TaskEventEmitter.from_spec_dir(spec_dir)
-    task_event_emitter.emit("PLANNING_STARTED")
 
     # Initialize task logger for persistent logging
     task_logger = get_task_logger(spec_dir)
@@ -114,7 +111,7 @@ async def run_followup_planner(
     try:
         # Run single planning session
         async with client:
-            status, response = await run_agent_session(
+            status, response, error_info = await run_agent_session(
                 client, prompt, spec_dir, verbose, phase=LogPhase.PLANNING
             )
 
@@ -130,10 +127,6 @@ async def run_followup_planner(
             print()
             print_status("Follow-up planning failed", "error")
             status_manager.update(state=BuildState.ERROR)
-            task_event_emitter.emit(
-                "PLANNING_FAILED",
-                {"error": "follow-up planning failed", "recoverable": True},
-            )
             return False
 
         # Verify the plan was updated (should have pending subtasks now)
@@ -146,8 +139,6 @@ async def run_followup_planner(
             pending_subtasks = [c for c in all_subtasks if c.status.value == "pending"]
 
             if pending_subtasks:
-                metadata = load_task_metadata(spec_dir) or {}
-                require_review = bool(metadata.get("requireReviewBeforeCoding", False))
                 # Reset the plan status to in_progress (in case planner didn't)
                 plan.reset_for_followup()
                 await plan.async_save(plan_file)
@@ -165,14 +156,6 @@ async def run_followup_planner(
                 print(box(content, width=70, style="heavy"))
                 print()
                 status_manager.update(state=BuildState.PAUSED)
-                task_event_emitter.emit(
-                    "PLANNING_COMPLETE",
-                    {
-                        "hasSubtasks": len(all_subtasks) > 0,
-                        "subtaskCount": len(all_subtasks),
-                        "requireReviewBeforeCoding": require_review,
-                    },
-                )
                 return True
             else:
                 print()
@@ -182,13 +165,6 @@ async def run_followup_planner(
                 print(muted("The planner may not have added new subtasks."))
                 print(muted("Check implementation_plan.json manually."))
                 status_manager.update(state=BuildState.PAUSED)
-                task_event_emitter.emit(
-                    "PLANNING_FAILED",
-                    {
-                        "error": "no pending subtasks found after planning",
-                        "recoverable": False,
-                    },
-                )
                 return False
         else:
             print()
@@ -196,10 +172,6 @@ async def run_followup_planner(
                 "Error: implementation_plan.json not found after planning", "error"
             )
             status_manager.update(state=BuildState.ERROR)
-            task_event_emitter.emit(
-                "PLANNING_FAILED",
-                {"error": "implementation_plan.json not found", "recoverable": False},
-            )
             return False
 
     except Exception as e:
@@ -208,8 +180,4 @@ async def run_followup_planner(
         if task_logger:
             task_logger.log_error(f"Follow-up planning error: {e}", LogPhase.PLANNING)
         status_manager.update(state=BuildState.ERROR)
-        task_event_emitter.emit(
-            "PLANNING_FAILED",
-            {"error": f"follow-up planning error: {e}", "recoverable": False},
-        )
         return False

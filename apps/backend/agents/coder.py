@@ -11,7 +11,6 @@ import os
 from pathlib import Path
 
 from core.client import create_client
-from core.task_event import TaskEventEmitter
 from linear_updater import (
     LinearTaskState,
     is_linear_enabled,
@@ -19,7 +18,7 @@ from linear_updater import (
     linear_task_started,
     linear_task_stuck,
 )
-from phase_config import get_phase_model, get_phase_thinking_budget, load_task_metadata
+from phase_config import get_phase_model, get_phase_thinking_budget
 from phase_event import ExecutionPhase, emit_phase
 from progress import (
     count_subtasks,
@@ -57,7 +56,13 @@ from ui import (
     print_status,
 )
 
-from .base import AUTO_CONTINUE_DELAY_SECONDS, HUMAN_INTERVENTION_FILE
+from .base import (
+    AUTO_CONTINUE_DELAY_SECONDS,
+    HUMAN_INTERVENTION_FILE,
+    INITIAL_RETRY_DELAY_SECONDS,
+    MAX_CONCURRENCY_RETRIES,
+    MAX_RETRY_DELAY_SECONDS,
+)
 from .memory_manager import debug_memory_system_status, get_graphiti_context
 from .session import post_session_processing, run_agent_session
 from .utils import (
@@ -106,7 +111,6 @@ async def run_autonomous_agent(
 
     # Initialize task logger for persistent logging
     task_logger = get_task_logger(spec_dir)
-    task_event_emitter = TaskEventEmitter.from_spec_dir(spec_dir)
 
     # Debug: Print memory system status at startup
     debug_memory_system_status()
@@ -141,22 +145,6 @@ async def run_autonomous_agent(
     planning_retry_context: str | None = None
     planning_validation_failures = 0
     max_planning_validation_retries = 3
-    planning_complete_emitted = False
-
-    def _get_require_review_before_coding() -> bool:
-        metadata = load_task_metadata(spec_dir) or {}
-        return bool(metadata.get("requireReviewBeforeCoding", False))
-
-    def _get_plan_subtask_counts() -> tuple[int, bool]:
-        plan = load_implementation_plan(spec_dir)
-        if not plan:
-            return 0, False
-        all_subtasks = [
-            subtask
-            for phase in plan.get("phases", [])
-            for subtask in phase.get("subtasks", [])
-        ]
-        return len(all_subtasks), len(all_subtasks) > 0
 
     def _validate_and_fix_implementation_plan() -> tuple[bool, list[str]]:
         from spec.validate_pkg import SpecValidator, auto_fix_plan
@@ -191,7 +179,6 @@ async def run_autonomous_agent(
         # Update status for planning phase
         status_manager.update(state=BuildState.PLANNING)
         emit_phase(ExecutionPhase.PLANNING, "Creating implementation plan")
-        task_event_emitter.emit("PLANNING_STARTED")
         is_planning_phase = True
         current_log_phase = LogPhase.PLANNING
 
@@ -234,6 +221,21 @@ async def run_autonomous_agent(
 
     # Main loop
     iteration = 0
+    consecutive_concurrency_errors = 0  # Track consecutive 400 tool concurrency errors
+    current_retry_delay = INITIAL_RETRY_DELAY_SECONDS  # Exponential backoff delay
+    concurrency_error_context: str | None = (
+        None  # Context to pass to agent after concurrency error
+    )
+
+    def _reset_concurrency_state() -> None:
+        """Reset concurrency error tracking state after a successful session or non-concurrency error."""
+        nonlocal \
+            consecutive_concurrency_errors, \
+            current_retry_delay, \
+            concurrency_error_context
+        consecutive_concurrency_errors = 0
+        current_retry_delay = INITIAL_RETRY_DELAY_SECONDS
+        concurrency_error_context = None
 
     while True:
         iteration += 1
@@ -344,17 +346,6 @@ async def run_autonomous_agent(
                 is_planning_phase = False
                 current_log_phase = LogPhase.CODING
                 emit_phase(ExecutionPhase.CODING, "Starting implementation")
-                # Emit CODING_STARTED event for XState machine transition
-                # This signals the frontend to move from planning to coding state
-                task_event_emitter.emit(
-                    "CODING_STARTED",
-                    {
-                        "subtaskId": subtask_id or "",
-                        "subtaskDescription": next_subtask.get("description", "")
-                        if next_subtask
-                        else "",
-                    },
-                )
                 if task_logger:
                     task_logger.end_phase(
                         LogPhase.PLANNING,
@@ -435,23 +426,20 @@ async def run_autonomous_agent(
                 prompt += "\n\n" + graphiti_context
                 print_status("Graphiti memory context loaded", "success")
 
+            # Add concurrency error context if recovering from 400 error
+            if concurrency_error_context:
+                prompt += "\n\n" + concurrency_error_context
+                print_status(
+                    f"Added tool concurrency error context (retry {consecutive_concurrency_errors}/{MAX_CONCURRENCY_RETRIES})",
+                    "warning",
+                )
+
             # Show what we're working on
             print(f"Working on: {highlight(subtask_id)}")
             print(f"Description: {next_subtask.get('description', 'No description')}")
             if attempt_count > 0:
                 print_status(f"Previous attempts: {attempt_count}", "warning")
             print()
-
-        # Emit CODING_STARTED for each subtask — but skip if we just transitioned
-        # from planning, because the transition block above already emitted it.
-        if subtask_id and current_log_phase == LogPhase.CODING and not just_transitioned_from_planning:
-            task_event_emitter.emit(
-                "CODING_STARTED",
-                {
-                    "subtaskId": subtask_id,
-                    "subtaskDescription": next_subtask.get("description", ""),
-                },
-            )
 
         # Set subtask info in logger
         if task_logger and subtask_id:
@@ -460,7 +448,7 @@ async def run_autonomous_agent(
 
         # Run session with async context manager
         async with client:
-            status, response = await run_agent_session(
+            status, response, error_info = await run_agent_session(
                 client, prompt, spec_dir, verbose, phase=current_log_phase
             )
 
@@ -470,17 +458,6 @@ async def run_autonomous_agent(
             if valid:
                 plan_validated = True
                 planning_retry_context = None
-                if not planning_complete_emitted:
-                    subtask_count, has_subtasks = _get_plan_subtask_counts()
-                    task_event_emitter.emit(
-                        "PLANNING_COMPLETE",
-                        {
-                            "hasSubtasks": has_subtasks,
-                            "subtaskCount": subtask_count,
-                            "requireReviewBeforeCoding": _get_require_review_before_coding(),
-                        },
-                    )
-                    planning_complete_emitted = True
             else:
                 planning_validation_failures += 1
                 if planning_validation_failures >= max_planning_validation_retries:
@@ -491,13 +468,6 @@ async def run_autonomous_agent(
                     for err in errors:
                         print(f"  - {err}")
                     status_manager.update(state=BuildState.ERROR)
-                    task_event_emitter.emit(
-                        "PLANNING_FAILED",
-                        {
-                            "error": "implementation_plan.json validation failed",
-                            "recoverable": False,
-                        },
-                    )
                     return
 
                 print_status(
@@ -536,7 +506,6 @@ async def run_autonomous_agent(
                 linear_enabled=linear_is_enabled,
                 status_manager=status_manager,
                 source_spec_dir=source_spec_dir,
-                task_event_emitter=task_event_emitter,
             )
 
             # Check for stuck subtasks
@@ -571,13 +540,9 @@ async def run_autonomous_agent(
             # QA loop will emit COMPLETE after actual approval
             print_build_complete_banner(spec_dir)
             status_manager.update(state=BuildState.COMPLETE)
-            _completed, total = count_subtasks(spec_dir)
-            task_event_emitter.emit(
-                "ALL_SUBTASKS_DONE",
-                {
-                    "totalCount": total,
-                },
-            )
+
+            # Reset error tracking on success
+            _reset_concurrency_state()
 
             if task_logger:
                 task_logger.end_phase(
@@ -593,6 +558,9 @@ async def run_autonomous_agent(
             break
 
         elif status == "continue":
+            # Reset error tracking on successful session
+            _reset_concurrency_state()
+
             print(
                 muted(
                     f"\nAgent will auto-continue in {AUTO_CONTINUE_DELAY_SECONDS}s..."
@@ -623,32 +591,106 @@ async def run_autonomous_agent(
 
         elif status == "error":
             emit_phase(ExecutionPhase.FAILED, "Session encountered an error")
-            if is_planning_phase:
-                task_event_emitter.emit(
-                    "PLANNING_FAILED",
-                    {
-                        "error": "planner session error",
-                        "recoverable": True,
-                    },
+
+            # Check if this is a tool concurrency error (400)
+            is_concurrency_error = (
+                error_info and error_info.get("type") == "tool_concurrency"
+            )
+
+            if is_concurrency_error:
+                consecutive_concurrency_errors += 1
+
+                # Check if we've exceeded max retries (allow 5 retries with delays: 2s, 4s, 8s, 16s, 32s)
+                if consecutive_concurrency_errors > MAX_CONCURRENCY_RETRIES:
+                    print_status(
+                        f"Tool concurrency limit hit {consecutive_concurrency_errors} times consecutively",
+                        "error",
+                    )
+                    print()
+                    print("=" * 70)
+                    print("  CRITICAL: Agent stuck in retry loop")
+                    print("=" * 70)
+                    print()
+                    print(
+                        "The agent is repeatedly hitting Claude API's tool concurrency limit."
+                    )
+                    print(
+                        "This usually means the agent is trying to use too many tools at once."
+                    )
+                    print()
+                    print("Possible solutions:")
+                    print("  1. The agent needs to reduce tool usage per request")
+                    print("  2. Break down the current subtask into smaller steps")
+                    print("  3. Manual intervention may be required")
+                    print()
+                    print(f"Error: {error_info.get('message', 'Unknown error')[:200]}")
+                    print()
+
+                    # Mark current subtask as stuck if we have one
+                    if subtask_id:
+                        recovery_manager.mark_subtask_stuck(
+                            subtask_id,
+                            f"Tool concurrency errors after {consecutive_concurrency_errors} retries",
+                        )
+                        print_status(f"Subtask {subtask_id} marked as STUCK", "error")
+
+                    status_manager.update(state=BuildState.ERROR)
+                    break  # Exit the loop
+
+                # Exponential backoff: 2s, 4s, 8s, 16s, 32s
+                print_status(
+                    f"Tool concurrency error (retry {consecutive_concurrency_errors}/{MAX_CONCURRENCY_RETRIES})",
+                    "warning",
                 )
+                print(
+                    muted(
+                        f"Waiting {current_retry_delay}s before retry (exponential backoff)..."
+                    )
+                )
+                print()
+
+                # Set context for next retry so agent knows to adjust behavior
+                error_context_message = (
+                    "## CRITICAL: TOOL CONCURRENCY ERROR\n\n"
+                    f"Your previous session hit Claude API's tool concurrency limit (HTTP 400).\n"
+                    f"This is retry {consecutive_concurrency_errors}/{MAX_CONCURRENCY_RETRIES}.\n\n"
+                    "**IMPORTANT: You MUST adjust your approach:**\n"
+                    "1. Use ONE tool at a time - do NOT call multiple tools in parallel\n"
+                    "2. Wait for each tool result before calling the next tool\n"
+                    "3. Avoid starting with `pwd` or multiple Read calls at once\n"
+                    "4. If you need to read multiple files, read them one by one\n"
+                    "5. Take a more incremental, step-by-step approach\n\n"
+                    "Start by focusing on ONE specific action for this subtask."
+                )
+
+                # If we're in planning phase, reset first_run to True so next iteration
+                # re-enters the planning branch (fix for issue #1565)
+                if current_log_phase == LogPhase.PLANNING:
+                    first_run = True
+                    planning_retry_context = error_context_message
+                    print_status(
+                        "Planning session failed - will retry planning", "warning"
+                    )
+                else:
+                    concurrency_error_context = error_context_message
+
+                status_manager.update(state=BuildState.ERROR)
+                await asyncio.sleep(current_retry_delay)
+
+                # Double the retry delay for next time (cap at MAX_RETRY_DELAY_SECONDS)
+                current_retry_delay = min(
+                    current_retry_delay * 2, MAX_RETRY_DELAY_SECONDS
+                )
+
             else:
-                attempt_count = (
-                    recovery_manager.get_attempt_count(subtask_id) + 1
-                    if subtask_id
-                    else 0
-                )
-                task_event_emitter.emit(
-                    "CODING_FAILED",
-                    {
-                        "subtaskId": subtask_id or "",
-                        "error": "coding session error",
-                        "attemptCount": attempt_count,
-                    },
-                )
-            print_status("Session encountered an error", "error")
-            print(muted("Will retry with a fresh session..."))
-            status_manager.update(state=BuildState.ERROR)
-            await asyncio.sleep(AUTO_CONTINUE_DELAY_SECONDS)
+                # Other errors - use standard retry logic
+                print_status("Session encountered an error", "error")
+                print(muted("Will retry with a fresh session..."))
+                status_manager.update(state=BuildState.ERROR)
+                await asyncio.sleep(AUTO_CONTINUE_DELAY_SECONDS)
+
+                # Reset concurrency error tracking on non-concurrency errors
+                _reset_concurrency_state()
 
         # Small delay between sessions
         if max_iterations is None or iteration < max_iterations:
