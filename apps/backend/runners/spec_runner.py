@@ -367,7 +367,8 @@ Examples:
             # This prevents hash mismatch failures when spec files are
             # touched between auto-approval and run.py startup.
             if args.auto_approve:
-                require_review = False
+                # Default to requiring review (fail-closed) - only skip if explicitly disabled
+                require_review = True
                 task_meta_path = orchestrator.spec_dir / "task_metadata.json"
                 if task_meta_path.exists():
                     try:
@@ -376,8 +377,12 @@ Examples:
                         require_review = task_meta.get(
                             "requireReviewBeforeCoding", False
                         )
-                    except (json.JSONDecodeError, OSError):
-                        pass
+                    except (json.JSONDecodeError, OSError) as e:
+                        # On parse error, keep require_review=True (fail-closed)
+                        debug(
+                            "spec_runner",
+                            f"Failed to parse task_metadata.json, not adding --force: {e}",
+                        )
                 if not require_review:
                     run_cmd.append("--force")
                     debug(

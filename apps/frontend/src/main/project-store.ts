@@ -564,7 +564,9 @@ export class ProjectStore {
       'ai_review': 'ai_review',
       'pr_created': 'pr_created',
       'backlog': 'backlog',
-      'error': 'error'
+      'error': 'error',
+      'queue': 'queue',
+      'queued': 'queue'
     };
 
     const storedStatus = statusMap[plan.status] || 'backlog';
@@ -585,6 +587,8 @@ export class ProjectStore {
     const phaseMap: Record<string, ExecutionPhase> = {
       'pending': 'idle',
       'backlog': 'idle',
+      'queue': 'idle',
+      'queued': 'idle',
       'planning': 'planning',
       'coding': 'coding',
       'in_progress': 'coding', // Default in_progress to coding

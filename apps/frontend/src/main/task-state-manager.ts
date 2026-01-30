@@ -192,8 +192,9 @@ export class TaskStateManager {
   }
 
   /**
-   * Clear all task state. Called when tasks are force-refreshed from disk.
-   * This ensures actors are recreated with fresh task data.
+   * Clear all task state. Called by TASK_LIST handler when forceRefresh is true.
+   * This ensures actors are recreated with fresh task data when the user
+   * triggers a manual refresh from the UI.
    */
   clearAllTasks(): void {
     for (const [taskId, actor] of this.actors) {

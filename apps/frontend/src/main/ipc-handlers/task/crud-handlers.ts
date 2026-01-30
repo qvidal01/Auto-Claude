@@ -9,6 +9,7 @@ import { AgentManager } from '../../agent';
 import { findTaskAndProject } from './shared';
 import { findAllSpecPaths, isValidTaskId } from '../../utils/spec-path-helpers';
 import { isPathWithinBase } from '../../worktree-paths';
+import { taskStateManager } from '../../task-state-manager';
 
 /**
  * Register task CRUD (Create, Read, Update, Delete) handlers
@@ -25,11 +26,13 @@ export function registerTaskCRUDHandlers(agentManager: AgentManager): void {
     async (_, projectId: string, options?: { forceRefresh?: boolean }): Promise<IPCResult<Task[]>> => {
       console.warn('[IPC] TASK_LIST called with projectId:', projectId, 'options:', options);
 
-      // If forceRefresh is requested, invalidate cache first
+      // If forceRefresh is requested, invalidate cache and clear XState actors
       // This ensures the refresh button always returns fresh data from disk
+      // and actors are recreated with fresh task data
       if (options?.forceRefresh) {
         projectStore.invalidateTasksCache(projectId);
-        console.warn('[IPC] TASK_LIST cache invalidated for forceRefresh');
+        taskStateManager.clearAllTasks();
+        console.warn('[IPC] TASK_LIST cache and task state cleared for forceRefresh');
       }
 
       const tasks = projectStore.getTasks(projectId);
