@@ -36,7 +36,7 @@ from prompt_generator import (
     generate_subtask_prompt,
     load_subtask_context,
 )
-from prompts import is_first_run
+from prompts_pkg.prompts import is_first_run
 from services.recovery import RecoveryManager
 from security.constants import PROJECT_DIR_ENV_VAR
 from task_logger import (
