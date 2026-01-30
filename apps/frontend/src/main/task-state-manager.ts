@@ -14,6 +14,21 @@ import path from 'path';
 
 type TaskActor = ActorRefFrom<typeof taskMachine>;
 
+/** Maps XState states to execution phases. Shared by mapStateToExecutionPhase and emitPhaseFromState. */
+const XSTATE_TO_PHASE: Record<string, ExecutionPhase> = {
+  'backlog': 'idle',
+  'planning': 'planning',
+  'plan_review': 'planning',
+  'coding': 'coding',
+  'qa_review': 'qa_review',
+  'qa_fixing': 'qa_fixing',
+  'human_review': 'complete',
+  'error': 'failed',
+  'creating_pr': 'complete',
+  'pr_created': 'complete',
+  'done': 'complete'
+};
+
 interface TaskContextEntry {
   task: Task;
   project: Project;
@@ -125,6 +140,11 @@ export class TaskStateManager {
       }
       case 'backlog':
         this.handleUiEvent(taskId, { type: 'USER_STOPPED', hasPlan: false }, task, project);
+        return true;
+      case 'human_review':
+        // Already in human_review (e.g., stage-only merge keeps task in review).
+        // Emit status directly since there's no XState transition needed.
+        this.emitStatus(taskId, 'human_review', task.reviewReason ?? 'completed', project.id);
         return true;
       default:
         return false;
@@ -297,21 +317,8 @@ export class TaskStateManager {
   /**
    * Map XState state to execution phase string
    */
-  private mapStateToExecutionPhase(xstateState: string): string {
-    const phaseMap: Record<string, string> = {
-      'backlog': 'idle',
-      'planning': 'planning',
-      'plan_review': 'planning',
-      'coding': 'coding',
-      'qa_review': 'qa_review',
-      'qa_fixing': 'qa_fixing',
-      'human_review': 'complete',
-      'error': 'failed',
-      'creating_pr': 'complete',
-      'pr_created': 'complete',
-      'done': 'complete'
-    };
-    return phaseMap[xstateState] || 'idle';
+  private mapStateToExecutionPhase(xstateState: string): ExecutionPhase {
+    return XSTATE_TO_PHASE[xstateState] || 'idle';
   }
 
   private emitStatus(
@@ -346,22 +353,7 @@ export class TaskStateManager {
   ): void {
     if (!this.getMainWindow) return;
 
-    // Map XState state to execution phase
-    const phaseMap: Record<string, ExecutionPhase> = {
-      'backlog': 'idle',
-      'planning': 'planning',
-      'plan_review': 'planning',  // Still in planning phase, awaiting approval
-      'coding': 'coding',
-      'qa_review': 'qa_review',
-      'qa_fixing': 'qa_fixing',
-      'human_review': 'complete',
-      'error': 'failed',
-      'creating_pr': 'complete',
-      'pr_created': 'complete',
-      'done': 'complete'
-    };
-
-    const phase = phaseMap[xstateState] || 'idle';
+    const phase = XSTATE_TO_PHASE[xstateState] || 'idle';
 
     // Emit execution progress with the phase derived from XState
     safeSendToRenderer(

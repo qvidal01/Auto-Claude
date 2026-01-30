@@ -102,80 +102,34 @@ export function useTaskDetail({ task }: UseTaskDetailOptions) {
   const isIncomplete = isIncompleteHumanReview(task);
   const taskProgress = getTaskProgress(task);
 
-  // Check if task is stuck (status says in_progress/ai_review but no actual process)
-  // Add a grace period to avoid false positives during process spawn
+  // Catastrophic stuck detection — last-resort safety net.
+  // XState handles all normal process-exit transitions via PROCESS_EXITED events.
+  // This only fires if XState somehow fails to transition after 60s with no activity.
   useEffect(() => {
-    let timeoutId: NodeJS.Timeout | undefined;
-
-    // IMPORTANT: Check !isActiveTask FIRST before any phase checks
-    // This ensures hasCheckedRunning is always reset when task stops,
-    // even if the task stops while in 'planning' phase
     if (!isActiveTask) {
       setIsStuck(false);
       setHasCheckedRunning(false);
       return;
     }
 
-    // Task is active from here on
+    const intervalId = setInterval(() => {
+      if (hasRecentActivity(task.id)) {
+        setIsStuck(false);
+        return;
+      }
 
-    // Skip stuck check for certain phases:
-    // - 'planning': Initial phase, process may still be spawning
-    // - 'qa_review'/'qa_fixing': Process may have just exited, XState handles transition
-    // When process exits unexpectedly during QA, XState will transition to error state.
-    // We skip stuck detection here to avoid race conditions where stuck check fires
-    // before the status update IPC reaches the renderer.
-    const skipPhases = ['planning', 'qa_review', 'qa_fixing'];
-    if (executionPhase && skipPhases.includes(executionPhase)) {
-      setIsStuck(false);
-      return;
-    }
-
-    // Terminal phases: Task finished, no more stuck checks needed
-    if (executionPhase === 'complete' || executionPhase === 'failed') {
-      setIsStuck(false);
-      setHasCheckedRunning(true);
-      return;
-    }
-
-    // Check for recent activity first - if we've received progress updates within 5s,
-    // the task is active even if process check might fail due to timing
-    if (hasRecentActivity(task.id)) {
-      setIsStuck(false);
-      return;
-    }
-
-    // Active task in coding phase - check if stuck
-    if (!hasCheckedRunning) {
-      // Wait 2 seconds before checking - gives process time to spawn and register
-      timeoutId = setTimeout(() => {
-        // Re-check for recent activity after the timeout
+      checkTaskRunning(task.id).then((actuallyRunning) => {
         if (hasRecentActivity(task.id)) {
           setIsStuck(false);
-          setHasCheckedRunning(true);
-          return;
+        } else {
+          setIsStuck(!actuallyRunning);
         }
+        setHasCheckedRunning(true);
+      });
+    }, 60_000);
 
-        checkTaskRunning(task.id).then((actuallyRunning) => {
-          // Double-check the phase in case it changed while waiting
-          const latestPhase = task.executionProgress?.phase;
-          const skipPhasesInCallback = ['complete', 'failed', 'planning', 'qa_review', 'qa_fixing'];
-          if (latestPhase && skipPhasesInCallback.includes(latestPhase)) {
-            setIsStuck(false);
-          } else if (hasRecentActivity(task.id)) {
-            // Final check for recent activity
-            setIsStuck(false);
-          } else {
-            setIsStuck(!actuallyRunning);
-          }
-          setHasCheckedRunning(true);
-        });
-      }, 2000);
-    }
-
-    return () => {
-      if (timeoutId) clearTimeout(timeoutId);
-    };
-  }, [task.id, isActiveTask, hasCheckedRunning, executionPhase, task.executionProgress?.phase]);
+    return () => clearInterval(intervalId);
+  }, [task.id, isActiveTask]);
 
   // Handle scroll events in logs to detect if user scrolled up
   const handleLogsScroll = (e: React.UIEvent<HTMLDivElement>) => {

@@ -46,6 +46,7 @@ if sys.version_info < (3, 10):  # noqa: UP036
 
 import asyncio
 import io
+import json
 import os
 import subprocess
 from pathlib import Path
@@ -358,6 +359,26 @@ Examples:
                 str(orchestrator.project_dir),
                 "--auto-continue",  # Non-interactive mode for chained execution
             ]
+
+            # Bypass approval re-validation when all conditions are met:
+            # 1. Spec was auto-approved (no human review required)
+            # 2. Spec creation succeeded (we're past the success check above)
+            # 3. No review-before-coding gate was requested
+            # This prevents hash mismatch failures when spec files are
+            # touched between auto-approval and run.py startup.
+            if args.auto_approve:
+                require_review = False
+                task_meta_path = orchestrator.spec_dir / "task_metadata.json"
+                if task_meta_path.exists():
+                    try:
+                        with open(task_meta_path, encoding="utf-8") as f:
+                            task_meta = json.load(f)
+                        require_review = task_meta.get("requireReviewBeforeCoding", False)
+                    except (json.JSONDecodeError, OSError):
+                        pass
+                if not require_review:
+                    run_cmd.append("--force")
+                    debug("spec_runner", "Adding --force: auto-approved, no review required, spec completed")
 
             # Pass base branch if specified (for worktree creation)
             if args.base_branch:

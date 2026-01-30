@@ -442,7 +442,9 @@ async def run_autonomous_agent(
                 print_status(f"Previous attempts: {attempt_count}", "warning")
             print()
 
-        if subtask_id and current_log_phase == LogPhase.CODING:
+        # Emit CODING_STARTED for each subtask — but skip if we just transitioned
+        # from planning, because the transition block above already emitted it.
+        if subtask_id and current_log_phase == LogPhase.CODING and not just_transitioned_from_planning:
             task_event_emitter.emit(
                 "CODING_STARTED",
                 {

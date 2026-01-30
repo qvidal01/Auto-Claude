@@ -249,6 +249,24 @@ describe('TaskStateManager', () => {
       expect(result).toBe(true);
     });
 
+    it('should handle human_review status (stage-only merge keeps task in review)', () => {
+      const taskInReview = createMockTask({
+        status: 'human_review',
+        reviewReason: 'completed'
+      });
+      const result = manager.handleManualStatusChange(mockTask.id, 'human_review', taskInReview, mockProject);
+      expect(result).toBe(true);
+    });
+
+    it('should handle human_review with default reviewReason when task has none', () => {
+      const taskNoReason = createMockTask({
+        status: 'human_review'
+        // no reviewReason set
+      });
+      const result = manager.handleManualStatusChange(mockTask.id, 'human_review', taskNoReason, mockProject);
+      expect(result).toBe(true);
+    });
+
     it('should return false for unhandled status', () => {
       const result = manager.handleManualStatusChange(mockTask.id, 'ai_review', mockTask, mockProject);
       expect(result).toBe(false);

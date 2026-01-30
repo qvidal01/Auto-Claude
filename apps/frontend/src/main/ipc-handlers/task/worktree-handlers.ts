@@ -22,6 +22,7 @@ import { persistPlanStatus, updateTaskMetadataPrUrl } from './plan-file-utils';
 import { getIsolatedGitEnv, detectWorktreeBranch, refreshGitIndex } from '../../utils/git-isolation';
 import { killProcessGracefully } from '../../platform';
 import { stripAnsiCodes } from '../../../shared/utils/ansi-sanitizer';
+import { taskStateManager } from '../../task-state-manager';
 
 // Regex pattern for validating git branch names
 const GIT_BRANCH_REGEX = /^[a-zA-Z0-9][a-zA-Z0-9._/-]*[a-zA-Z0-9]$|^[a-zA-Z0-9]$/;
@@ -2298,16 +2299,8 @@ export function registerWorktreeHandlers(
                 // Non-fatal: UI will still update, but status may not persist across refresh
               }
 
-              const mainWindow = getMainWindow();
-              if (mainWindow) {
-                mainWindow.webContents.send(
-                  IPC_CHANNELS.TASK_STATUS_CHANGE,
-                  taskId,
-                  newStatus,
-                  project.id,
-                  reviewReason
-                );
-              }
+              // Route status change through TaskStateManager (XState) to avoid dual emission
+              taskStateManager.handleManualStatusChange(taskId, newStatus as any, task, project);
 
               resolve({
                 success: true,
@@ -2635,10 +2628,8 @@ export function registerWorktreeHandlers(
           // Only send status change to backlog if not skipped
           // (skip when caller will set a different status, e.g., 'done')
           if (!skipStatusChange) {
-            const mainWindow = getMainWindow();
-            if (mainWindow) {
-              mainWindow.webContents.send(IPC_CHANNELS.TASK_STATUS_CHANGE, taskId, 'backlog', project.id);
-            }
+            // Route through TaskStateManager (XState) to avoid dual emission
+            taskStateManager.handleManualStatusChange(taskId, 'backlog', task, project);
           }
 
           return {

@@ -60,7 +60,7 @@ const taskStatusChangeListeners = new Set<(taskId: string, oldStatus: TaskStatus
  * This prevents race conditions where stuck detection fires before process is registered.
  */
 const taskLastActivity = new Map<string, number>();
-const STUCK_ACTIVITY_THRESHOLD_MS = 5000; // 5 seconds
+const STUCK_ACTIVITY_THRESHOLD_MS = 60_000; // 60 seconds — matches catastrophic stuck check interval
 
 /**
  * Record activity for a task (call this when we receive execution progress or status updates)
@@ -234,6 +234,9 @@ export const useTaskStore = create<TaskState>((set, get) => ({
     }),
 
   updateTaskStatus: (taskId, status, reviewReason) => {
+    // Record activity for stuck detection — status changes prove the task is alive
+    recordTaskActivity(taskId);
+
     // Capture old status before update
     const state = get();
     const index = findTaskIndex(state.tasks, taskId);
@@ -440,8 +443,10 @@ export const useTaskStore = create<TaskState>((set, get) => ({
     }),
 
   // Batch append multiple logs at once (single state update instead of N updates)
-  batchAppendLogs: (taskId, logs) =>
-    set((state) => {
+  batchAppendLogs: (taskId, logs) => {
+    // Record activity for stuck detection — log output proves the task is alive
+    recordTaskActivity(taskId);
+    return set((state) => {
       if (logs.length === 0) return state;
       const index = findTaskIndex(state.tasks, taskId);
       if (index === -1) return state;
@@ -452,7 +457,8 @@ export const useTaskStore = create<TaskState>((set, get) => ({
           logs: [...(t.logs || []), ...logs]
         }))
       };
-    }),
+    });
+  },
 
   selectTask: (taskId) => set({ selectedTaskId: taskId }),
 
