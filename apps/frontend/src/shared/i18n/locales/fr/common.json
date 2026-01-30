@@ -369,6 +369,8 @@
     "branchUpdateFailed": "Échec de la mise à jour de la branche",
     "allPRsLoaded": "Tous les PRs chargés",
     "maxPRsShown": "Affichage des 100 premières PRs",
+    "loadMore": "Charger plus",
+    "loadingMore": "Chargement...",
     "workflowsAwaitingApproval": "{{count}} workflow en attente d'approbation",
     "workflowsAwaitingApproval_plural": "{{count}} workflows en attente d'approbation",
     "blockedByWorkflows": "Bloqué",
