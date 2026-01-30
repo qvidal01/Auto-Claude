@@ -97,7 +97,7 @@ class TestPlannerToCoderTransition:
 
     def test_first_run_flag_indicates_planner_mode(self, test_env):
         """Test that first_run=True indicates planner mode."""
-        from prompts import is_first_run
+        from prompts_pkg.prompts import is_first_run
 
         temp_dir, spec_dir, project_dir = test_env
 
@@ -192,7 +192,7 @@ class TestPostSessionProcessing:
 
     def test_completed_subtask_records_success(self, test_env):
         """Test that completed subtask is recorded as successful."""
-        from recovery import RecoveryManager
+        from services.recovery import RecoveryManager
         from agents.session import post_session_processing
 
         temp_dir, spec_dir, project_dir = test_env
@@ -237,7 +237,7 @@ class TestPostSessionProcessing:
 
     def test_in_progress_subtask_records_failure(self, test_env):
         """Test that in_progress subtask is recorded as incomplete."""
-        from recovery import RecoveryManager
+        from services.recovery import RecoveryManager
         from agents.session import post_session_processing
 
         temp_dir, spec_dir, project_dir = test_env
@@ -280,7 +280,7 @@ class TestPostSessionProcessing:
 
     def test_pending_subtask_records_failure(self, test_env):
         """Test that pending (no progress) subtask is recorded as failure."""
-        from recovery import RecoveryManager
+        from services.recovery import RecoveryManager
         from agents.session import post_session_processing
 
         temp_dir, spec_dir, project_dir = test_env
@@ -442,7 +442,7 @@ class TestHandoffDataPreservation:
 
     def test_subtask_context_loading(self, test_env):
         """Test that subtask context is properly loaded for coder."""
-        from prompt_generator import load_subtask_context
+        from prompts_pkg.prompt_generator import load_subtask_context
 
         temp_dir, spec_dir, project_dir = test_env
 
@@ -475,7 +475,7 @@ class TestHandoffDataPreservation:
 
     def test_recovery_hints_passed_to_coder(self, test_env):
         """Test that recovery hints are available for retry attempts."""
-        from recovery import RecoveryManager
+        from services.recovery import RecoveryManager
 
         temp_dir, spec_dir, project_dir = test_env
 
@@ -498,7 +498,7 @@ class TestHandoffDataPreservation:
 
     def test_commit_tracking_across_sessions(self, test_env):
         """Test that commit tracking works across sessions."""
-        from recovery import RecoveryManager
+        from services.recovery import RecoveryManager
 
         temp_dir, spec_dir, project_dir = test_env
 
