@@ -39,16 +39,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Any
 
-# Import providers
-try:
-    from .providers.protocol import LabelData
-except (ImportError, ValueError, SystemError):
-
-    @dataclass
-    class LabelData:
-        name: str
-        color: str
-        description: str = ""
+from runners.github.providers.protocol import LabelData
 
 
 class OnboardingPhase(str, Enum):

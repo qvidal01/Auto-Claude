@@ -12,11 +12,7 @@ import re
 from pathlib import Path
 from typing import Any
 
-try:
-    from .models import PRReviewFinding, ReviewSeverity
-except (ImportError, ValueError, SystemError):
-    # For direct module loading in tests
-    from models import PRReviewFinding, ReviewSeverity
+from runners.github.models import PRReviewFinding, ReviewSeverity
 
 
 class FindingValidator:

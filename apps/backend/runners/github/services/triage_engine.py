@@ -9,16 +9,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
-try:
-    from ...phase_config import resolve_model_id
-    from ..models import GitHubRunnerConfig, TriageCategory, TriageResult
-    from .prompt_manager import PromptManager
-    from .response_parsers import ResponseParser
-except (ImportError, ValueError, SystemError):
-    from models import GitHubRunnerConfig, TriageCategory, TriageResult
-    from phase_config import resolve_model_id
-    from services.prompt_manager import PromptManager
-    from services.response_parsers import ResponseParser
+from phase_config import resolve_model_id
+from runners.github.models import GitHubRunnerConfig, TriageCategory, TriageResult
+from runners.github.services.prompt_manager import PromptManager
+from runners.github.services.response_parsers import ResponseParser
 
 
 class TriageEngine:

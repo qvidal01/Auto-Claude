@@ -13,11 +13,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any
 
-# Import from parent package or direct import
-try:
-    from ..gh_client import GHClient
-except (ImportError, ValueError, SystemError):
-    from gh_client import GHClient
+from runners.github.gh_client import GHClient
 
 from .protocol import (
     IssueData,

@@ -18,7 +18,11 @@ from typing import Any
 logger = logging.getLogger(__name__)
 
 # Check for Claude SDK availability without importing (avoids unused import warning)
-CLAUDE_SDK_AVAILABLE = importlib.util.find_spec("claude_agent_sdk") is not None
+try:
+    CLAUDE_SDK_AVAILABLE = importlib.util.find_spec("claude_agent_sdk") is not None
+except (ValueError, AttributeError):
+    # Handle edge case where module's __spec__ is not set (can happen in test environments)
+    CLAUDE_SDK_AVAILABLE = False
 
 # Default model and thinking configuration
 # Note: Default uses shorthand "sonnet" which gets resolved via resolve_model_id()

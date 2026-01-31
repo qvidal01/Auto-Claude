@@ -46,8 +46,8 @@ from typing import Any
 
 # Import learning tracker if available
 try:
-    from .learning import LearningPattern, LearningTracker
-except (ImportError, ValueError, SystemError):
+    from runners.github.learning import LearningPattern, LearningTracker
+except ImportError:
     LearningTracker = None
     LearningPattern = None
 

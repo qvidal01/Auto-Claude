@@ -9,10 +9,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-try:
-    from ..models import ReviewPass
-except (ImportError, ValueError, SystemError):
-    from models import ReviewPass
+from runners.github.models import ReviewPass
 
 
 class PromptManager:

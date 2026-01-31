@@ -10,12 +10,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-try:
-    from ..models import AutoFixState, AutoFixStatus, GitHubRunnerConfig
-    from .io_utils import safe_print
-except (ImportError, ValueError, SystemError):
-    from models import AutoFixState, AutoFixStatus, GitHubRunnerConfig
-    from services.io_utils import safe_print
+from runners.github.models import AutoFixState, AutoFixStatus, GitHubRunnerConfig
+from runners.github.services.io_utils import safe_print
 
 
 class BatchProcessor:
@@ -69,10 +65,7 @@ class BatchProcessor:
         Returns:
             List of IssueBatch objects that were created
         """
-        try:
-            from ..batch_issues import BatchStatus, IssueBatcher
-        except (ImportError, ValueError, SystemError):
-            from batch_issues import BatchStatus, IssueBatcher
+        from runners.github.batch_issues import BatchStatus, IssueBatcher
 
         self._report_progress("batching", 10, "Analyzing issues for batching...")
 
@@ -187,10 +180,7 @@ class BatchProcessor:
         Returns:
             Dict with proposed batches and statistics for user review
         """
-        try:
-            from ..batch_issues import IssueBatcher
-        except (ImportError, ValueError, SystemError):
-            from batch_issues import IssueBatcher
+        from runners.github.batch_issues import IssueBatcher
 
         self._report_progress("analyzing", 10, "Fetching issues for analysis...")
 
@@ -404,20 +394,12 @@ class BatchProcessor:
         Returns:
             List of created IssueBatch objects
         """
-        try:
-            from ..batch_issues import (
-                BatchStatus,
-                IssueBatch,
-                IssueBatcher,
-                IssueBatchItem,
-            )
-        except (ImportError, ValueError, SystemError):
-            from batch_issues import (
-                BatchStatus,
-                IssueBatch,
-                IssueBatcher,
-                IssueBatchItem,
-            )
+        from runners.github.batch_issues import (
+            BatchStatus,
+            IssueBatch,
+            IssueBatcher,
+            IssueBatchItem,
+        )
 
         if not approved_batches:
             return []
@@ -493,10 +475,7 @@ class BatchProcessor:
 
     async def get_batch_status(self) -> dict:
         """Get status of all batches."""
-        try:
-            from ..batch_issues import IssueBatcher
-        except (ImportError, ValueError, SystemError):
-            from batch_issues import IssueBatcher
+        from runners.github.batch_issues import IssueBatcher
 
         batcher = IssueBatcher(
             github_dir=self.github_dir,
@@ -526,10 +505,7 @@ class BatchProcessor:
 
     async def process_pending_batches(self) -> int:
         """Process all pending batches."""
-        try:
-            from ..batch_issues import BatchStatus, IssueBatcher
-        except (ImportError, ValueError, SystemError):
-            from batch_issues import BatchStatus, IssueBatcher
+        from runners.github.batch_issues import BatchStatus, IssueBatcher
 
         batcher = IssueBatcher(
             github_dir=self.github_dir,

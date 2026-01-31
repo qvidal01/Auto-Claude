@@ -19,12 +19,8 @@ from enum import Enum
 from pathlib import Path
 from typing import Any
 
-try:
-    from .audit import ActorType, AuditLogger
-    from .file_lock import locked_json_update
-except (ImportError, ValueError, SystemError):
-    from audit import ActorType, AuditLogger
-    from file_lock import locked_json_update
+from runners.github.audit import ActorType, AuditLogger
+from runners.github.file_lock import locked_json_update
 
 
 class OverrideType(str, Enum):

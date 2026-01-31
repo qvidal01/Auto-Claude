@@ -10,30 +10,17 @@ from __future__ import annotations
 import json
 import re
 
-try:
-    from ..models import (
-        AICommentTriage,
-        AICommentVerdict,
-        PRReviewFinding,
-        ReviewCategory,
-        ReviewSeverity,
-        StructuralIssue,
-        TriageCategory,
-        TriageResult,
-    )
-    from .io_utils import safe_print
-except (ImportError, ValueError, SystemError):
-    from models import (
-        AICommentTriage,
-        AICommentVerdict,
-        PRReviewFinding,
-        ReviewCategory,
-        ReviewSeverity,
-        StructuralIssue,
-        TriageCategory,
-        TriageResult,
-    )
-    from services.io_utils import safe_print
+from runners.github.models import (
+    AICommentTriage,
+    AICommentVerdict,
+    PRReviewFinding,
+    ReviewCategory,
+    ReviewSeverity,
+    StructuralIssue,
+    TriageCategory,
+    TriageResult,
+)
+from runners.github.services.io_utils import safe_print
 
 # Evidence-based validation replaces confidence scoring
 # Findings without evidence are filtered out instead of using confidence thresholds

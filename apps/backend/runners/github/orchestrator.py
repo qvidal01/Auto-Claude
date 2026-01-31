@@ -18,64 +18,33 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
-try:
-    # When imported as part of package
-    from .bot_detection import BotDetector
-    from .context_gatherer import PRContext, PRContextGatherer
-    from .gh_client import GHClient
-    from .models import (
-        BRANCH_BEHIND_BLOCKER_MSG,
-        BRANCH_BEHIND_REASONING,
-        AICommentTriage,
-        AICommentVerdict,
-        AutoFixState,
-        GitHubRunnerConfig,
-        MergeVerdict,
-        PRReviewFinding,
-        PRReviewResult,
-        ReviewCategory,
-        ReviewSeverity,
-        StructuralIssue,
-        TriageResult,
-    )
-    from .permissions import GitHubPermissionChecker
-    from .rate_limiter import RateLimiter
-    from .services import (
-        AutoFixProcessor,
-        BatchProcessor,
-        PRReviewEngine,
-        TriageEngine,
-    )
-    from .services.io_utils import safe_print
-except (ImportError, ValueError, SystemError):
-    # When imported directly (runner.py adds github dir to path)
-    from bot_detection import BotDetector
-    from context_gatherer import PRContext, PRContextGatherer
-    from gh_client import GHClient
-    from models import (
-        BRANCH_BEHIND_BLOCKER_MSG,
-        BRANCH_BEHIND_REASONING,
-        AICommentTriage,
-        AICommentVerdict,
-        AutoFixState,
-        GitHubRunnerConfig,
-        MergeVerdict,
-        PRReviewFinding,
-        PRReviewResult,
-        ReviewCategory,
-        ReviewSeverity,
-        StructuralIssue,
-        TriageResult,
-    )
-    from permissions import GitHubPermissionChecker
-    from rate_limiter import RateLimiter
-    from services import (
-        AutoFixProcessor,
-        BatchProcessor,
-        PRReviewEngine,
-        TriageEngine,
-    )
-    from services.io_utils import safe_print
+from runners.github.bot_detection import BotDetector
+from runners.github.context_gatherer import PRContext, PRContextGatherer
+from runners.github.gh_client import GHClient
+from runners.github.models import (
+    BRANCH_BEHIND_BLOCKER_MSG,
+    BRANCH_BEHIND_REASONING,
+    AICommentTriage,
+    AICommentVerdict,
+    AutoFixState,
+    GitHubRunnerConfig,
+    MergeVerdict,
+    PRReviewFinding,
+    PRReviewResult,
+    ReviewCategory,
+    ReviewSeverity,
+    StructuralIssue,
+    TriageResult,
+)
+from runners.github.permissions import GitHubPermissionChecker
+from runners.github.rate_limiter import RateLimiter
+from runners.github.services import (
+    AutoFixProcessor,
+    BatchProcessor,
+    PRReviewEngine,
+    TriageEngine,
+)
+from runners.github.services.io_utils import safe_print
 
 
 @dataclass
@@ -656,12 +625,8 @@ class GitHubOrchestrator:
 
         try:
             # Import here to avoid circular imports at module level
-            try:
-                from .context_gatherer import FollowupContextGatherer
-                from .services.followup_reviewer import FollowupReviewer
-            except (ImportError, ValueError, SystemError):
-                from context_gatherer import FollowupContextGatherer
-                from services.followup_reviewer import FollowupReviewer
+            from runners.github.context_gatherer import FollowupContextGatherer
+            from runners.github.services.followup_reviewer import FollowupReviewer
 
             # Gather follow-up context
             gatherer = FollowupContextGatherer(
@@ -890,14 +855,9 @@ class GitHubOrchestrator:
                     "[AI] Using parallel orchestrator for follow-up review (SDK subagents)...",
                     flush=True,
                 )
-                try:
-                    from .services.parallel_followup_reviewer import (
-                        ParallelFollowupReviewer,
-                    )
-                except (ImportError, ValueError, SystemError):
-                    from services.parallel_followup_reviewer import (
-                        ParallelFollowupReviewer,
-                    )
+                from runners.github.services.parallel_followup_reviewer import (
+                    ParallelFollowupReviewer,
+                )
 
                 reviewer = ParallelFollowupReviewer(
                     project_dir=self.project_dir,

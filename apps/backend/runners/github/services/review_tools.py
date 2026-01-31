@@ -14,18 +14,11 @@ import logging
 from dataclasses import dataclass
 from pathlib import Path
 
-try:
-    from ...analysis.test_discovery import TestDiscovery
-    from ...core.client import create_client
-    from ..context_gatherer import PRContext
-    from ..models import PRReviewFinding, ReviewSeverity
-    from .category_utils import map_category
-except (ImportError, ValueError, SystemError):
-    from analysis.test_discovery import TestDiscovery
-    from category_utils import map_category
-    from context_gatherer import PRContext
-    from core.client import create_client
-    from models import PRReviewFinding, ReviewSeverity
+from analysis.test_discovery import TestDiscovery
+from core.client import create_client
+from runners.github.context_gatherer import PRContext
+from runners.github.models import PRReviewFinding, ReviewSeverity
+from runners.github.services.category_utils import map_category
 
 logger = logging.getLogger(__name__)
 

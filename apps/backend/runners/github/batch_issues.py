@@ -21,17 +21,10 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
-# Import validators
-try:
-    from ..phase_config import resolve_model_id
-    from .batch_validator import BatchValidator
-    from .duplicates import SIMILAR_THRESHOLD
-    from .file_lock import locked_json_write
-except (ImportError, ValueError, SystemError):
-    from batch_validator import BatchValidator
-    from duplicates import SIMILAR_THRESHOLD
-    from file_lock import locked_json_write
-    from phase_config import resolve_model_id
+from phase_config import resolve_model_id
+from runners.github.batch_validator import BatchValidator
+from runners.github.duplicates import SIMILAR_THRESHOLD
+from runners.github.file_lock import locked_json_write
 
 
 class ClaudeBatchAnalyzer:

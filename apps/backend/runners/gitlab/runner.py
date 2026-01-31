@@ -41,12 +41,9 @@ env_file = Path(__file__).parent.parent.parent / ".env"
 if env_file.exists():
     load_dotenv(env_file)
 
-# Add gitlab runner directory to path for direct imports
-sys.path.insert(0, str(Path(__file__).parent))
-
 from core.io_utils import safe_print
-from models import GitLabRunnerConfig
-from orchestrator import GitLabOrchestrator, ProgressCallback
+from .models import GitLabRunnerConfig
+from .orchestrator import GitLabOrchestrator, ProgressCallback
 
 
 def print_progress(callback: ProgressCallback) -> None:

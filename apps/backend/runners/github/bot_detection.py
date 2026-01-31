@@ -49,10 +49,7 @@ from core.gh_executable import get_gh_executable
 
 logger = logging.getLogger(__name__)
 
-try:
-    from .file_lock import FileLock, atomic_write
-except (ImportError, ValueError, SystemError):
-    from file_lock import FileLock, atomic_write
+from runners.github.file_lock import FileLock, atomic_write
 
 
 @dataclass
