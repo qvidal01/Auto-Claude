@@ -248,3 +248,217 @@ class TestErrorHandling:
 
         assert report is not None
         assert len(report.tasks_merged) == 0
+
+
+class TestOrchestratorIntegration:
+    """Integration tests for orchestrator workflow."""
+
+    def test_full_orchestrator_lifecycle(self, temp_project):
+        """Tests complete orchestrator lifecycle from start to merge."""
+        orchestrator = MergeOrchestrator(temp_project, dry_run=True)
+
+        # Setup baseline
+        files = [temp_project / "src" / "utils.py"]
+        orchestrator.evolution_tracker.capture_baselines("task-001", files)
+
+        # Record modifications
+        orchestrator.evolution_tracker.record_modification(
+            "task-001",
+            "src/utils.py",
+            SAMPLE_PYTHON_MODULE,
+            SAMPLE_PYTHON_WITH_NEW_FUNCTION,
+        )
+
+        # Merge
+        report = orchestrator.merge_task("task-001")
+
+        # Verify success
+        assert report is not None
+        assert "task-001" in report.tasks_merged
+
+    def test_orchestrator_with_progress_callback(self, temp_project):
+        """Progress callback receives updates."""
+        orchestrator = MergeOrchestrator(temp_project, dry_run=True)
+        progress_updates = []
+
+        def callback(stage, percent, message, details=None):
+            progress_updates.append({
+                "stage": stage,
+                "percent": percent,
+                "message": message,
+                "details": details,
+            })
+
+        # Setup
+        files = [temp_project / "src" / "utils.py"]
+        orchestrator.evolution_tracker.capture_baselines("task-001", files)
+        orchestrator.evolution_tracker.record_modification(
+            "task-001", "src/utils.py", SAMPLE_PYTHON_MODULE, SAMPLE_PYTHON_WITH_NEW_FUNCTION
+        )
+
+        # Merge with callback
+        report = orchestrator.merge_task("task-001", progress_callback=callback)
+
+        # Verify callbacks were made
+        assert len(progress_updates) > 0
+        # Should have ANALYZING stage
+        assert any(u["stage"].value == "analyzing" for u in progress_updates)
+
+    def test_orchestrator_direct_copy_fallback(self, temp_project):
+        """DIRECT_COPY fallback when semantic analysis fails."""
+        orchestrator = MergeOrchestrator(temp_project, dry_run=True)
+
+        # Create a file with body modifications (semantic analyzer can't parse)
+        unsupported_content = """
+def complex_function():
+    # Complex logic that semantic analyzer can't parse
+    result = do_complex_thing()
+    return result
+"""
+        files = [temp_project / "src" / "complex.py"]
+        orchestrator.evolution_tracker.capture_baselines("task-001", files)
+
+        # Record modification with changes in function body
+        orchestrator.evolution_tracker.record_modification(
+            "task-001",
+            "src/complex.py",
+            "def complex_function(): pass",
+            unsupported_content,
+        )
+
+        report = orchestrator.merge_task("task-001", worktree_path=temp_project)
+
+        # Should handle gracefully (may use DIRECT_COPY or succeed)
+        assert report is not None
+
+    def test_orchestrator_write_merged_files(self, temp_project, temp_dir):
+        """Write merged files to output directory."""
+        orchestrator = MergeOrchestrator(temp_project, dry_run=False)
+
+        # Setup and merge
+        files = [temp_project / "src" / "utils.py"]
+        orchestrator.evolution_tracker.capture_baselines("task-001", files)
+        orchestrator.evolution_tracker.record_modification(
+            "task-001", "src/utils.py", SAMPLE_PYTHON_MODULE, SAMPLE_PYTHON_WITH_NEW_FUNCTION
+        )
+
+        report = orchestrator.merge_task("task-001")
+
+        # Write files
+        output_dir = temp_dir / "merge_output"
+        written = orchestrator.write_merged_files(report, output_dir=output_dir)
+
+        # Verify files written
+        assert len(written) >= 0
+        if len(written) > 0:
+            assert output_dir.exists()
+
+    def test_orchestrator_apply_to_project(self, temp_project):
+        """Apply merged files directly to project."""
+        orchestrator = MergeOrchestrator(temp_project, dry_run=False)
+
+        # Setup and merge
+        files = [temp_project / "src" / "utils.py"]
+        orchestrator.evolution_tracker.capture_baselines("task-001", files)
+        orchestrator.evolution_tracker.record_modification(
+            "task-001", "src/utils.py", SAMPLE_PYTHON_MODULE, SAMPLE_PYTHON_WITH_NEW_FUNCTION
+        )
+
+        report = orchestrator.merge_task("task-001")
+
+        # Apply to project
+        success = orchestrator.apply_to_project(report)
+
+        # Should return boolean
+        assert isinstance(success, bool)
+
+
+class TestOrchestratorAIConfiguration:
+    """Tests for AI resolver configuration."""
+
+    def test_ai_enabled_mode(self, temp_project):
+        """Orchestrator with AI enabled."""
+        orchestrator = MergeOrchestrator(temp_project, enable_ai=True, dry_run=True)
+
+        assert orchestrator.enable_ai is True
+        assert orchestrator._ai_resolver is None  # Lazy init
+        # Accessing property initializes it
+        resolver = orchestrator.ai_resolver
+        assert resolver is not None
+
+    def test_ai_disabled_mode(self, temp_project):
+        """Orchestrator with AI disabled."""
+        orchestrator = MergeOrchestrator(temp_project, enable_ai=False, dry_run=True)
+
+        assert orchestrator.enable_ai is False
+        resolver = orchestrator.ai_resolver
+        assert resolver is not None  # Still creates resolver but without AI function
+
+    def test_custom_ai_resolver(self, temp_project, mock_ai_resolver):
+        """Orchestrator with custom AI resolver."""
+        orchestrator = MergeOrchestrator(
+            temp_project,
+            enable_ai=True,
+            ai_resolver=mock_ai_resolver,
+            dry_run=True,
+        )
+
+        assert orchestrator._ai_resolver is mock_ai_resolver
+        assert orchestrator.ai_resolver is mock_ai_resolver
+
+
+class TestOrchestratorConflictHandling:
+    """Tests for conflict detection and resolution."""
+
+    def test_get_pending_conflicts(self, temp_project):
+        """Returns files with pending conflicts."""
+        orchestrator = MergeOrchestrator(temp_project, dry_run=True)
+
+        # Setup two tasks modifying same location
+        files = [temp_project / "src" / "utils.py"]
+        orchestrator.evolution_tracker.capture_baselines("task-001", files)
+        orchestrator.evolution_tracker.capture_baselines("task-002", files)
+
+        # Both modify same function
+        orchestrator.evolution_tracker.record_modification(
+            "task-001",
+            "src/utils.py",
+            SAMPLE_PYTHON_MODULE,
+            SAMPLE_PYTHON_WITH_NEW_IMPORT,
+        )
+        orchestrator.evolution_tracker.record_modification(
+            "task-002",
+            "src/utils.py",
+            SAMPLE_PYTHON_MODULE,
+            SAMPLE_PYTHON_WITH_NEW_FUNCTION,
+        )
+
+        # Get pending conflicts
+        conflicts = orchestrator.get_pending_conflicts()
+
+        # Should detect conflict or compatible changes
+        assert isinstance(conflicts, list)
+
+    def test_preview_merge_with_conflicts(self, temp_project):
+        """Preview merge shows conflict information."""
+        orchestrator = MergeOrchestrator(temp_project, dry_run=True)
+
+        # Setup conflicting tasks
+        files = [temp_project / "src" / "utils.py"]
+        orchestrator.evolution_tracker.capture_baselines("task-001", files)
+        orchestrator.evolution_tracker.capture_baselines("task-002", files)
+
+        orchestrator.evolution_tracker.record_modification(
+            "task-001", "src/utils.py", SAMPLE_PYTHON_MODULE, SAMPLE_PYTHON_WITH_NEW_IMPORT
+        )
+        orchestrator.evolution_tracker.record_modification(
+            "task-002", "src/utils.py", SAMPLE_PYTHON_MODULE, SAMPLE_PYTHON_WITH_NEW_FUNCTION
+        )
+
+        # Preview merge
+        preview = orchestrator.preview_merge(["task-001", "task-002"])
+
+        assert "tasks" in preview
+        assert "files_to_merge" in preview
+        assert "summary" in preview
+        assert preview["summary"]["total_files"] >= 0

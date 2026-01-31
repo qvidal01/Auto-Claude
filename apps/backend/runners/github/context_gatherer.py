@@ -24,14 +24,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-try:
-    from .gh_client import GHClient, PRTooLargeError
-    from .services.io_utils import safe_print
-except (ImportError, ValueError, SystemError):
-    # Import from core.io_utils directly to avoid circular import with services package
-    # (services/__init__.py imports pr_review_engine which imports context_gatherer)
-    from core.io_utils import safe_print
-    from gh_client import GHClient, PRTooLargeError
+from runners.github.gh_client import GHClient, PRTooLargeError
+from runners.github.services.io_utils import safe_print
 
 # Validation patterns for git refs and paths (defense-in-depth)
 # These patterns allow common valid characters while rejecting potentially dangerous ones
@@ -87,10 +81,7 @@ def _validate_file_path(path: str) -> bool:
 
 
 if TYPE_CHECKING:
-    try:
-        from .models import FollowupReviewContext, PRReviewResult
-    except (ImportError, ValueError, SystemError):
-        from models import FollowupReviewContext, PRReviewResult
+    from runners.github.models import FollowupReviewContext, PRReviewResult
 
 
 @dataclass
@@ -982,13 +973,16 @@ class PRContextGatherer:
         # when CWD is different from project root (e.g., running from apps/backend/)
         resolved = (self.project_dir / base_dir / import_path).resolve()
 
+        # Resolve project_dir to handle symlinks consistently (e.g., /var -> /private/var on macOS)
+        project_dir_resolved = self.project_dir.resolve()
+
         # Try common extensions if no extension provided
         if not resolved.suffix:
             for ext in [".ts", ".tsx", ".js", ".jsx"]:
                 candidate = resolved.with_suffix(ext)
                 if candidate.exists() and candidate.is_file():
                     try:
-                        rel_path = candidate.relative_to(self.project_dir)
+                        rel_path = candidate.relative_to(project_dir_resolved)
                         return str(rel_path)
                     except ValueError:
                         # File is outside project directory
@@ -999,7 +993,7 @@ class PRContextGatherer:
                 index_file = resolved / f"index{ext}"
                 if index_file.exists() and index_file.is_file():
                     try:
-                        rel_path = index_file.relative_to(self.project_dir)
+                        rel_path = index_file.relative_to(project_dir_resolved)
                         return str(rel_path)
                     except ValueError:
                         return None
@@ -1007,7 +1001,7 @@ class PRContextGatherer:
         # File with extension
         if resolved.exists() and resolved.is_file():
             try:
-                rel_path = resolved.relative_to(self.project_dir)
+                rel_path = resolved.relative_to(project_dir_resolved)
                 return str(rel_path)
             except ValueError:
                 return None
@@ -1346,10 +1340,7 @@ class FollowupContextGatherer:
             FollowupReviewContext with changes since last review
         """
         # Import here to avoid circular imports
-        try:
-            from .models import FollowupReviewContext
-        except (ImportError, ValueError, SystemError):
-            from models import FollowupReviewContext
+        from runners.github.models import FollowupReviewContext
 
         previous_sha = self.previous_review.reviewed_commit_sha
 
