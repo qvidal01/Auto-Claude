@@ -34,6 +34,9 @@ export interface AppUpdateAPI {
   onAppUpdateStableDowngrade: (
     callback: (info: AppUpdateInfo) => void
   ) => IpcListenerCleanup;
+  onAppUpdateReadOnlyVolume: (
+    callback: (info: { appPath: string }) => void
+  ) => IpcListenerCleanup;
 }
 
 /**
@@ -79,5 +82,10 @@ export const createAppUpdateAPI = (): AppUpdateAPI => ({
   onAppUpdateStableDowngrade: (
     callback: (info: AppUpdateInfo) => void
   ): IpcListenerCleanup =>
-    createIpcListener(IPC_CHANNELS.APP_UPDATE_STABLE_DOWNGRADE, callback)
+    createIpcListener(IPC_CHANNELS.APP_UPDATE_STABLE_DOWNGRADE, callback),
+
+  onAppUpdateReadOnlyVolume: (
+    callback: (info: { appPath: string }) => void
+  ): IpcListenerCleanup =>
+    createIpcListener(IPC_CHANNELS.APP_UPDATE_READONLY_VOLUME, callback)
 });

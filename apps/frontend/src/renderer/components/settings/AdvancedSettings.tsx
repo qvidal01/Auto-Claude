@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   RefreshCw,
@@ -6,8 +6,13 @@ import {
   Download,
   Sparkles,
   ArrowDownToLine,
-  X
+  X,
+  AlertTriangle
 } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import rehypeRaw from 'rehype-raw';
+import rehypeSanitize from 'rehype-sanitize';
 import { Button } from '../ui/button';
 import { Label } from '../ui/label';
 import { Switch } from '../ui/switch';
@@ -22,39 +27,20 @@ import type {
 } from '../../../shared/types';
 
 /**
- * Simple markdown renderer for release notes
- * Handles: headers, bold, lists, line breaks
+ * Release notes renderer that handles both HTML and markdown input.
+ * GitHub release notes come as HTML, so we detect and handle both formats.
+ * Uses ReactMarkdown with rehype-sanitize to prevent XSS attacks.
  */
-function ReleaseNotesRenderer({ markdown }: { markdown: string }) {
-  const html = useMemo(() => {
-    const result = markdown
-      // Escape HTML
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      // Headers (### Header -> <h3>)
-      .replace(/^### (.+)$/gm, '<h4 class="text-sm font-semibold text-foreground mt-3 mb-1.5 first:mt-0">$1</h4>')
-      .replace(/^## (.+)$/gm, '<h3 class="text-sm font-semibold text-foreground mt-3 mb-1.5 first:mt-0">$1</h3>')
-      // Bold (**text** -> <strong>)
-      .replace(/\*\*([^*]+)\*\*/g, '<strong class="text-foreground font-medium">$1</strong>')
-      // Inline code (`code` -> <code>)
-      .replace(/`([^`]+)`/g, '<code class="px-1 py-0.5 bg-muted rounded text-xs">$1</code>')
-      // List items (- item -> <li>)
-      .replace(/^- (.+)$/gm, '<li class="ml-4 text-muted-foreground before:content-[\'•\'] before:mr-2 before:text-muted-foreground/60">$1</li>')
-      // Wrap consecutive list items
-      .replace(/(<li[^>]*>.*?<\/li>\n?)+/g, '<ul class="space-y-1 my-2">$&</ul>')
-      // Line breaks for remaining lines
-      .replace(/\n\n/g, '<div class="h-2"></div>')
-      .replace(/\n/g, '<br/>');
-
-    return result;
-  }, [markdown]);
-
+function ReleaseNotesRenderer({ content }: { content: string }) {
   return (
-    <div
-      className="text-sm text-muted-foreground leading-relaxed"
-      dangerouslySetInnerHTML={{ __html: html }}
-    />
+    <div className="text-sm text-muted-foreground leading-relaxed prose prose-sm dark:prose-invert max-w-none [&_ul]:ml-4 [&_ol]:ml-4">
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        rehypePlugins={[rehypeRaw, rehypeSanitize]}
+      >
+        {content}
+      </ReactMarkdown>
+    </div>
   );
 }
 
@@ -79,6 +65,8 @@ export function AdvancedSettings({ settings, onSettingsChange, section, version 
   const [isAppUpdateDownloaded, setIsAppUpdateDownloaded] = useState(false);
   // Stable downgrade state (shown when user turns off beta while on prerelease)
   const [stableDowngradeInfo, setStableDowngradeInfo] = useState<AppUpdateInfo | null>(null);
+  // Read-only volume warning (shown when trying to install from DMG)
+  const [showReadOnlyWarning, setShowReadOnlyWarning] = useState(false);
 
   // Check for updates on mount, including any already-downloaded updates
   useEffect(() => {
@@ -150,6 +138,8 @@ export function AdvancedSettings({ settings, onSettingsChange, section, version 
       setAppDownloadProgress(null);
       // Clear downgrade info if any update downloaded
       setStableDowngradeInfo(null);
+      // Reset read-only warning when a new update is downloaded
+      setShowReadOnlyWarning(false);
     });
 
     const cleanupProgress = window.electronAPI.onAppUpdateProgress((progress) => {
@@ -161,11 +151,17 @@ export function AdvancedSettings({ settings, onSettingsChange, section, version 
       setStableDowngradeInfo(info);
     });
 
+    // Listen for read-only volume warning (when trying to install from DMG)
+    const cleanupReadOnlyVolume = window.electronAPI.onAppUpdateReadOnlyVolume(() => {
+      setShowReadOnlyWarning(true);
+    });
+
     return () => {
       cleanupAvailable();
       cleanupDownloaded();
       cleanupProgress();
       cleanupStableDowngrade();
+      cleanupReadOnlyVolume();
     };
   }, []);
 
@@ -304,7 +300,7 @@ export function AdvancedSettings({ settings, onSettingsChange, section, version 
               {/* Release Notes */}
               {appUpdateInfo?.releaseNotes && (
                 <div className="bg-background rounded-lg p-4 max-h-48 overflow-y-auto border border-border/50">
-                  <ReleaseNotesRenderer markdown={appUpdateInfo.releaseNotes} />
+                  <ReleaseNotesRenderer content={appUpdateInfo.releaseNotes} />
                 </div>
               )}
 
@@ -325,10 +321,29 @@ export function AdvancedSettings({ settings, onSettingsChange, section, version 
               )}
 
               {/* Downloaded Success */}
-              {isAppUpdateDownloaded && (
+              {isAppUpdateDownloaded && !showReadOnlyWarning && (
                 <div className="flex items-center gap-3 text-sm text-success bg-success/10 border border-success/30 rounded-lg p-3">
                   <CheckCircle2 className="h-5 w-5 shrink-0" />
                   <span>{t('updates.updateDownloaded')}</span>
+                </div>
+              )}
+
+              {/* Read-Only Volume Warning */}
+              {showReadOnlyWarning && (
+                <div className="flex items-start gap-3 text-sm text-warning bg-warning/10 border border-warning/30 rounded-lg p-3">
+                  <AlertTriangle className="h-5 w-5 shrink-0 mt-0.5" />
+                  <div className="space-y-1">
+                    <p className="font-medium text-warning">{t('updates.readOnlyVolumeTitle')}</p>
+                    <p className="text-muted-foreground">{t('updates.readOnlyVolumeDescription')}</p>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6 shrink-0 ml-auto"
+                    onClick={() => setShowReadOnlyWarning(false)}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
                 </div>
               )}
 
@@ -445,7 +460,7 @@ export function AdvancedSettings({ settings, onSettingsChange, section, version 
               {/* Release Notes */}
               {stableDowngradeInfo.releaseNotes && (
                 <div className="bg-background rounded-lg p-4 max-h-48 overflow-y-auto border border-border/50">
-                  <ReleaseNotesRenderer markdown={stableDowngradeInfo.releaseNotes} />
+                  <ReleaseNotesRenderer content={stableDowngradeInfo.releaseNotes} />
                 </div>
               )}
 

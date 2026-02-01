@@ -17,6 +17,8 @@
  * - APP_UPDATE_ERROR: Error during update process
  */
 
+import { accessSync, constants as fsConstants } from 'fs';
+import path from 'path';
 import { autoUpdater } from 'electron-updater';
 import type { UpdateInfo } from 'electron-updater';
 import { app, net } from 'electron';
@@ -24,6 +26,7 @@ import type { BrowserWindow } from 'electron';
 import { IPC_CHANNELS } from '../shared/constants';
 import type { AppUpdateInfo } from '../shared/types';
 import { compareVersions } from './updater/version-manager';
+import { isMacOS } from './platform';
 
 // GitHub repo info for API calls
 const GITHUB_OWNER = 'AndyMik90';
@@ -91,10 +94,13 @@ function formatReleaseNotes(releaseNotes: UpdateInfo['releaseNotes']): string | 
  */
 export function setUpdateChannel(channel: UpdateChannel): void {
   autoUpdater.channel = channel;
+  // Enable pre-release scanning when beta channel is selected
+  // This allows electron-updater to find beta releases on GitHub
+  autoUpdater.allowPrerelease = channel === 'beta';
   // Clear any downloaded update info when channel changes to prevent showing
   // an Install button for an update from a different channel
   downloadedUpdateInfo = null;
-  console.warn(`[app-updater] Update channel set to: ${channel}`);
+  console.warn(`[app-updater] Update channel set to: ${channel}, allowPrerelease: ${autoUpdater.allowPrerelease}`);
 }
 
 // Enable more verbose logging in debug mode
@@ -294,12 +300,57 @@ export async function downloadUpdate(): Promise<void> {
 }
 
 /**
+ * Check if the app is running from a read-only volume (e.g., DMG on macOS)
+ * Returns true if the app cannot be updated in place
+ */
+function isRunningFromReadOnlyVolume(): boolean {
+  if (!isMacOS()) {
+    return false;
+  }
+
+  const appPath = app.getAppPath();
+
+  // Check if running from /Volumes/ (mounted DMG)
+  if (appPath.startsWith('/Volumes/')) {
+    return true;
+  }
+
+  // Additional check: try to determine if the filesystem is read-only
+  // Apps in DMGs typically have paths like /Volumes/App-Name/App.app
+  try {
+    // Get the app bundle path (parent of Resources/app.asar)
+    const appBundlePath = path.resolve(appPath, '..', '..');
+
+    // Try to check if we can write to the app's parent directory
+    accessSync(path.dirname(appBundlePath), fsConstants.W_OK);
+    return false;
+  } catch {
+    // If we can't write, it's likely read-only
+    return true;
+  }
+}
+
+/**
  * Quit and install update
  * Called from IPC handler when user confirms installation
+ * Returns false if running from a read-only volume (update cannot proceed)
  */
-export function quitAndInstall(): void {
+export function quitAndInstall(): boolean {
+  // Check if running from read-only volume before attempting install
+  if (isRunningFromReadOnlyVolume()) {
+    console.warn('[app-updater] Cannot install: running from read-only volume');
+
+    if (mainWindow) {
+      mainWindow.webContents.send(IPC_CHANNELS.APP_UPDATE_READONLY_VOLUME, {
+        appPath: app.getAppPath()
+      });
+    }
+    return false;
+  }
+
   console.warn('[app-updater] Quitting and installing update');
   autoUpdater.quitAndInstall(false, true);
+  return true;
 }
 
 /**
@@ -484,10 +535,13 @@ export async function setUpdateChannelWithDowngradeCheck(
   triggerDowngradeCheck = false
 ): Promise<AppUpdateInfo | null> {
   autoUpdater.channel = channel;
+  // Enable pre-release scanning when beta channel is selected
+  // This allows electron-updater to find beta releases on GitHub
+  autoUpdater.allowPrerelease = channel === 'beta';
   // Clear any downloaded update info when channel changes to prevent showing
   // an Install button for an update from a different channel
   downloadedUpdateInfo = null;
-  console.warn(`[app-updater] Update channel set to: ${channel}`);
+  console.warn(`[app-updater] Update channel set to: ${channel}, allowPrerelease: ${autoUpdater.allowPrerelease}`);
 
   // If switching to stable and downgrade check requested, look for stable version
   if (channel === 'latest' && triggerDowngradeCheck) {
