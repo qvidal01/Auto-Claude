@@ -632,7 +632,7 @@ export class AgentProcessManager {
       // spawn() failed synchronously (e.g., command not found, permission denied)
       // Clean up tracking entry and propagate error
       this.state.deleteProcess(taskId);
-      this.emitter.emit('error', taskId, err instanceof Error ? err.message : String(err));
+      this.emitter.emit('error', taskId, err instanceof Error ? err.message : String(err), projectId);
       throw err;
     }
 
@@ -699,7 +699,7 @@ export class AgentProcessManager {
       const taskEvent = parseTaskEvent(line);
       if (taskEvent) {
         console.log(`[AgentProcess:${taskId}] Parsed task event:`, taskEvent.type, taskEvent);
-        this.emitter.emit('task-event', taskId, taskEvent);
+        this.emitter.emit('task-event', taskId, taskEvent, projectId);
       }
 
       const phaseUpdate = this.events.parseExecutionPhase(line, currentPhase, isSpecRunner);
@@ -835,6 +835,17 @@ export class AgentProcessManager {
             completedPhases: [...completedPhases]
           }, projectId);
         }
+      }
+
+      if (code !== 0 && currentPhase !== 'complete' && currentPhase !== 'failed') {
+        this.emitter.emit('execution-progress', taskId, {
+          phase: 'failed',
+          phaseProgress: 0,
+          overallProgress: this.events.calculateOverallProgress(currentPhase, phaseProgress),
+          message: `Process exited with code ${code}`,
+          sequenceNumber: ++sequenceNumber,
+          completedPhases: [...completedPhases]
+        }, projectId);
       }
 
       this.emitter.emit('exit', taskId, code, processType, projectId);

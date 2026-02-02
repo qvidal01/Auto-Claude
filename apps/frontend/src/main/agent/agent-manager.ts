@@ -38,8 +38,6 @@ export class AgentManager extends EventEmitter {
     baseBranch?: string;
     swapCount: number;
     projectId?: string;
-    /** Generation counter to prevent stale cleanup after restart */
-    generation: number;
   }> = new Map();
 
   constructor() {
@@ -324,9 +322,6 @@ export class AgentManager extends EventEmitter {
     // Store context for potential restart
     this.storeTaskContext(taskId, projectPath, '', {}, true, taskDescription, specDir, metadata, baseBranch, projectId);
 
-    // Register with unified OperationRegistry for proactive swap support
-    this.registerTaskWithOperationRegistry(taskId, 'spec-creation', { projectPath, taskDescription, specDir });
-
     // Note: This is spec-creation but it chains to task-execution via run.py
     await this.processManager.spawnProcess(taskId, autoBuildSource, args, combinedEnv, 'task-execution', projectId);
   }
@@ -405,9 +400,6 @@ export class AgentManager extends EventEmitter {
 
     // Store context for potential restart
     this.storeTaskContext(taskId, projectPath, specId, options, false, undefined, undefined, undefined, undefined, projectId);
-
-    // Register with unified OperationRegistry for proactive swap support
-    this.registerTaskWithOperationRegistry(taskId, 'task-execution', { projectPath, specId, options });
 
     await this.processManager.spawnProcess(taskId, autoBuildSource, args, combinedEnv, 'task-execution', projectId);
   }
@@ -563,8 +555,7 @@ export class AgentManager extends EventEmitter {
       metadata,
       baseBranch,
       swapCount, // Preserve existing count instead of resetting
-      projectId,
-      generation, // Incremented to prevent stale exit cleanup
+      projectId
     });
   }
 
