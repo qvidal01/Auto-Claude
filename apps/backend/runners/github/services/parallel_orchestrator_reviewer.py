@@ -22,6 +22,7 @@ import hashlib
 import logging
 import os
 from collections import defaultdict
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -52,6 +53,7 @@ try:
         AgentAgreement,
         FindingValidationResponse,
         ParallelOrchestratorResponse,
+        SpecialistResponse,
     )
     from .sdk_utils import process_sdk_stream
 except (ImportError, ValueError, SystemError):
@@ -76,6 +78,7 @@ except (ImportError, ValueError, SystemError):
         AgentAgreement,
         FindingValidationResponse,
         ParallelOrchestratorResponse,
+        SpecialistResponse,
     )
     from services.sdk_utils import process_sdk_stream
 
@@ -495,23 +498,16 @@ Report findings with specific file paths, line numbers, and code evidence.
             # Note: Agent type uses the generic "pr_reviewer" since individual
             # specialist types aren't registered in AGENT_CONFIGS. The specialist-specific
             # system prompt handles differentiation.
-            # Get betas from model shorthand (before resolution to full ID)
-            betas = get_model_betas(self.config.model or "sonnet")
-            thinking_kwargs = get_thinking_kwargs_for_model(
-                model, self.config.thinking_level or "medium"
-            )
             client = create_client(
                 project_dir=project_root,
                 spec_dir=self.github_dir,
                 model=model,
                 agent_type="pr_reviewer",
-                betas=betas,
-                fast_mode=self.config.fast_mode,
+                max_thinking_tokens=thinking_budget,
                 output_format={
                     "type": "json_schema",
                     "schema": SpecialistResponse.model_json_schema(),
                 },
-                **thinking_kwargs,
             )
 
             async with client:
@@ -528,9 +524,7 @@ Report findings with specific file paths, line numbers, and code evidence.
 
                 error = stream_result.get("error")
                 if error:
-                    logger.error(
-                        f"[Specialist:{config.name}] SDK stream failed: {error}"
-                    )
+                    logger.error(f"[Specialist:{config.name}] SDK stream failed: {error}")
                     safe_print(
                         f"[Specialist:{config.name}] Analysis failed: {error}",
                         flush=True,
@@ -1080,11 +1074,6 @@ The SDK will run invoked agents in parallel automatically.
             # LLM agents now discover relevant files themselves via Read, Grep, Glob tools
             # No need to pre-scan the codebase programmatically
 
-            # Build orchestrator prompt AFTER worktree creation and related files rescan
-            prompt = self._build_orchestrator_prompt(context)
-            # Capture agent definitions for debug logging (with worktree path)
-            agent_defs = self._define_specialist_agents(project_root)
-
             # Use model and thinking level from config (user settings)
             # Resolve model shorthand via environment variable override if configured
             model_shorthand = self.config.model or "sonnet"
@@ -1104,111 +1093,107 @@ The SDK will run invoked agents in parallel automatically.
                 pr_number=context.pr_number,
             )
 
-            # Run orchestrator session using shared SDK stream processor
-            # Retry logic for tool use concurrency errors
-            MAX_RETRIES = 3
-            RETRY_DELAY = 2.0  # seconds between retries
+            # =================================================================
+            # PARALLEL SDK SESSIONS APPROACH
+            # =================================================================
+            # Instead of using broken Task tool subagents, we spawn each
+            # specialist as its own SDK session and run them in parallel.
+            # See: https://github.com/anthropics/claude-code/issues/8697
+            #
+            # This gives us:
+            # - True parallel execution via asyncio.gather()
+            # - Full control over each specialist's tools and prompts
+            # - No dependency on broken CLI features
+            # =================================================================
 
-            result_text = ""
-            structured_output = None
-            agents_invoked = []
-            msg_count = 0
-            last_error = None
+            # Run all specialists in parallel
+            findings, agents_invoked = await self._run_parallel_specialists(
+                context=context,
+                project_root=project_root,
+                model=model,
+                thinking_budget=thinking_budget,
+            )
 
-            for attempt in range(MAX_RETRIES):
-                if attempt > 0:
-                    logger.info(
-                        f"[ParallelOrchestrator] Retry attempt {attempt}/{MAX_RETRIES - 1} "
-                        f"after tool concurrency error"
-                    )
-                    safe_print(
-                        f"[ParallelOrchestrator] Retry {attempt}/{MAX_RETRIES - 1} "
-                        f"(tool concurrency error detected)"
-                    )
-                    # Small delay before retry
-                    import asyncio
+            # Log results
+            logger.info(
+                f"[ParallelOrchestrator] Parallel specialists complete: "
+                f"{len(findings)} findings from {len(agents_invoked)} agents"
+            )
 
-                    await asyncio.sleep(RETRY_DELAY)
+            # Skip the old orchestrator session code - findings come from parallel specialists
+            # The code below (structured output parsing, retries, etc.) is no longer needed
+            # as _run_parallel_specialists handles everything
 
-                    # Recreate client for retry (fresh session)
-                    client = self._create_sdk_client(
-                        project_root, model, thinking_budget
-                    )
+            # NOTE: The following block is kept but skipped via this marker
+            if False:  # DISABLED: Old orchestrator + Task tool approach
+                # Old code for reference - to be removed after testing
+                prompt = self._build_orchestrator_prompt(context)
+                agent_defs = self._define_specialist_agents(project_root)
+                client = self._create_sdk_client(project_root, model, thinking_budget)
 
-                try:
-                    async with client:
-                        await client.query(prompt)
+                MAX_RETRIES = 3
+                RETRY_DELAY = 2.0
 
+                result_text = ""
+                structured_output = None
+                msg_count = 0
+                last_error = None
+
+                for attempt in range(MAX_RETRIES):
+                    if attempt > 0:
+                        logger.info(
+                            f"[ParallelOrchestrator] Retry attempt {attempt}/{MAX_RETRIES - 1} "
+                            f"after tool concurrency error"
+                        )
                         safe_print(
-                            f"[ParallelOrchestrator] Running orchestrator ({model})...",
-                            flush=True,
+                            f"[ParallelOrchestrator] Retry {attempt}/{MAX_RETRIES - 1} "
+                            f"(tool concurrency error detected)"
+                        )
+                        await asyncio.sleep(RETRY_DELAY)
+                        client = self._create_sdk_client(
+                            project_root, model, thinking_budget
                         )
 
-                        # Process SDK stream with shared utility
-                        stream_result = await process_sdk_stream(
-                            client=client,
-                            context_name="ParallelOrchestrator",
-                            model=model,
-                            system_prompt=prompt,
-                            agent_definitions=agent_defs,
-                        )
+                    try:
+                        async with client:
+                            await client.query(prompt)
 
-                        error = stream_result.get("error")
-
-                        # Check for tool concurrency error specifically
-                        if (
-                            error == "tool_use_concurrency_error"
-                            and attempt < MAX_RETRIES - 1
-                        ):
-                            logger.warning(
-                                f"[ParallelOrchestrator] Tool concurrency error on attempt {attempt + 1}, "
-                                f"will retry..."
+                            safe_print(
+                                f"[ParallelOrchestrator] Running orchestrator ({model})...",
+                                flush=True,
                             )
-                            last_error = error
-                            continue  # Retry
 
-                        # Check for other stream processing errors
-                        if error:
-                            logger.error(
-                                f"[ParallelOrchestrator] SDK stream failed: {error}"
+                            stream_result = await process_sdk_stream(
+                                client=client,
+                                context_name="ParallelOrchestrator",
+                                model=model,
+                                system_prompt=prompt,
+                                agent_definitions=agent_defs,
                             )
-                            raise RuntimeError(f"SDK stream processing failed: {error}")
 
-                        # Success - extract results and break retry loop
-                        result_text = stream_result["result_text"]
-                        structured_output = stream_result["structured_output"]
-                        agents_invoked = stream_result["agents_invoked"]
-                        msg_count = stream_result["msg_count"]
-                        break  # Success, exit retry loop
+                            error = stream_result.get("error")
 
-                except Exception as e:
-                    # Check if this is a retryable error
-                    error_str = str(e).lower()
-                    is_retryable = (
-                        "400" in error_str
-                        or "concurrency" in error_str
-                        or "tool_use" in error_str
-                    )
+                            if (
+                                error == "tool_use_concurrency_error"
+                                and attempt < MAX_RETRIES - 1
+                            ):
+                                last_error = error
+                                continue
+                            if error:
+                                raise RuntimeError(f"SDK stream processing failed: {error}")
+                            result_text = stream_result["result_text"]
+                            structured_output = stream_result["structured_output"]
+                            agents_invoked = stream_result["agents_invoked"]
+                            break
+                    except Exception as e:
+                        if attempt < MAX_RETRIES - 1:
+                            last_error = str(e)
+                            continue
+                        raise
+                else:
+                    raise RuntimeError(f"Orchestrator failed after {MAX_RETRIES} attempts")
 
-                    if is_retryable and attempt < MAX_RETRIES - 1:
-                        logger.warning(
-                            f"[ParallelOrchestrator] Retryable error on attempt {attempt + 1}: {e}"
-                        )
-                        last_error = str(e)
-                        continue  # Retry
-
-                    # Not retryable or out of retries - re-raise
-                    raise
-            else:
-                # All retries exhausted
-                logger.error(
-                    f"[ParallelOrchestrator] Failed after {MAX_RETRIES} attempts. "
-                    f"Last error: {last_error}"
-                )
-                raise RuntimeError(
-                    f"Orchestrator failed after {MAX_RETRIES} retry attempts. "
-                    f"Last error: {last_error}"
-                )
+            # END DISABLED BLOCK
 
             self._report_progress(
                 "finalizing",
