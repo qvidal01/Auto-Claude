@@ -297,6 +297,41 @@ When multiple agents report on the same area:
 - **Track consensus**: Note which findings have cross-agent validation
 - **Evidence-based, not confidence-based**: Multiple agents agreeing doesn't skip validation - all findings still verified
 
+## STRUCTURED OUTPUT REQUIREMENTS
+
+**CRITICAL: Use EXACT values below. Schema validation will fail otherwise.**
+
+### Valid category values (use EXACTLY one of these, lowercase):
+- `security` - Authentication, authorization, injection, XSS, secrets
+- `quality` - Code quality, error handling, maintainability
+- `logic` - Logic errors, edge cases, race conditions
+- `test` - Test coverage, test quality
+- `docs` - Documentation issues
+- `regression` - Regression from previous fix
+- `incomplete_fix` - Partial fix that needs more work
+
+### Valid severity values (use EXACTLY one of these, lowercase):
+- `critical` - Security vulnerabilities, data loss risk
+- `high` - Significant bugs, breaking changes
+- `medium` - Quality issues, should fix
+- `low` - Suggestions, minor improvements
+
+### Valid verdict values (use EXACTLY one of these, UPPERCASE with underscores):
+- `READY_TO_MERGE` - All issues resolved, can merge
+- `MERGE_WITH_CHANGES` - Only LOW severity issues
+- `NEEDS_REVISION` - HIGH or MEDIUM issues (NOT "NEEDS REVISION")
+- `BLOCKED` - CRITICAL issues or CI failing
+
+### Common mistakes to AVOID:
+| Wrong | Correct |
+|-------|---------|
+| `"duplication"` | Use `"quality"` or `"redundancy"` if in scope |
+| `"NEEDS REVISION"` | `"NEEDS_REVISION"` |
+| `"needs revision"` | `"NEEDS_REVISION"` |
+| `"Ready to Merge"` | `"READY_TO_MERGE"` |
+| `"HIGH"` | `"high"` (lowercase for severity) |
+| `"CRITICAL"` | `"critical"` (lowercase for severity) |
+
 ## Output Format
 
 Provide your synthesis as a structured response matching the ParallelFollowupResponse schema:

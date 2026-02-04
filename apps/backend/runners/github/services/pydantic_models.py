@@ -26,7 +26,87 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
+
+# =============================================================================
+# Enum Normalization Helpers
+# =============================================================================
+# These help the AI produce valid output by mapping common synonyms/typos to
+# the exact values required by the schema. This reduces structured output
+# validation failures where the AI uses natural language like "duplication"
+# when the schema requires "redundancy".
+
+
+def normalize_category(value: str) -> str:
+    """Normalize category value to match schema requirements.
+
+    Maps common synonyms and typos to valid category values.
+    """
+    if not isinstance(value, str):
+        return value
+
+    # Map synonyms to valid category values
+    synonyms = {
+        # Redundancy synonyms
+        "duplication": "redundancy",
+        "code duplication": "redundancy",
+        "duplicate": "redundancy",
+        "duplicated": "redundancy",
+        "copy": "redundancy",
+        "copied": "redundancy",
+        # Performance synonyms
+        "perf": "performance",
+        "slow": "performance",
+        "optimization": "performance",
+        # Quality synonyms
+        "code quality": "quality",
+        "maintainability": "quality",
+        # Logic synonyms
+        "correctness": "logic",
+        "bug": "logic",
+        # Test synonyms
+        "testing": "test",
+        "tests": "test",
+        # Docs synonyms
+        "documentation": "docs",
+        "doc": "docs",
+        # Security synonyms
+        "sec": "security",
+        "vulnerability": "security",
+        # Style (map to quality or pattern)
+        "style": "quality",
+        "formatting": "quality",
+    }
+
+    normalized = value.lower().strip()
+    return synonyms.get(normalized, normalized)
+
+
+def normalize_verdict(value: str) -> str:
+    """Normalize verdict value to match schema requirements.
+
+    Handles common format variations like spaces, hyphens, and case sensitivity.
+    """
+    if not isinstance(value, str):
+        return value
+
+    # Normalize: uppercase, replace spaces/hyphens with underscores
+    normalized = value.upper().strip().replace(" ", "_").replace("-", "_")
+
+    # Map common variations
+    synonyms = {
+        "READY": "READY_TO_MERGE",
+        "MERGE": "READY_TO_MERGE",
+        "APPROVED": "APPROVE",
+        "NEEDS_CHANGES": "NEEDS_REVISION",
+        "REQUEST_CHANGES": "NEEDS_REVISION",
+        "CHANGES_REQUESTED": "NEEDS_REVISION",
+        "BLOCK": "BLOCKED",
+        "REJECT": "BLOCKED",
+    }
+
+    return synonyms.get(normalized, normalized)
+
 
 # =============================================================================
 # Verification Evidence (Required for All Findings)
@@ -112,10 +192,21 @@ class QualityFinding(BaseFinding):
 
     category: Literal[
         "redundancy", "quality", "test", "performance", "pattern", "docs"
-    ] = Field(description="Issue category")
+    ] = Field(
+        description=(
+            "Issue category. MUST be exactly one of: redundancy, quality, test, "
+            "performance, pattern, docs. Use 'redundancy' for code duplication "
+            "(NOT 'duplication')."
+        )
+    )
     redundant_with: str | None = Field(
         None, description="Reference to duplicate code (file:line) if redundant"
     )
+
+    @field_validator("category", mode="before")
+    @classmethod
+    def _normalize_category(cls, v: str) -> str:
+        return normalize_category(v)
 
 
 class DeepAnalysisFinding(BaseFinding):
@@ -128,10 +219,19 @@ class DeepAnalysisFinding(BaseFinding):
         "pattern",
         "performance",
         "logic",
-    ] = Field(description="Issue category")
+    ] = Field(
+        description=(
+            "Issue category. Use 'redundancy' for code duplication (NOT 'duplication')."
+        )
+    )
     verification_note: str | None = Field(
         None, description="What evidence is missing or couldn't be verified"
     )
+
+    @field_validator("category", mode="before")
+    @classmethod
+    def _normalize_category(cls, v: str) -> str:
+        return normalize_category(v)
 
 
 class StructuralIssue(BaseModel):
@@ -194,7 +294,10 @@ class FollowupFinding(BaseModel):
         description="Issue severity level"
     )
     category: Literal["security", "quality", "logic", "test", "docs"] = Field(
-        description="Issue category"
+        description=(
+            "Issue category. MUST be exactly one of: security, quality, logic, "
+            "test, docs."
+        )
     )
     title: str = Field(description="Brief issue title")
     description: str = Field(description="Detailed explanation of the issue")
@@ -205,6 +308,11 @@ class FollowupFinding(BaseModel):
     verification: VerificationEvidence = Field(
         description="Evidence that this finding was verified against actual code"
     )
+
+    @field_validator("category", mode="before")
+    @classmethod
+    def _normalize_category(cls, v: str) -> str:
+        return normalize_category(v)
 
 
 class FollowupReviewResponse(BaseModel):
@@ -222,8 +330,18 @@ class FollowupReviewResponse(BaseModel):
     )
     verdict: Literal[
         "READY_TO_MERGE", "MERGE_WITH_CHANGES", "NEEDS_REVISION", "BLOCKED"
-    ] = Field(description="Overall merge verdict")
+    ] = Field(
+        description=(
+            "Overall merge verdict. MUST be exactly one of: READY_TO_MERGE, "
+            "MERGE_WITH_CHANGES, NEEDS_REVISION, BLOCKED. Use underscores, not spaces."
+        )
+    )
     verdict_reasoning: str = Field(description="Explanation for the verdict")
+
+    @field_validator("verdict", mode="before")
+    @classmethod
+    def _normalize_verdict(cls, v: str) -> str:
+        return normalize_verdict(v)
 
 
 # =============================================================================
@@ -289,8 +407,18 @@ class StructuralPassResult(BaseModel):
     )
     verdict: Literal[
         "READY_TO_MERGE", "MERGE_WITH_CHANGES", "NEEDS_REVISION", "BLOCKED"
-    ] = Field(description="Structural verdict")
+    ] = Field(
+        description=(
+            "Structural verdict. MUST be exactly one of: READY_TO_MERGE, "
+            "MERGE_WITH_CHANGES, NEEDS_REVISION, BLOCKED."
+        )
+    )
     verdict_reasoning: str = Field(description="Explanation for the verdict")
+
+    @field_validator("verdict", mode="before")
+    @classmethod
+    def _normalize_verdict(cls, v: str) -> str:
+        return normalize_verdict(v)
 
 
 class AICommentTriageResult(BaseModel):
@@ -366,7 +494,11 @@ class OrchestratorFinding(BaseModel):
         "performance",
         "logic",
         "test",
-    ] = Field(description="Issue category")
+    ] = Field(
+        description=(
+            "Issue category. Use 'redundancy' for code duplication (NOT 'duplication')."
+        )
+    )
     severity: Literal["critical", "high", "medium", "low"] = Field(
         description="Issue severity level"
     )
@@ -379,18 +511,33 @@ class OrchestratorFinding(BaseModel):
         description="Evidence that this finding was verified against actual code"
     )
 
+    @field_validator("category", mode="before")
+    @classmethod
+    def _normalize_category(cls, v: str) -> str:
+        return normalize_category(v)
+
 
 class OrchestratorReviewResponse(BaseModel):
     """Complete response schema for orchestrator PR review."""
 
     verdict: Literal[
         "READY_TO_MERGE", "MERGE_WITH_CHANGES", "NEEDS_REVISION", "BLOCKED"
-    ] = Field(description="Overall merge verdict")
+    ] = Field(
+        description=(
+            "Overall merge verdict. MUST be exactly one of: READY_TO_MERGE, "
+            "MERGE_WITH_CHANGES, NEEDS_REVISION, BLOCKED."
+        )
+    )
     verdict_reasoning: str = Field(description="Explanation for the verdict")
     findings: list[OrchestratorFinding] = Field(
         default_factory=list, description="Issues found during review"
     )
     summary: str = Field(description="Brief summary of the review")
+
+    @field_validator("verdict", mode="before")
+    @classmethod
+    def _normalize_verdict(cls, v: str) -> str:
+        return normalize_verdict(v)
 
 
 # =============================================================================
@@ -446,7 +593,13 @@ class ParallelOrchestratorFinding(BaseModel):
         "redundancy",
         "pattern",
         "performance",
-    ] = Field(description="Issue category")
+    ] = Field(
+        description=(
+            "Issue category. MUST be exactly one of: security, quality, logic, "
+            "codebase_fit, test, docs, redundancy, pattern, performance. "
+            "Use 'redundancy' for code duplication (NOT 'duplication')."
+        )
+    )
     severity: Literal["critical", "high", "medium", "low"] = Field(
         description="Issue severity level"
     )
@@ -481,6 +634,11 @@ class ParallelOrchestratorFinding(BaseModel):
     cross_validated: bool = Field(
         False, description="Whether multiple agents agreed on this finding"
     )
+
+    @field_validator("category", mode="before")
+    @classmethod
+    def _normalize_category(cls, v: str) -> str:
+        return normalize_category(v)
 
 
 class AgentAgreement(BaseModel):
@@ -545,7 +703,12 @@ class SpecialistFinding(BaseModel):
     )
     category: Literal[
         "security", "quality", "logic", "performance", "pattern", "test", "docs"
-    ] = Field(description="Issue category")
+    ] = Field(
+        description=(
+            "Issue category. MUST be exactly one of: security, quality, logic, "
+            "performance, pattern, test, docs."
+        )
+    )
     title: str = Field(description="Brief issue title (max 80 chars)")
     description: str = Field(description="Detailed explanation of the issue")
     file: str = Field(description="File path where issue was found")
@@ -560,6 +723,11 @@ class SpecialistFinding(BaseModel):
         False,
         description="True if this is about affected code outside the PR (callers, dependencies)",
     )
+
+    @field_validator("category", mode="before")
+    @classmethod
+    def _normalize_category(cls, v: str) -> str:
+        return normalize_category(v)
 
 
 class SpecialistResponse(BaseModel):
@@ -612,9 +780,17 @@ class ParallelOrchestratorResponse(BaseModel):
         description="Information about agent agreement on findings",
     )
     verdict: Literal["APPROVE", "COMMENT", "NEEDS_REVISION", "BLOCKED"] = Field(
-        description="Overall PR verdict"
+        description=(
+            "Overall PR verdict. MUST be exactly one of: APPROVE, COMMENT, "
+            "NEEDS_REVISION, BLOCKED. Use underscores, not spaces."
+        )
     )
     verdict_reasoning: str = Field(description="Explanation for the verdict")
+
+    @field_validator("verdict", mode="before")
+    @classmethod
+    def _normalize_verdict(cls, v: str) -> str:
+        return normalize_verdict(v)
 
 
 # =============================================================================
@@ -655,7 +831,12 @@ class ParallelFollowupFinding(BaseModel):
         "docs",
         "regression",
         "incomplete_fix",
-    ] = Field(description="Issue category")
+    ] = Field(
+        description=(
+            "Issue category. MUST be exactly one of: security, quality, logic, "
+            "test, docs, regression, incomplete_fix."
+        )
+    )
     severity: Literal["critical", "high", "medium", "low"] = Field(
         description="Issue severity level"
     )
@@ -682,6 +863,11 @@ class ParallelFollowupFinding(BaseModel):
             "findings about related files that aren't directly in the PR diff."
         ),
     )
+
+    @field_validator("category", mode="before")
+    @classmethod
+    def _normalize_category(cls, v: str) -> str:
+        return normalize_category(v)
 
 
 class CommentAnalysis(BaseModel):
@@ -754,8 +940,18 @@ class ParallelFollowupResponse(BaseModel):
     # Verdict
     verdict: Literal[
         "READY_TO_MERGE", "MERGE_WITH_CHANGES", "NEEDS_REVISION", "BLOCKED"
-    ] = Field(description="Overall merge verdict")
+    ] = Field(
+        description=(
+            "Overall merge verdict. MUST be exactly one of: READY_TO_MERGE, "
+            "MERGE_WITH_CHANGES, NEEDS_REVISION, BLOCKED. Use underscores, not spaces."
+        )
+    )
     verdict_reasoning: str = Field(description="Explanation for the verdict")
+
+    @field_validator("verdict", mode="before")
+    @classmethod
+    def _normalize_verdict(cls, v: str) -> str:
+        return normalize_verdict(v)
 
 
 # =============================================================================

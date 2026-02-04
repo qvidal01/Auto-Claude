@@ -460,12 +460,17 @@ async def process_sdk_stream(
                         )
                     if subtype == "error_max_structured_output_retries":
                         # SDK failed to produce valid structured output after retries
+                        # Log ALL available fields for debugging - helps diagnose enum mismatches
+                        result_detail = getattr(msg, "result", None)
+                        is_error = getattr(msg, "is_error", False)
                         logger.warning(
                             f"[{context_name}] Claude could not produce valid structured output "
-                            f"after maximum retries - schema validation failed"
+                            f"after maximum retries - schema validation failed. "
+                            f"is_error={is_error}, result_preview={str(result_detail)[:500] if result_detail else 'None'}"
                         )
                         safe_print(
-                            f"[{context_name}] WARNING: Structured output validation failed after retries"
+                            f"[{context_name}] WARNING: Structured output validation failed after retries. "
+                            f"Result preview: {str(result_detail)[:300] if result_detail else 'None'}"
                         )
                         if not stream_error:
                             stream_error = "structured_output_validation_failed"

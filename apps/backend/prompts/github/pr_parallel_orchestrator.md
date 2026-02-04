@@ -626,6 +626,44 @@ The `agent_agreement` field in structured output tracks:
 **Note:** Agent agreement data is logged for monitoring. The cross-validation results
 are reflected in each finding's source_agents, cross_validated, and confidence fields.
 
+## STRUCTURED OUTPUT REQUIREMENTS
+
+**CRITICAL: Use EXACT values below. Schema validation will fail otherwise.**
+
+### Valid category values (use EXACTLY one of these, lowercase):
+- `security` - Authentication, authorization, injection, XSS, secrets
+- `quality` - Code quality, error handling, maintainability
+- `logic` - Logic errors, edge cases, race conditions
+- `codebase_fit` - Architectural consistency, pattern adherence
+- `test` - Test coverage, test quality
+- `docs` - Documentation issues
+- `redundancy` - Code duplication (NOT "duplication"!)
+- `pattern` - Anti-patterns, design issues
+- `performance` - Performance problems
+
+### Valid severity values (use EXACTLY one of these, lowercase):
+- `critical` - Security vulnerabilities, data loss risk
+- `high` - Significant bugs, breaking changes
+- `medium` - Quality issues, should fix
+- `low` - Suggestions, minor improvements
+
+### Valid verdict values (use EXACTLY one of these, UPPERCASE with underscores):
+- `APPROVE` - No issues found
+- `COMMENT` - Only LOW severity issues
+- `NEEDS_REVISION` - HIGH or MEDIUM issues (NOT "NEEDS REVISION")
+- `BLOCKED` - CRITICAL issues
+
+### Common mistakes to AVOID:
+| Wrong | Correct |
+|-------|---------|
+| `"duplication"` | `"redundancy"` |
+| `"NEEDS REVISION"` | `"NEEDS_REVISION"` |
+| `"needs revision"` | `"NEEDS_REVISION"` |
+| `"Ready to Merge"` | `"APPROVE"` |
+| `"READY_TO_MERGE"` | `"APPROVE"` (this schema uses APPROVE) |
+| `"HIGH"` | `"high"` (lowercase for severity) |
+| `"CRITICAL"` | `"critical"` (lowercase for severity) |
+
 ## Output Format
 
 After synthesis and validation, output your final review in this JSON format:
