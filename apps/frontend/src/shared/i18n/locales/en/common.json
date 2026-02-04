@@ -367,6 +367,8 @@
     "branchUpdateFailed": "Failed to update branch",
     "allPRsLoaded": "All PRs loaded",
     "maxPRsShown": "Showing first 100 PRs",
+    "loadMore": "Load More",
+    "loadingMore": "Loading...",
     "workflowsAwaitingApproval": "{{count}} Workflow Awaiting Approval",
     "workflowsAwaitingApproval_plural": "{{count}} Workflows Awaiting Approval",
     "blockedByWorkflows": "Blocked",

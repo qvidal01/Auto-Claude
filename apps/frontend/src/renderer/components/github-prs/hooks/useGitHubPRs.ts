@@ -23,6 +23,7 @@ interface UseGitHubPRsOptions {
 interface UseGitHubPRsResult {
   prs: PRData[];
   isLoading: boolean;
+  isLoadingMore: boolean; // Loading additional PRs via pagination
   isLoadingPRDetails: boolean; // Loading full PR details including files
   error: string | null;
   selectedPR: PRData | null;
@@ -38,6 +39,7 @@ interface UseGitHubPRsResult {
   hasMore: boolean; // True when 100 PRs returned (GitHub limit) - more may exist
   selectPR: (prNumber: number | null) => void;
   refresh: () => Promise<void>;
+  loadMore: () => Promise<void>; // Load next page of PRs
   runReview: (prNumber: number) => void;
   runFollowupReview: (prNumber: number) => void;
   checkNewCommits: (prNumber: number) => Promise<NewCommitsCheck>;
@@ -76,6 +78,8 @@ export function useGitHubPRs(
   const [isConnected, setIsConnected] = useState(false);
   const [repoFullName, setRepoFullName] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [endCursor, setEndCursor] = useState<string | null>(null);
 
   // Track previous isActive state to detect tab navigation
   const wasActiveRef = useRef(isActive);
@@ -158,6 +162,9 @@ export function useGitHubPRs(
     async () => {
       if (!projectId) return;
 
+      // Increment generation to invalidate any in-flight loadMore requests
+      fetchGenerationRef.current += 1;
+
       setIsLoading(true);
       setError(null);
 
@@ -174,6 +181,8 @@ export function useGitHubPRs(
             if (result) {
               // Use hasNextPage from API to determine if more PRs exist
               setHasMore(result.hasNextPage);
+              // Store endCursor for pagination
+              setEndCursor(result.endCursor ?? null);
               setPrs(result.prs);
 
               // Batch preload review results for PRs not in store (single IPC call)
@@ -242,6 +251,7 @@ export function useGitHubPRs(
     fetchGenerationRef.current += 1;
     hasLoadedRef.current = false;
     setHasMore(false);
+    setEndCursor(null);
     setPrs([]);
     setSelectedPRNumber(null);
     setSelectedPRDetails(null);
@@ -433,6 +443,91 @@ export function useGitHubPRs(
     await fetchPRs();
   }, [fetchPRs]);
 
+  // Load more PRs using cursor-based pagination
+  const loadMore = useCallback(async () => {
+    if (!projectId || !endCursor || !hasMore || isLoadingMore) return;
+
+    // Capture current state for staleness checks
+    const requestProjectId = projectId;
+    const requestGeneration = fetchGenerationRef.current;
+
+    setIsLoadingMore(true);
+    setError(null);
+
+    try {
+      const result = await window.electronAPI.github.listMorePRs(projectId, endCursor);
+
+      // Discard response if project changed or a refresh happened while loading
+      if (
+        requestProjectId !== currentProjectIdRef.current ||
+        requestGeneration !== fetchGenerationRef.current
+      ) {
+        return;
+      }
+
+      if (result) {
+        // Check if this is a failure response (empty result with no next page)
+        // In this case, preserve existing pagination state to allow retry
+        const isFailureResponse = result.prs.length === 0 && !result.hasNextPage && !result.endCursor;
+
+        if (!isFailureResponse) {
+          // Update pagination state only on successful response
+          setHasMore(result.hasNextPage);
+          setEndCursor(result.endCursor ?? null);
+
+          // Append new PRs to existing list, deduplicating by PR number
+          // (handles edge case where PR shifts position between pagination requests)
+          setPrs((prevPrs) => {
+            const existingNumbers = new Set(prevPrs.map((pr) => pr.number));
+            const newPrs = result.prs.filter((pr) => !existingNumbers.has(pr.number));
+            return [...prevPrs, ...newPrs];
+          });
+        }
+
+        // Batch preload review results for new PRs not in store
+        const prsNeedingPreload = result.prs.filter((pr) => {
+          const existingState = getPRReviewState(requestProjectId, pr.number);
+          return !existingState?.result && !existingState?.isReviewing;
+        });
+
+        if (prsNeedingPreload.length > 0) {
+          const prNumbers = prsNeedingPreload.map((pr) => pr.number);
+          const batchReviews = await window.electronAPI.github.getPRReviewsBatch(
+            requestProjectId,
+            prNumbers
+          );
+
+          // Check staleness again after async batch fetch
+          if (
+            requestProjectId !== currentProjectIdRef.current ||
+            requestGeneration !== fetchGenerationRef.current
+          ) {
+            return;
+          }
+
+          // Update store with loaded results
+          for (const reviewResult of Object.values(batchReviews)) {
+            if (reviewResult) {
+              usePRReviewStore.getState().setPRReviewResult(requestProjectId, reviewResult, {
+                preserveNewCommitsCheck: true,
+              });
+            }
+          }
+        }
+      }
+    } catch (err) {
+      // Only show error if still relevant
+      if (
+        requestProjectId === currentProjectIdRef.current &&
+        requestGeneration === fetchGenerationRef.current
+      ) {
+        setError(err instanceof Error ? err.message : "Failed to load more PRs");
+      }
+    } finally {
+      setIsLoadingMore(false);
+    }
+  }, [projectId, endCursor, hasMore, isLoadingMore, getPRReviewState]);
+
   const runReview = useCallback(
     (prNumber: number) => {
       if (!projectId) return;
@@ -623,6 +718,7 @@ export function useGitHubPRs(
   return {
     prs,
     isLoading,
+    isLoadingMore,
     isLoadingPRDetails,
     error,
     selectedPR,
@@ -638,6 +734,7 @@ export function useGitHubPRs(
     hasMore,
     selectPR,
     refresh,
+    loadMore,
     runReview,
     runFollowupReview,
     checkNewCommits,
