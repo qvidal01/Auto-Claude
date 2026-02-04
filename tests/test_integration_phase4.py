@@ -102,6 +102,7 @@ _modules_to_mock = [
     "phase_config",
     "services.pr_worktree_manager",
     "services.sdk_utils",
+    "services.markdown_utils",
     "claude_agent_sdk",
 ]
 _original_modules = {name: sys.modules.get(name) for name in _modules_to_mock}

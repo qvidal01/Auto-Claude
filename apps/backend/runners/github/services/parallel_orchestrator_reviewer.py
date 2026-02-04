@@ -43,12 +43,12 @@ try:
         MergeVerdict,
         PRReviewFinding,
         PRReviewResult,
-        ReviewCategory,
         ReviewSeverity,
     )
     from .agent_utils import create_working_dir_injector
     from .category_utils import map_category
     from .io_utils import safe_print
+    from .markdown_utils import parse_markdown_findings
     from .pr_worktree_manager import PRWorktreeManager
     from .pydantic_models import (
         AgentAgreement,
@@ -68,13 +68,13 @@ except (ImportError, ValueError, SystemError):
         MergeVerdict,
         PRReviewFinding,
         PRReviewResult,
-        ReviewCategory,
         ReviewSeverity,
     )
     from phase_config import get_thinking_budget, resolve_model_id
     from services.agent_utils import create_working_dir_injector
     from services.category_utils import map_category
     from services.io_utils import safe_print
+    from services.markdown_utils import parse_markdown_findings
     from services.pr_worktree_manager import PRWorktreeManager
     from services.pydantic_models import (
         AgentAgreement,
@@ -1390,11 +1390,7 @@ The SDK will run invoked agents in parallel automatically.
     def _parse_markdown_output(self, output: str) -> list[PRReviewFinding]:
         """Parse findings from markdown output when JSON extraction fails.
 
-        This handles cases where the AI outputs findings in markdown format
-        after structured output validation fails. Extracts findings from patterns like:
-        - **CRITICAL - Code Duplication**
-        - ### Critical Issues (Must Fix)
-        - 1. **HIGH - Race condition in auth.ts:45**
+        Delegates to shared markdown parsing utility.
 
         Args:
             output: Markdown text output to parse
@@ -1402,141 +1398,7 @@ The SDK will run invoked agents in parallel automatically.
         Returns:
             List of PRReviewFinding instances extracted from markdown
         """
-        import re
-
-        findings: list[PRReviewFinding] = []
-
-        # Normalize line endings
-        output = output.replace("\r\n", "\n")
-
-        # Pattern 1: **SEVERITY - Title** or **SEVERITY: Title**
-        # Examples: **CRITICAL - Code Duplication**, **HIGH: Race Condition**
-        severity_title_pattern = r"\*\*(\w+)\s*[-:–]\s*([^*]+)\*\*"
-
-        # Pattern 2: Numbered list items with severity
-        # Examples: 1. **CRITICAL - Title** or **1. HIGH - Title**
-        numbered_pattern = r"(?:\d+\.\s*)?\*\*(\w+)\s*[-:–]\s*([^*]+)\*\*"
-
-        # Track positions to avoid duplicates
-        found_titles: set[str] = set()
-
-        # First, try to extract verdict from output
-        verdict_match = re.search(
-            r"(?:verdict|final\s+.*?verdict)[:\s]*\*{0,2}(READY_TO_MERGE|MERGE_WITH_CHANGES|NEEDS_REVISION|BLOCKED|APPROVE|COMMENT)\*{0,2}",
-            output,
-            re.IGNORECASE,
-        )
-
-        # Find all severity-title matches
-        for match in re.finditer(numbered_pattern, output, re.IGNORECASE):
-            severity_str = match.group(1).strip().upper()
-            title = match.group(2).strip()
-
-            # Skip if already found this title (avoid duplicates)
-            title_key = title.lower()[:50]
-            if title_key in found_titles:
-                continue
-            found_titles.add(title_key)
-
-            # Map severity string to enum
-            severity_map = {
-                "CRITICAL": ReviewSeverity.CRITICAL,
-                "HIGH": ReviewSeverity.HIGH,
-                "MEDIUM": ReviewSeverity.MEDIUM,
-                "MED": ReviewSeverity.MEDIUM,
-                "LOW": ReviewSeverity.LOW,
-                "SUGGESTION": ReviewSeverity.LOW,
-            }
-            severity = severity_map.get(severity_str, ReviewSeverity.MEDIUM)
-
-            # Try to extract file and line from title or nearby text
-            # Pattern: filename:line or (filename:line)
-            file_line_match = re.search(
-                r"[`(]?([a-zA-Z0-9_./\-]+\.(?:ts|tsx|js|jsx|py|go|rs|java|rb|c|cpp|h|hpp|swift|kt|scala|php|vue|svelte)):(\d+)[`)]?",
-                title + output[match.end() : match.end() + 200],
-            )
-
-            file_path = "unknown"
-            line_num = 0
-            if file_line_match:
-                file_path = file_line_match.group(1)
-                line_num = int(file_line_match.group(2))
-
-            # Extract description - text following the title until next heading or finding
-            desc_start = match.end()
-            desc_end_patterns = [
-                r"\n\s*\*\*\w+\s*[-:–]",  # Next finding
-                r"\n\s*#{1,3}\s",  # Next heading
-                r"\n\s*\d+\.\s*\*\*",  # Next numbered item
-                r"\n\s*---",  # Horizontal rule
-            ]
-            desc_end = len(output)
-            for pattern in desc_end_patterns:
-                end_match = re.search(pattern, output[desc_start:])
-                if end_match:
-                    desc_end = min(desc_end, desc_start + end_match.start())
-
-            description = output[desc_start:desc_end].strip()
-            # Clean up description (remove leading -, *, etc.)
-            description = re.sub(r"^\s*[-*]\s*", "", description, flags=re.MULTILINE)
-            description = description[:500]  # Limit length
-
-            # Infer category from title/description
-            category_keywords = {
-                "security": [
-                    "security",
-                    "injection",
-                    "xss",
-                    "auth",
-                    "credential",
-                    "secret",
-                ],
-                "redundancy": [
-                    "duplication",
-                    "redundant",
-                    "duplicate",
-                    "similar",
-                    "copy",
-                ],
-                "performance": ["performance", "slow", "optimize", "memory", "leak"],
-                "logic": ["logic", "race", "condition", "edge case", "bug", "error"],
-                "quality": ["quality", "maintainability", "readability", "complexity"],
-                "test": ["test", "coverage", "assertion"],
-                "docs": ["doc", "comment", "readme"],
-            }
-
-            category = ReviewCategory.QUALITY  # Default
-            title_desc_lower = (title + " " + description).lower()
-            for cat, keywords in category_keywords.items():
-                if any(kw in title_desc_lower for kw in keywords):
-                    category = map_category(cat)
-                    break
-
-            # Generate finding ID
-            finding_id = hashlib.md5(
-                f"{file_path}:{line_num}:{title[:50]}".encode(),
-                usedforsecurity=False,
-            ).hexdigest()[:12]
-
-            finding = PRReviewFinding(
-                id=finding_id,
-                file=file_path,
-                line=line_num,
-                title=title[:80],
-                description=description if description else title,
-                category=category,
-                severity=severity,
-                suggested_fix="",
-                evidence=None,
-            )
-            findings.append(finding)
-
-        if findings:
-            logger.info(
-                f"[ParallelOrchestrator] Extracted {len(findings)} findings from markdown output"
-            )
-
-        return findings
+        return parse_markdown_findings(output, context_name="ParallelOrchestrator")
 
     def _create_finding_from_dict(self, f_data: dict[str, Any]) -> PRReviewFinding:
         """Create a PRReviewFinding from dictionary data.
