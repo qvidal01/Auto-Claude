@@ -577,7 +577,9 @@
       "weeklyThreshold": "Seuil d'utilisation hebdomadaire",
       "weeklyThresholdDescription": "Basculer lorsque l'utilisation hebdomadaire atteint ce niveau (recommandé: 99%)",
       "reactiveRecovery": "Récupération réactive",
-      "reactiveDescription": "Auto-basculement en cas de limite de taux inattendue"
+      "reactiveDescription": "Auto-basculement en cas de limite de taux inattendue",
+      "autoSwitchOnAuthFailure": "Changement auto en cas d'échec d'auth",
+      "autoSwitchOnAuthFailureDescription": "Basculer automatiquement vers un autre compte authentifié en cas d'échec d'authentification"
     },
     "priority": {
       "title": "Ordre de priorité des comptes",

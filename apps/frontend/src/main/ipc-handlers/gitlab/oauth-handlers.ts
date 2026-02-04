@@ -254,7 +254,7 @@ export function registerStartGlabAuth(): void {
 
           glabProcess.stdout?.on('data', (data) => {
             const chunk = data.toString('utf-8');
-            output += chunk;
+            _output += chunk;
             debugLog('glab stdout:', chunk);
 
             // Try to open browser if URL detected

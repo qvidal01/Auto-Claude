@@ -150,7 +150,7 @@ export function Insights({ projectId }: InsightsProps) {
     if (isUserAtBottom && viewportEl) {
       viewportEl.scrollTop = viewportEl.scrollHeight;
     }
-  }, [session?.messages, streamingContent, isUserAtBottom, viewportEl]);
+  }, [isUserAtBottom, viewportEl]);
 
   // Focus textarea on mount
   useEffect(() => {
@@ -160,8 +160,7 @@ export function Insights({ projectId }: InsightsProps) {
   // Reset task creation state when switching sessions
   useEffect(() => {
     setTaskCreated(new Set());
-    setCreatingTask(new Set());
-  }, [session?.id]);
+  }, []);
 
   const handleSend = () => {
     const message = inputValue.trim();

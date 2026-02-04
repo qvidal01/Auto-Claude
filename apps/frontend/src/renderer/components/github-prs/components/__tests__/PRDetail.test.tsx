@@ -16,6 +16,30 @@ import type { PRReviewResult, PRReviewProgress } from '../../../hooks/useGitHubP
 import type { NewCommitsCheck } from '@preload/api/modules/github-api';
 
 /**
+ * Factory function to create a mock PR data object
+ */
+function _createMockPR(overrides: Partial<PRData> = {}): PRData {
+  return {
+    number: 123,
+    title: 'Test PR',
+    body: 'Test PR description',
+    state: 'open',
+    author: { login: 'testuser' },
+    headRefName: 'feature-branch',
+    baseRefName: 'main',
+    additions: 100,
+    deletions: 50,
+    changedFiles: 5,
+    assignees: [],
+    files: [],
+    createdAt: '2024-01-01T00:00:00Z',
+    updatedAt: '2024-01-01T00:00:00Z',
+    htmlUrl: 'https://github.com/test/repo/pull/123',
+    ...overrides,
+  };
+}
+
+/**
  * Factory function to create a mock PR review result
  */
 function createMockReviewResult(overrides: Partial<PRReviewResult> = {}): PRReviewResult {

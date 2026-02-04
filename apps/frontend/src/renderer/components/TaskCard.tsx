@@ -403,8 +403,7 @@ export const TaskCard = memo(function TaskCard({
             )}
              {/* Status badge - hide when execution phase badge is showing */}
              {!hasActiveExecution && (
-               <>
-                  {task.status === 'done' ? (
+               task.status === 'done' ? (
                     <Badge
                       variant={getStatusBadgeVariant(task.status)}
                       className="text-[10px] px-1.5 py-0.5"

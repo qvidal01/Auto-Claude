@@ -149,9 +149,7 @@ export function TerminalGrid({ projectPath, onNewTaskClick, isActive = false }: 
   // Reset expanded terminal and clear pending cleanup when project changes
   useEffect(() => {
     setExpandedTerminalId(null);
-    setPendingCleanup(new Map());
-    clearAllCleanupTimers();
-  }, [projectPath, clearAllCleanupTimers]);
+  }, []);
 
   // Fetch available session dates when project changes
   useEffect(() => {

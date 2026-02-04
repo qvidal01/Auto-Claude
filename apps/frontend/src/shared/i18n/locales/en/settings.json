@@ -577,7 +577,9 @@
       "weeklyThreshold": "Weekly usage threshold",
       "weeklyThresholdDescription": "Switch when weekly usage reaches this level (recommended: 99%)",
       "reactiveRecovery": "Reactive Recovery",
-      "reactiveDescription": "Auto-swap when unexpected rate limit is hit"
+      "reactiveDescription": "Auto-swap when unexpected rate limit is hit",
+      "autoSwitchOnAuthFailure": "Auto-switch on auth failure",
+      "autoSwitchOnAuthFailureDescription": "Automatically switch to another authenticated account when authentication fails"
     },
     "priority": {
       "title": "Account Priority Order",

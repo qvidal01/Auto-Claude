@@ -38,6 +38,8 @@ export class AgentManager extends EventEmitter {
     baseBranch?: string;
     swapCount: number;
     projectId?: string;
+    /** Generation counter to prevent stale cleanup after restart */
+    generation: number;
   }> = new Map();
 
   constructor() {
@@ -102,78 +104,6 @@ export class AgentManager extends EventEmitter {
    */
   configure(pythonPath?: string, autoBuildSourcePath?: string): void {
     this.processManager.configure(pythonPath, autoBuildSourcePath);
-  }
-
-  /**
-   * Run startup recovery scan to detect and reset stuck subtasks on app launch
-   * Scans all projects for implementation_plan.json files and resets any stuck subtasks
-   */
-  async runStartupRecoveryScan(): Promise<void> {
-    console.log('[AgentManager] Running startup recovery scan for stuck subtasks...');
-
-    try {
-      // Get all projects from the store
-      const projects = projectStore.getProjects();
-
-      if (projects.length === 0) {
-        console.log('[AgentManager] No projects found - skipping startup recovery scan');
-        return;
-      }
-
-      let totalScanned = 0;
-      let totalReset = 0;
-
-      // Scan each project for stuck subtasks
-      for (const project of projects) {
-        if (!project.autoBuildPath) {
-          continue; // Skip projects that haven't been initialized yet
-        }
-
-        const specsDir = path.join(project.path, getSpecsDir(project.autoBuildPath));
-
-        // Check if specs directory exists
-        if (!existsSync(specsDir)) {
-          continue;
-        }
-
-        // Read all spec directories
-        try {
-          const specDirs = readdirSync(specsDir, { withFileTypes: true })
-            .filter(dirent => dirent.isDirectory())
-            .map(dirent => dirent.name);
-
-          // Process each spec directory
-          for (const specDirName of specDirs) {
-            const planPath = path.join(specsDir, specDirName, AUTO_BUILD_PATHS.IMPLEMENTATION_PLAN);
-
-            // Check if implementation_plan.json exists
-            if (!existsSync(planPath)) {
-              continue;
-            }
-
-            totalScanned++;
-
-            // Reset stuck subtasks (pass project.id to invalidate tasks cache)
-            const { success, resetCount } = await resetStuckSubtasks(planPath, project.id);
-
-            if (success && resetCount > 0) {
-              totalReset += resetCount;
-              console.log(`[AgentManager] Startup recovery: Reset ${resetCount} stuck subtask(s) in ${specDirName}`);
-            }
-          }
-        } catch (err) {
-          console.warn(`[AgentManager] Failed to scan specs directory for project ${project.name}:`, err);
-        }
-      }
-
-      if (totalReset > 0) {
-        console.log(`[AgentManager] Startup recovery complete: Reset ${totalReset} stuck subtask(s) across ${totalScanned} task(s)`);
-      } else {
-        console.log(`[AgentManager] Startup recovery complete: No stuck subtasks found (scanned ${totalScanned} task(s))`);
-      }
-    } catch (err) {
-      console.error('[AgentManager] Startup recovery scan failed:', err);
-    }
   }
 
   /**
@@ -322,6 +252,9 @@ export class AgentManager extends EventEmitter {
     // Store context for potential restart
     this.storeTaskContext(taskId, projectPath, '', {}, true, taskDescription, specDir, metadata, baseBranch, projectId);
 
+    // Register with unified OperationRegistry for proactive swap support
+    this.registerTaskWithOperationRegistry(taskId, 'spec-creation', { projectPath, taskDescription, specDir });
+
     // Note: This is spec-creation but it chains to task-execution via run.py
     await this.processManager.spawnProcess(taskId, autoBuildSource, args, combinedEnv, 'task-execution', projectId);
   }
@@ -400,6 +333,9 @@ export class AgentManager extends EventEmitter {
 
     // Store context for potential restart
     this.storeTaskContext(taskId, projectPath, specId, options, false, undefined, undefined, undefined, undefined, projectId);
+
+    // Register with unified OperationRegistry for proactive swap support
+    this.registerTaskWithOperationRegistry(taskId, 'task-execution', { projectPath, specId, options });
 
     await this.processManager.spawnProcess(taskId, autoBuildSource, args, combinedEnv, 'task-execution', projectId);
   }
@@ -555,7 +491,8 @@ export class AgentManager extends EventEmitter {
       metadata,
       baseBranch,
       swapCount, // Preserve existing count instead of resetting
-      projectId
+      projectId,
+      generation, // Incremented to prevent stale exit cleanup
     });
   }
 

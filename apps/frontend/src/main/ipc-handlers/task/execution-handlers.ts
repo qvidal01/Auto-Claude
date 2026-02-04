@@ -858,7 +858,7 @@ export function registerTaskExecutionHandlers(
 
         return { success: true };
       } catch (error) {
-        console.error('[TASK_RESUME_PAUSED] Failed to write RESUME file:', error instanceof Error ? error.message : String(error));
+        console.error('[TASK_RESUME_PAUSED] Failed to write RESUME file:', error);
         return {
           success: false,
           error: error instanceof Error ? error.message : 'Failed to signal resume'

@@ -95,7 +95,7 @@ export function useGitHubPRs(
   const fetchGenerationRef = useRef(0);
 
   // Get PR review state from the global store
-  const prReviews = usePRReviewStore((state) => state.prReviews);
+  const _prReviews = usePRReviewStore((state) => state.prReviews);
   const getPRReviewState = usePRReviewStore((state) => state.getPRReviewState);
   const setNewCommitsCheckAction = usePRReviewStore((state) => state.setNewCommitsCheck);
   const registerRefreshCallback = usePRReviewStore((state) => state.registerRefreshCallback);
@@ -105,9 +105,8 @@ export function useGitHubPRs(
   // Only subscribes to changes for this specific PR, not all PRs
   const selectedPRReviewState = usePRReviewStore((state) => {
     if (!projectId || selectedPRNumber === null) return null;
-    const key = `${projectId}:${selectedPRNumber}`;
-    return state.prReviews[key] || null;
-  });
+    return getPRReviewState(projectId, selectedPRNumber);
+  }, [projectId, selectedPRNumber, getPRReviewState]);
 
   // Derive values from store state - all from the same source to ensure consistency
   const reviewResult = selectedPRReviewState?.result ?? null;
@@ -119,10 +118,8 @@ export function useGitHubPRs(
   // Get list of PR numbers currently being reviewed
   const activePRReviews = useMemo(() => {
     if (!projectId) return [];
-    return Object.values(prReviews)
-      .filter((review) => review.projectId === projectId && review.isReviewing)
-      .map((review) => review.prNumber);
-  }, [projectId, prReviews]);
+    return getActivePRReviews(projectId).map((review) => review.prNumber);
+  }, [projectId, getActivePRReviews]);
 
   // Helper to get review state for any PR
   // Reads directly from prReviews so the callback invalidates when any review state changes,
@@ -146,7 +143,7 @@ export function useGitHubPRs(
         mergeableState: state.mergeableState,
       };
     },
-    [projectId, prReviews]
+    [projectId, getPRReviewState]
   );
 
   // Use detailed PR data if available (includes files), otherwise fall back to list data
@@ -262,7 +259,7 @@ export function useGitHubPRs(
       checkNewCommitsAbortRef.current.abort();
       checkNewCommitsAbortRef.current = null;
     }
-  }, [projectId]);
+  }, []);
 
   // Cleanup abort controller on unmount to prevent memory leaks
   // and avoid state updates on unmounted components
