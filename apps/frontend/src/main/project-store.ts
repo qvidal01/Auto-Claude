@@ -537,13 +537,22 @@ export class ProjectStore {
         // because the task is no longer actively running
         const isSettledState = xstateState && XSTATE_SETTLED_STATES.has(xstateState);
 
+        // Status-based override: if the task has reached a terminal status (human_review, done, pr_created)
+        // but the persisted executionPhase is stale (e.g. still "planning"), correct it.
+        // This happens when the XState machine didn't persist the final phase before being reset to backlog.
+        const STATUS_IMPLIES_COMPLETE: ReadonlySet<string> = new Set(['human_review', 'done', 'pr_created']);
+        const phaseIsStale = persistedPhase && persistedPhase !== 'complete' && persistedPhase !== 'failed'
+          && STATUS_IMPLIES_COMPLETE.has(finalStatus);
+
         const executionProgress = isSettledState
           ? this.inferExecutionProgressFromXState(xstateState)  // Use XState for settled states
-          : persistedPhase
-            ? { phase: persistedPhase, phaseProgress: 50, overallProgress: 50 }  // Use persisted for running
-            : xstateState
-              ? this.inferExecutionProgressFromXState(xstateState)
-              : this.inferExecutionProgress(plan?.status);
+          : phaseIsStale
+            ? { phase: 'complete' as ExecutionPhase, phaseProgress: 100, overallProgress: 100 }  // Fix stale phase
+            : persistedPhase
+              ? { phase: persistedPhase, phaseProgress: 50, overallProgress: 50 }  // Use persisted for running
+              : xstateState
+                ? this.inferExecutionProgressFromXState(xstateState)
+                : this.inferExecutionProgress(plan?.status);
 
         tasks.push({
           id: dir.name, // Use spec directory name as ID
