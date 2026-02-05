@@ -40,6 +40,17 @@ Auto Claude is a desktop application (+ CLI) where users describe a goal and AI 
 
 **PR target** — Always target the `develop` branch for PRs to AndyMik90/Auto-Claude, NOT `main`.
 
+## Memory (claude-mem)
+
+This project uses claude-mem for persistent memory across sessions. MCP search tools are available — use them proactively:
+
+- **Before modifying code** — Search for past work on the same files/features: `search(query="<file or feature>")`. Check if there are known bugs, decisions, or patterns to follow.
+- **When debugging** — Search for prior encounters with the same error or symptom: `search(query="<error message>", type="bugfix")`.
+- **When making architectural decisions** — Check for past decisions: `search(query="<topic>", type="decision")`.
+- **When resuming work** — Use `timeline(anchor=<recent_id>)` to understand where things left off.
+
+Follow the 3-layer workflow: `search` (cheap index) → `timeline` (context) → `get_observations` (full details only for relevant IDs). Never fetch full details without filtering first.
+
 ## Project Structure
 
 ```
