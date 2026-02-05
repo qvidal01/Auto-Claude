@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { arrayMove } from '@dnd-kit/sortable';
 import type { Task, TaskStatus, SubtaskStatus, ImplementationPlan, Subtask, TaskMetadata, ExecutionProgress, ExecutionPhase, ReviewReason, TaskDraft, ImageAttachment, TaskOrderState } from '../../shared/types';
 import { debugLog } from '../../shared/utils/debug-logger';
+import { useProjectStore } from './project-store';
 
 interface TaskState {
   tasks: Task[];
@@ -659,8 +660,37 @@ export async function createTask(
 
 /**
  * Start a task
+ * Respects maxParallelTasks limit - queues task if at capacity
  */
-export function startTask(taskId: string, options?: { parallel?: boolean; workers?: number }): void {
+export async function startTask(taskId: string, options?: { parallel?: boolean; workers?: number }): Promise<void> {
+  const store = useTaskStore.getState();
+  const projectStore = useProjectStore.getState();
+
+  // Find the task to get its projectId
+  const task = store.tasks.find(t => t.id === taskId || t.specId === taskId);
+  if (!task) {
+    console.warn('[startTask] Task not found:', taskId);
+    window.electronAPI.startTask(taskId, options);
+    return;
+  }
+
+  // Get project and maxParallelTasks setting
+  const project = projectStore.projects.find(p => p.id === task.projectId);
+  const maxParallelTasks = project?.settings?.maxParallelTasks ?? 3;
+
+  // Count current in-progress tasks (excluding archived)
+  const inProgressCount = store.tasks.filter(t =>
+    t.status === 'in_progress' && !t.metadata?.archivedAt
+  ).length;
+
+  // If at capacity, queue the task instead of starting
+  if (inProgressCount >= maxParallelTasks) {
+    console.log(`[startTask] In Progress full (${inProgressCount}/${maxParallelTasks}), moving task ${taskId} to Queue`);
+    await persistTaskStatus(taskId, 'queue');
+    return;
+  }
+
+  // Below capacity - start the task normally
   window.electronAPI.startTask(taskId, options);
 }
 
