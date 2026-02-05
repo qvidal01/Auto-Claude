@@ -109,8 +109,11 @@ export const PhaseProgressIndicator = memo(function PhaseProgressIndicator({
 
   // Determine if we should show indeterminate (activity) vs determinate (%) progress
   const isIndeterminatePhase = phase === 'planning' || phase === 'qa_review' || phase === 'qa_fixing';
-  // Show subtask progress whenever subtasks exist (stops pulsing animation when spec completes)
-  const showSubtaskProgress = totalSubtasks > 0;
+  // During coding phase with subtasks but none completed yet, prefer phaseProgress over 0%
+  // This gives users feedback that work is happening before the first subtask completes
+  const isCodingWithNoProgress = phase === 'coding' && totalSubtasks > 0 && completedSubtasks === 0;
+  // Show subtask progress when subtasks exist AND at least one is completed (or not actively coding)
+  const showSubtaskProgress = totalSubtasks > 0 && !isCodingWithNoProgress;
 
   const colors = PHASE_COLORS[phase] || PHASE_COLORS.idle;
   const phaseLabel = t(PHASE_LABEL_KEYS[phase] || PHASE_LABEL_KEYS.idle);
@@ -124,8 +127,8 @@ export const PhaseProgressIndicator = memo(function PhaseProgressIndicator({
           <span className="text-xs text-muted-foreground">
             {isStuck ? t('execution.labels.interrupted') : showSubtaskProgress ? t('execution.labels.progress') : phaseLabel}
           </span>
-          {/* Activity indicator dot for non-coding phases - only animate when visible */}
-          {isRunning && !isStuck && isIndeterminatePhase && (
+          {/* Activity indicator dot - shows for planning/QA and early coding phases */}
+          {isRunning && !isStuck && (isIndeterminatePhase || isCodingWithNoProgress) && (
             <motion.div
               className={cn('h-1.5 w-1.5 rounded-full', colors.color)}
               animate={shouldAnimate ? {
@@ -147,7 +150,7 @@ export const PhaseProgressIndicator = memo(function PhaseProgressIndicator({
             <span className="text-muted-foreground">
               {activeEntries} {activeEntries === 1 ? t('execution.labels.entry') : t('execution.labels.entries')}
             </span>
-          ) : isRunning && isIndeterminatePhase && (phaseProgress ?? 0) > 0 ? (
+          ) : isRunning && (isIndeterminatePhase || isCodingWithNoProgress) && (phaseProgress ?? 0) > 0 ? (
             `${Math.round(Math.min(phaseProgress!, 100))}%`
           ) : (
             '—'
@@ -173,12 +176,21 @@ export const PhaseProgressIndicator = memo(function PhaseProgressIndicator({
               transition={isVisible ? { duration: 2, repeat: Infinity, ease: 'easeInOut' } : undefined}
             />
           ) : showSubtaskProgress ? (
-            // Determinate progress for coding phase
+            // Determinate progress for coding phase with completed subtasks
             <motion.div
               key="determinate"
               className={cn('h-full rounded-full', colors.color)}
               initial={{ width: 0 }}
               animate={{ width: `${subtaskProgress}%` }}
+              transition={{ duration: 0.5, ease: 'easeOut' }}
+            />
+          ) : isCodingWithNoProgress && (phaseProgress ?? 0) > 0 ? (
+            // Coding phase with subtasks but none completed - show phaseProgress
+            <motion.div
+              key="coding-phase-progress"
+              className={cn('h-full rounded-full', colors.color)}
+              initial={{ width: 0 }}
+              animate={{ width: `${Math.min(phaseProgress!, 100)}%` }}
               transition={{ duration: 0.5, ease: 'easeOut' }}
             />
           ) : shouldAnimate && isIndeterminatePhase ? (

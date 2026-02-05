@@ -674,9 +674,9 @@ export async function startTask(taskId: string, options?: { parallel?: boolean; 
     return;
   }
 
-  // Get project and maxParallelTasks setting
+  // Get project and maxParallelTasks setting (capped at 10)
   const project = projectStore.projects.find(p => p.id === task.projectId);
-  const maxParallelTasks = project?.settings?.maxParallelTasks ?? 3;
+  const maxParallelTasks = Math.min(project?.settings?.maxParallelTasks ?? 3, 10);
 
   // Count current in-progress tasks (excluding archived)
   const inProgressCount = store.tasks.filter(t =>

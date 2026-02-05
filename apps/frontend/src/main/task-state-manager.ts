@@ -123,7 +123,14 @@ export class TaskStateManager {
         } else if (!currentState && task.reviewReason === 'plan_review') {
           // Fallback: No actor exists (e.g., after app restart), use task data
           this.handleUiEvent(taskId, { type: 'PLAN_APPROVED' }, task, project);
+        } else if (currentState === 'backlog' || !currentState) {
+          // Fresh start from backlog or no actor - send PLANNING_STARTED
+          // USER_RESUMED only works from human_review/error states
+          this.handleUiEvent(taskId, { type: 'PLANNING_STARTED' }, task, project);
         } else {
+          // Already in a running state (planning, coding, qa_*) - send USER_RESUMED
+          // Note: USER_RESUMED may be ignored if state doesn't handle it, but that's OK
+          // since the task is already running
           this.handleUiEvent(taskId, { type: 'USER_RESUMED' }, task, project);
         }
         return true;

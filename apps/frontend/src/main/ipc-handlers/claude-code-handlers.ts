@@ -216,10 +216,12 @@ async function scanClaudeInstallations(activePath: string | null): Promise<Claud
  * @param currentInstalled - Optional currently installed version. If provided and newer than
  *                           cached latest, cache will be invalidated and fresh data fetched.
  *                           This handles the case where CLI was updated while app was running.
+ * @param forceRefresh - If true, bypasses the cache and fetches fresh data from npm.
+ *                       Use this when the user explicitly clicks a "Refresh" button.
  */
-async function fetchLatestVersion(currentInstalled?: string | null): Promise<string> {
-  // Check cache first
-  if (cachedLatestVersion && Date.now() - cachedLatestVersion.timestamp < CACHE_DURATION_MS) {
+async function fetchLatestVersion(currentInstalled?: string | null, forceRefresh?: boolean): Promise<string> {
+  // Check cache first (unless force refresh is requested)
+  if (!forceRefresh && cachedLatestVersion && Date.now() - cachedLatestVersion.timestamp < CACHE_DURATION_MS) {
     const cachedVersion = cachedLatestVersion.version;
 
     // Invalidate cache if installed version is newer than cached latest
@@ -958,9 +960,9 @@ export function registerClaudeCodeHandlers(): void {
   // Check Claude Code version
   ipcMain.handle(
     IPC_CHANNELS.CLAUDE_CODE_CHECK_VERSION,
-    async (): Promise<IPCResult<ClaudeCodeVersionInfo>> => {
+    async (_event, forceRefresh?: boolean): Promise<IPCResult<ClaudeCodeVersionInfo>> => {
       try {
-        console.warn('[Claude Code] Checking version...');
+        console.warn('[Claude Code] Checking version...', forceRefresh ? '(force refresh)' : '');
 
         // Get installed version via cli-tool-manager
         let detectionResult;
@@ -977,10 +979,11 @@ export function registerClaudeCodeHandlers(): void {
 
         // Fetch latest version from npm
         // Pass installed version to invalidate cache if installed > cached (handles CLI update while app running)
+        // Pass forceRefresh to bypass cache when user explicitly clicks Refresh
         let latest: string;
         try {
           console.warn('[Claude Code] Fetching latest version from npm...');
-          latest = await fetchLatestVersion(installed);
+          latest = await fetchLatestVersion(installed, forceRefresh);
           console.warn('[Claude Code] Latest version:', latest);
         } catch (error) {
           console.warn('[Claude Code] Failed to fetch latest version, continuing with unknown:', error);
