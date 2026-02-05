@@ -37,6 +37,25 @@ function getTokenFingerprint(token: string | null | undefined): string {
 }
 
 /**
+ * Debug flag - only log verbose credential operations when DEBUG=true
+ */
+const IS_DEBUG = process.env.DEBUG === 'true';
+
+/**
+ * Debug log helper - only logs when DEBUG=true
+ * Uses console.warn to ensure visibility in Electron's main process
+ */
+function debugLog(message: string, ...args: unknown[]): void {
+  if (IS_DEBUG) {
+    if (args.length > 0) {
+      console.warn(message, ...args);
+    } else {
+      console.warn(message);
+    }
+  }
+}
+
+/**
  * Escape a string for safe interpolation into PowerShell double-quoted strings.
  * Escapes all PowerShell special characters to prevent injection attacks.
  *
@@ -193,7 +212,7 @@ export function getKeychainServiceName(configDir?: string): string {
   // No configDir provided - this should not happen with isolated profiles
   // Fall back to unhashed name for backwards compatibility during migration
   if (!configDir) {
-    console.warn('[CredentialUtils] getKeychainServiceName called without configDir - using legacy fallback');
+    debugLog('[CredentialUtils] getKeychainServiceName called without configDir - using legacy fallback');
     return 'Claude Code-credentials';
   }
 
@@ -396,13 +415,13 @@ function parseCredentialJson<T extends PlatformCredentials>(
   try {
     data = JSON.parse(credentialsJson);
   } catch {
-    console.warn(`[CredentialUtils] Failed to parse credential JSON for ${identifier}`);
+    debugLog(`[CredentialUtils] Failed to parse credential JSON for ${identifier}`);
     return extractFn({}) as T;
   }
 
   // Validate JSON structure
   if (!validateCredentialData(data)) {
-    console.warn(`[CredentialUtils] Invalid credential data structure for ${identifier}`);
+    debugLog(`[CredentialUtils] Invalid credential data structure for ${identifier}`);
     return extractFn({}) as T;
   }
 
@@ -439,7 +458,7 @@ function getCredentialsFromFile(
     if ((now - cached.timestamp) < ttl) {
       if (isDebug) {
         const cacheAge = now - cached.timestamp;
-        console.warn(`[CredentialUtils:${logPrefix}:CACHE] Returning cached credentials:`, {
+        debugLog(`[CredentialUtils:${logPrefix}:CACHE] Returning cached credentials:`, {
           credentialsPath,
           hasToken: !!cached.credentials.token,
           tokenFingerprint: getTokenFingerprint(cached.credentials.token),
@@ -453,7 +472,7 @@ function getCredentialsFromFile(
   // Defense-in-depth: Validate credentials path is within expected boundaries
   if (!isValidCredentialsPath(credentialsPath)) {
     if (isDebug) {
-      console.warn(`[CredentialUtils:${logPrefix}] Invalid credentials path rejected:`, { credentialsPath });
+      debugLog(`[CredentialUtils:${logPrefix}] Invalid credentials path rejected:`, { credentialsPath });
     }
     const invalidResult = { token: null, email: null, error: 'Invalid credentials path' };
     credentialCache.set(cacheKey, { credentials: invalidResult, timestamp: now });
@@ -463,7 +482,7 @@ function getCredentialsFromFile(
   // Check if credentials file exists
   if (!existsSync(credentialsPath)) {
     if (isDebug) {
-      console.warn(`[CredentialUtils:${logPrefix}] Credentials file not found:`, credentialsPath);
+      debugLog(`[CredentialUtils:${logPrefix}] Credentials file not found:`, credentialsPath);
     }
     const notFoundResult = { token: null, email: null };
     credentialCache.set(cacheKey, { credentials: notFoundResult, timestamp: now });
@@ -478,7 +497,7 @@ function getCredentialsFromFile(
     try {
       data = JSON.parse(content);
     } catch {
-      console.warn(`[CredentialUtils:${logPrefix}] Failed to parse credentials JSON:`, credentialsPath);
+      debugLog(`[CredentialUtils:${logPrefix}] Failed to parse credentials JSON:`, credentialsPath);
       const errorResult = { token: null, email: null };
       credentialCache.set(cacheKey, { credentials: errorResult, timestamp: now });
       return errorResult;
@@ -486,7 +505,7 @@ function getCredentialsFromFile(
 
     // Validate JSON structure
     if (!validateCredentialData(data)) {
-      console.warn(`[CredentialUtils:${logPrefix}] Invalid credentials data structure:`, credentialsPath);
+      debugLog(`[CredentialUtils:${logPrefix}] Invalid credentials data structure:`, credentialsPath);
       const invalidResult = { token: null, email: null };
       credentialCache.set(cacheKey, { credentials: invalidResult, timestamp: now });
       return invalidResult;
@@ -496,7 +515,7 @@ function getCredentialsFromFile(
 
     // Validate token format if present
     if (token && !isValidTokenFormat(token)) {
-      console.warn(`[CredentialUtils:${logPrefix}] Invalid token format in:`, credentialsPath);
+      debugLog(`[CredentialUtils:${logPrefix}] Invalid token format in:`, credentialsPath);
       const result = { token: null, email };
       credentialCache.set(cacheKey, { credentials: result, timestamp: now });
       return result;
@@ -506,7 +525,7 @@ function getCredentialsFromFile(
     credentialCache.set(cacheKey, { credentials, timestamp: now });
 
     if (isDebug) {
-      console.warn(`[CredentialUtils:${logPrefix}] Retrieved credentials from file:`, credentialsPath, {
+      debugLog(`[CredentialUtils:${logPrefix}] Retrieved credentials from file:`, credentialsPath, {
         hasToken: !!token,
         hasEmail: !!email,
         tokenFingerprint: getTokenFingerprint(token),
@@ -516,7 +535,7 @@ function getCredentialsFromFile(
     return credentials;
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
-    console.warn(`[CredentialUtils:${logPrefix}] Failed to read credentials file:`, credentialsPath, errorMessage);
+    debugLog(`[CredentialUtils:${logPrefix}] Failed to read credentials file:`, credentialsPath, errorMessage);
     const errorResult = { token: null, email: null, error: `Failed to read credentials: ${errorMessage}` };
     credentialCache.set(cacheKey, { credentials: errorResult, timestamp: now });
     return errorResult;
@@ -540,7 +559,7 @@ function getFullCredentialsFromFile(
   // Defense-in-depth: Validate credentials path is within expected boundaries
   if (!isValidCredentialsPath(credentialsPath)) {
     if (isDebug) {
-      console.warn(`[CredentialUtils:${logPrefix}] Invalid credentials path rejected:`, { credentialsPath });
+      debugLog(`[CredentialUtils:${logPrefix}] Invalid credentials path rejected:`, { credentialsPath });
     }
     return { token: null, email: null, refreshToken: null, expiresAt: null, scopes: null, subscriptionType: null, rateLimitTier: null, error: 'Invalid credentials path' };
   }
@@ -548,7 +567,7 @@ function getFullCredentialsFromFile(
   // Check if credentials file exists
   if (!existsSync(credentialsPath)) {
     if (isDebug) {
-      console.warn(`[CredentialUtils:${logPrefix}] Credentials file not found:`, credentialsPath);
+      debugLog(`[CredentialUtils:${logPrefix}] Credentials file not found:`, credentialsPath);
     }
     return { token: null, email: null, refreshToken: null, expiresAt: null, scopes: null, subscriptionType: null, rateLimitTier: null };
   }
@@ -561,13 +580,13 @@ function getFullCredentialsFromFile(
     try {
       data = JSON.parse(content);
     } catch {
-      console.warn(`[CredentialUtils:${logPrefix}] Failed to parse credentials JSON:`, credentialsPath);
+      debugLog(`[CredentialUtils:${logPrefix}] Failed to parse credentials JSON:`, credentialsPath);
       return { token: null, email: null, refreshToken: null, expiresAt: null, scopes: null, subscriptionType: null, rateLimitTier: null };
     }
 
     // Validate JSON structure
     if (!validateCredentialData(data)) {
-      console.warn(`[CredentialUtils:${logPrefix}] Invalid credentials data structure:`, credentialsPath);
+      debugLog(`[CredentialUtils:${logPrefix}] Invalid credentials data structure:`, credentialsPath);
       return { token: null, email: null, refreshToken: null, expiresAt: null, scopes: null, subscriptionType: null, rateLimitTier: null };
     }
 
@@ -575,12 +594,12 @@ function getFullCredentialsFromFile(
 
     // Validate token format if present
     if (token && !isValidTokenFormat(token)) {
-      console.warn(`[CredentialUtils:${logPrefix}] Invalid token format in:`, credentialsPath);
+      debugLog(`[CredentialUtils:${logPrefix}] Invalid token format in:`, credentialsPath);
       return { token: null, email, refreshToken, expiresAt, scopes, subscriptionType, rateLimitTier };
     }
 
     if (isDebug) {
-      console.warn(`[CredentialUtils:${logPrefix}] Retrieved full credentials from file:`, credentialsPath, {
+      debugLog(`[CredentialUtils:${logPrefix}] Retrieved full credentials from file:`, credentialsPath, {
         hasToken: !!token,
         hasEmail: !!email,
         hasRefreshToken: !!refreshToken,
@@ -593,7 +612,7 @@ function getFullCredentialsFromFile(
     return { token, email, refreshToken, expiresAt, scopes, subscriptionType, rateLimitTier };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
-    console.warn(`[CredentialUtils:${logPrefix}] Failed to read credentials file:`, credentialsPath, errorMessage);
+    debugLog(`[CredentialUtils:${logPrefix}] Failed to read credentials file:`, credentialsPath, errorMessage);
     return { token: null, email: null, refreshToken: null, expiresAt: null, scopes: null, subscriptionType: null, rateLimitTier: null, error: `Failed to read credentials: ${errorMessage}` };
   }
 }
@@ -655,7 +674,7 @@ function getCredentialsFromMacOSKeychain(configDir?: string, forceRefresh = fals
 
     // Validate token format if present
     if (token && !isValidTokenFormat(token)) {
-      console.warn('[CredentialUtils:macOS] Invalid token format for service:', serviceName);
+      debugLog('[CredentialUtils:macOS] Invalid token format for service:', serviceName);
       const result = { token: null, email };
       credentialCache.set(cacheKey, { credentials: result, timestamp: now });
       return result;
@@ -665,7 +684,7 @@ function getCredentialsFromMacOSKeychain(configDir?: string, forceRefresh = fals
     credentialCache.set(cacheKey, { credentials, timestamp: now });
 
     if (isDebug) {
-      console.warn('[CredentialUtils:macOS] Retrieved credentials from Keychain for service:', serviceName, {
+      debugLog('[CredentialUtils:macOS] Retrieved credentials from Keychain for service:', serviceName, {
         hasToken: !!token,
         hasEmail: !!email,
         tokenFingerprint: getTokenFingerprint(token),
@@ -676,7 +695,7 @@ function getCredentialsFromMacOSKeychain(configDir?: string, forceRefresh = fals
   } catch (error) {
     // Unexpected error (executeCredentialRead already handles "not found" cases)
     const errorMessage = error instanceof Error ? error.message : String(error);
-    console.warn('[CredentialUtils:macOS] Keychain access failed for service:', serviceName, errorMessage);
+    debugLog('[CredentialUtils:macOS] Keychain access failed for service:', serviceName, errorMessage);
     const errorResult = { token: null, email: null, error: `Keychain access failed: ${errorMessage}` };
     // Use shorter TTL for errors
     credentialCache.set(cacheKey, { credentials: errorResult, timestamp: now });
@@ -747,7 +766,7 @@ function getCredentialsFromLinuxSecretService(configDir?: string, forceRefresh =
     if ((now - cached.timestamp) < ttl) {
       if (isDebug) {
         const cacheAge = now - cached.timestamp;
-        console.warn('[CredentialUtils:Linux:SecretService:CACHE] Returning cached credentials:', {
+        debugLog('[CredentialUtils:Linux:SecretService:CACHE] Returning cached credentials:', {
           attribute,
           hasToken: !!cached.credentials.token,
           tokenFingerprint: getTokenFingerprint(cached.credentials.token),
@@ -762,7 +781,7 @@ function getCredentialsFromLinuxSecretService(configDir?: string, forceRefresh =
   const secretToolPath = findSecretToolPath();
   if (!secretToolPath) {
     if (isDebug) {
-      console.warn('[CredentialUtils:Linux:SecretService] secret-tool not found, falling back to file storage');
+      debugLog('[CredentialUtils:Linux:SecretService] secret-tool not found, falling back to file storage');
     }
     // Return a special result indicating Secret Service is unavailable
     return { token: null, email: null, error: 'secret-tool not found' };
@@ -786,7 +805,7 @@ function getCredentialsFromLinuxSecretService(configDir?: string, forceRefresh =
 
     // Validate token format if present
     if (token && !isValidTokenFormat(token)) {
-      console.warn('[CredentialUtils:Linux:SecretService] Invalid token format for attribute:', attribute);
+      debugLog('[CredentialUtils:Linux:SecretService] Invalid token format for attribute:', attribute);
       const result = { token: null, email };
       credentialCache.set(cacheKey, { credentials: result, timestamp: now });
       return result;
@@ -796,7 +815,7 @@ function getCredentialsFromLinuxSecretService(configDir?: string, forceRefresh =
     credentialCache.set(cacheKey, { credentials, timestamp: now });
 
     if (isDebug) {
-      console.warn('[CredentialUtils:Linux:SecretService] Retrieved credentials from Secret Service:', {
+      debugLog('[CredentialUtils:Linux:SecretService] Retrieved credentials from Secret Service:', {
         attribute,
         hasToken: !!token,
         hasEmail: !!email,
@@ -808,7 +827,7 @@ function getCredentialsFromLinuxSecretService(configDir?: string, forceRefresh =
   } catch (error) {
     // Unexpected error (executeCredentialRead already handles "not found" cases)
     const errorMessage = error instanceof Error ? error.message : String(error);
-    console.warn('[CredentialUtils:Linux:SecretService] Secret Service access failed:', errorMessage);
+    debugLog('[CredentialUtils:Linux:SecretService] Secret Service access failed:', errorMessage);
     // Return error to trigger fallback to file storage
     return { token: null, email: null, error: `Secret Service access failed: ${errorMessage}` };
   }
@@ -831,7 +850,7 @@ function getCredentialsFromLinux(configDir?: string, forceRefresh = false): Plat
   // If Secret Service had an error (not just "not found"), log it and try file fallback
   if (secretServiceResult.error && !secretServiceResult.error.includes('not found')) {
     if (isDebug) {
-      console.warn('[CredentialUtils:Linux] Secret Service unavailable, trying file fallback:', secretServiceResult.error);
+      debugLog('[CredentialUtils:Linux] Secret Service unavailable, trying file fallback:', secretServiceResult.error);
     }
   }
 
@@ -885,7 +904,7 @@ function getCredentialsFromWindowsCredentialManager(configDir?: string, forceRef
     if ((now - cached.timestamp) < ttl) {
       if (isDebug) {
         const cacheAge = now - cached.timestamp;
-        console.warn('[CredentialUtils:Windows:CACHE] Returning cached credentials:', {
+        debugLog('[CredentialUtils:Windows:CACHE] Returning cached credentials:', {
           targetName,
           hasToken: !!cached.credentials.token,
           tokenFingerprint: getTokenFingerprint(cached.credentials.token),
@@ -901,7 +920,7 @@ function getCredentialsFromWindowsCredentialManager(configDir?: string, forceRef
     const invalidResult = { token: null, email: null, error: 'Invalid credential target name format' };
     credentialCache.set(cacheKey, { credentials: invalidResult, timestamp: now });
     if (isDebug) {
-      console.warn('[CredentialUtils:Windows] Invalid target name rejected:', { targetName });
+      debugLog('[CredentialUtils:Windows] Invalid target name rejected:', { targetName });
     }
     return invalidResult;
   }
@@ -1008,7 +1027,7 @@ public static extern bool CredFree(IntPtr cred);
 
     // Validate token format if present
     if (token && !isValidTokenFormat(token)) {
-      console.warn('[CredentialUtils:Windows] Invalid token format for target:', targetName);
+      debugLog('[CredentialUtils:Windows] Invalid token format for target:', targetName);
       const result = { token: null, email };
       credentialCache.set(cacheKey, { credentials: result, timestamp: now });
       return result;
@@ -1018,7 +1037,7 @@ public static extern bool CredFree(IntPtr cred);
     credentialCache.set(cacheKey, { credentials, timestamp: now });
 
     if (isDebug) {
-      console.warn('[CredentialUtils:Windows] Retrieved credentials from Credential Manager for target:', targetName, {
+      debugLog('[CredentialUtils:Windows] Retrieved credentials from Credential Manager for target:', targetName, {
         hasToken: !!token,
         hasEmail: !!email,
         tokenFingerprint: getTokenFingerprint(token),
@@ -1028,7 +1047,7 @@ public static extern bool CredFree(IntPtr cred);
     return credentials;
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
-    console.warn('[CredentialUtils:Windows] Credential Manager access failed for target:', targetName, errorMessage);
+    debugLog('[CredentialUtils:Windows] Credential Manager access failed for target:', targetName, errorMessage);
     const errorResult = { token: null, email: null, error: `Credential Manager access failed: ${errorMessage}` };
     credentialCache.set(cacheKey, { credentials: errorResult, timestamp: now });
     return errorResult;
@@ -1093,13 +1112,13 @@ function getCredentialsFromWindows(configDir?: string, forceRefresh = false): Pl
   // If only one has a token, use that one
   if (fileResult.token && !credManagerResult.token) {
     if (isDebug) {
-      console.warn('[CredentialUtils:Windows] Using file credentials (Credential Manager empty)');
+      debugLog('[CredentialUtils:Windows] Using file credentials (Credential Manager empty)');
     }
     return fileResult;
   }
   if (credManagerResult.token && !fileResult.token) {
     if (isDebug) {
-      console.warn('[CredentialUtils:Windows] Using Credential Manager credentials (file empty)');
+      debugLog('[CredentialUtils:Windows] Using Credential Manager credentials (file empty)');
     }
     return credManagerResult;
   }
@@ -1111,7 +1130,7 @@ function getCredentialsFromWindows(configDir?: string, forceRefresh = false): Pl
 
   // Both have tokens - prefer file since Claude CLI writes there after login
   if (isDebug) {
-    console.warn('[CredentialUtils:Windows] Both sources have tokens, preferring file (Claude CLI primary storage)');
+    debugLog('[CredentialUtils:Windows] Both sources have tokens, preferring file (Claude CLI primary storage)');
   }
   return fileResult;
 }
@@ -1233,12 +1252,12 @@ function getFullCredentialsFromMacOSKeychain(configDir?: string): FullOAuthCrede
 
     // Validate token format if present
     if (token && !isValidTokenFormat(token)) {
-      console.warn('[CredentialUtils:macOS:Full] Invalid token format for service:', serviceName);
+      debugLog('[CredentialUtils:macOS:Full] Invalid token format for service:', serviceName);
       return { token: null, email, refreshToken, expiresAt, scopes, subscriptionType, rateLimitTier };
     }
 
     if (isDebug) {
-      console.warn('[CredentialUtils:macOS:Full] Retrieved full credentials from Keychain for service:', serviceName, {
+      debugLog('[CredentialUtils:macOS:Full] Retrieved full credentials from Keychain for service:', serviceName, {
         hasToken: !!token,
         hasEmail: !!email,
         hasRefreshToken: !!refreshToken,
@@ -1252,7 +1271,7 @@ function getFullCredentialsFromMacOSKeychain(configDir?: string): FullOAuthCrede
   } catch (error) {
     // Unexpected error (executeCredentialRead already handles "not found" cases)
     const errorMessage = error instanceof Error ? error.message : String(error);
-    console.warn('[CredentialUtils:macOS:Full] Keychain access failed for service:', serviceName, errorMessage);
+    debugLog('[CredentialUtils:macOS:Full] Keychain access failed for service:', serviceName, errorMessage);
     return { token: null, email: null, refreshToken: null, expiresAt: null, scopes: null, subscriptionType: null, rateLimitTier: null, error: `Keychain access failed: ${errorMessage}` };
   }
 }
@@ -1268,7 +1287,7 @@ function getFullCredentialsFromLinuxSecretService(configDir?: string): FullOAuth
   const secretToolPath = findSecretToolPath();
   if (!secretToolPath) {
     if (isDebug) {
-      console.warn('[CredentialUtils:Linux:SecretService:Full] secret-tool not found');
+      debugLog('[CredentialUtils:Linux:SecretService:Full] secret-tool not found');
     }
     return { token: null, email: null, refreshToken: null, expiresAt: null, scopes: null, subscriptionType: null, rateLimitTier: null, error: 'secret-tool not found' };
   }
@@ -1290,12 +1309,12 @@ function getFullCredentialsFromLinuxSecretService(configDir?: string): FullOAuth
     );
 
     if (token && !isValidTokenFormat(token)) {
-      console.warn('[CredentialUtils:Linux:SecretService:Full] Invalid token format for attribute:', attribute);
+      debugLog('[CredentialUtils:Linux:SecretService:Full] Invalid token format for attribute:', attribute);
       return { token: null, email, refreshToken, expiresAt, scopes, subscriptionType, rateLimitTier };
     }
 
     if (isDebug) {
-      console.warn('[CredentialUtils:Linux:SecretService:Full] Retrieved full credentials from Secret Service:', {
+      debugLog('[CredentialUtils:Linux:SecretService:Full] Retrieved full credentials from Secret Service:', {
         attribute,
         hasToken: !!token,
         hasEmail: !!email,
@@ -1310,7 +1329,7 @@ function getFullCredentialsFromLinuxSecretService(configDir?: string): FullOAuth
   } catch (error) {
     // Unexpected error (executeCredentialRead already handles "not found" cases)
     const errorMessage = error instanceof Error ? error.message : String(error);
-    console.warn('[CredentialUtils:Linux:SecretService:Full] Secret Service access failed:', errorMessage);
+    debugLog('[CredentialUtils:Linux:SecretService:Full] Secret Service access failed:', errorMessage);
     return { token: null, email: null, refreshToken: null, expiresAt: null, scopes: null, subscriptionType: null, rateLimitTier: null, error: `Secret Service access failed: ${errorMessage}` };
   }
 }
@@ -1330,7 +1349,7 @@ function getFullCredentialsFromLinux(configDir?: string): FullOAuthCredentials {
 
   if (secretServiceResult.error && !secretServiceResult.error.includes('not found')) {
     if (isDebug) {
-      console.warn('[CredentialUtils:Linux:Full] Secret Service unavailable, trying file fallback:', secretServiceResult.error);
+      debugLog('[CredentialUtils:Linux:Full] Secret Service unavailable, trying file fallback:', secretServiceResult.error);
     }
   }
 
@@ -1357,7 +1376,7 @@ function getFullCredentialsFromWindowsCredentialManager(configDir?: string): Ful
   if (!isValidTargetName(targetName)) {
     const invalidResult = { token: null, email: null, refreshToken: null, expiresAt: null, scopes: null, subscriptionType: null, rateLimitTier: null, error: 'Invalid credential target name format' };
     if (isDebug) {
-      console.warn('[CredentialUtils:Windows:Full] Invalid target name rejected:', { targetName });
+      debugLog('[CredentialUtils:Windows:Full] Invalid target name rejected:', { targetName });
     }
     return invalidResult;
   }
@@ -1452,12 +1471,12 @@ public static extern bool CredFree(IntPtr cred);
 
     // Validate token format if present
     if (token && !isValidTokenFormat(token)) {
-      console.warn('[CredentialUtils:Windows:Full] Invalid token format for target:', targetName);
+      debugLog('[CredentialUtils:Windows:Full] Invalid token format for target:', targetName);
       return { token: null, email, refreshToken, expiresAt, scopes, subscriptionType, rateLimitTier };
     }
 
     if (isDebug) {
-      console.warn('[CredentialUtils:Windows:Full] Retrieved full credentials from Credential Manager for target:', targetName, {
+      debugLog('[CredentialUtils:Windows:Full] Retrieved full credentials from Credential Manager for target:', targetName, {
         hasToken: !!token,
         hasEmail: !!email,
         hasRefreshToken: !!refreshToken,
@@ -1470,7 +1489,7 @@ public static extern bool CredFree(IntPtr cred);
     return { token, email, refreshToken, expiresAt, scopes, subscriptionType, rateLimitTier };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
-    console.warn('[CredentialUtils:Windows:Full] Credential Manager access failed for target:', targetName, errorMessage);
+    debugLog('[CredentialUtils:Windows:Full] Credential Manager access failed for target:', targetName, errorMessage);
     return { token: null, email: null, refreshToken: null, expiresAt: null, scopes: null, subscriptionType: null, rateLimitTier: null, error: `Credential Manager access failed: ${errorMessage}` };
   }
 }
@@ -1499,13 +1518,13 @@ function getFullCredentialsFromWindows(configDir?: string): FullOAuthCredentials
   // If only one has a token, use that one
   if (fileResult.token && !credManagerResult.token) {
     if (isDebug) {
-      console.warn('[CredentialUtils:Windows:Full] Using file credentials (Credential Manager empty)');
+      debugLog('[CredentialUtils:Windows:Full] Using file credentials (Credential Manager empty)');
     }
     return fileResult;
   }
   if (credManagerResult.token && !fileResult.token) {
     if (isDebug) {
-      console.warn('[CredentialUtils:Windows:Full] Using Credential Manager credentials (file empty)');
+      debugLog('[CredentialUtils:Windows:Full] Using Credential Manager credentials (file empty)');
     }
     return credManagerResult;
   }
@@ -1520,7 +1539,7 @@ function getFullCredentialsFromWindows(configDir?: string): FullOAuthCredentials
   // Using file as primary ensures consistency: the same token is returned whether
   // calling getCredentialsFromKeychain() or getFullCredentialsFromKeychain().
   if (isDebug) {
-    console.warn('[CredentialUtils:Windows:Full] Both sources have tokens, preferring file (Claude CLI primary storage)');
+    debugLog('[CredentialUtils:Windows:Full] Both sources have tokens, preferring file (Claude CLI primary storage)');
   }
   return fileResult;
 }
@@ -1624,12 +1643,12 @@ function updateMacOSKeychainCredentials(
         }
       );
       if (isDebug) {
-        console.warn('[CredentialUtils:macOS:Update] Deleted existing Keychain entry for service:', serviceName);
+        debugLog('[CredentialUtils:macOS:Update] Deleted existing Keychain entry for service:', serviceName);
       }
     } catch {
       // Entry didn't exist - that's fine, we'll create it
       if (isDebug) {
-        console.warn('[CredentialUtils:macOS:Update] No existing entry to delete for service:', serviceName);
+        debugLog('[CredentialUtils:macOS:Update] No existing entry to delete for service:', serviceName);
       }
     }
 
@@ -1647,7 +1666,7 @@ function updateMacOSKeychainCredentials(
     );
 
     if (isDebug) {
-      console.warn('[CredentialUtils:macOS:Update] Successfully updated Keychain credentials for service:', serviceName);
+      debugLog('[CredentialUtils:macOS:Update] Successfully updated Keychain credentials for service:', serviceName);
     }
 
     // Clear cached credentials to ensure fresh values are read
@@ -1680,7 +1699,7 @@ function updateLinuxSecretServiceCredentials(
   const secretToolPath = findSecretToolPath();
   if (!secretToolPath) {
     if (isDebug) {
-      console.warn('[CredentialUtils:Linux:SecretService:Update] secret-tool not found');
+      debugLog('[CredentialUtils:Linux:SecretService:Update] secret-tool not found');
     }
     return { success: false, error: 'secret-tool not found' };
   }
@@ -1721,7 +1740,7 @@ function updateLinuxSecretServiceCredentials(
     );
 
     if (isDebug) {
-      console.warn('[CredentialUtils:Linux:SecretService:Update] Successfully updated Secret Service credentials for attribute:', attribute);
+      debugLog('[CredentialUtils:Linux:SecretService:Update] Successfully updated Secret Service credentials for attribute:', attribute);
     }
 
     // Clear cached credentials to ensure fresh values are read
@@ -1757,7 +1776,7 @@ function updateLinuxCredentials(
       return secretServiceResult;
     }
     if (isDebug) {
-      console.warn('[CredentialUtils:Linux:Update] Secret Service update failed, trying file fallback:', secretServiceResult.error);
+      debugLog('[CredentialUtils:Linux:Update] Secret Service update failed, trying file fallback:', secretServiceResult.error);
     }
   }
 
@@ -1818,7 +1837,7 @@ function updateLinuxFileCredentials(
     writeFileSync(credentialsPath, credentialsJson, { mode: 0o600, encoding: 'utf-8' });
 
     if (isDebug) {
-      console.warn('[CredentialUtils:Linux:Update] Successfully updated credentials file:', credentialsPath);
+      debugLog('[CredentialUtils:Linux:Update] Successfully updated credentials file:', credentialsPath);
     }
 
     // Clear cached credentials to ensure fresh values are read
@@ -1957,7 +1976,7 @@ function updateWindowsCredentialManagerCredentials(
     }
 
     if (isDebug) {
-      console.warn('[CredentialUtils:Windows:Update] Successfully updated Credential Manager for target:', targetName);
+      debugLog('[CredentialUtils:Windows:Update] Successfully updated Credential Manager for target:', targetName);
     }
 
     // Clear cached credentials to ensure fresh values are read
@@ -2000,13 +2019,13 @@ function restrictWindowsFilePermissions(filePath: string): void {
     });
 
     if (isDebug) {
-      console.warn('[CredentialUtils:Windows] Set restrictive permissions on:', filePath);
+      debugLog('[CredentialUtils:Windows] Set restrictive permissions on:', filePath);
     }
   } catch (error) {
     // Non-fatal: log warning but don't fail the operation
     // The file is still protected by the user's home directory permissions
     const errorMessage = error instanceof Error ? error.message : String(error);
-    console.warn('[CredentialUtils:Windows] Could not set restrictive file permissions:', errorMessage);
+    debugLog('[CredentialUtils:Windows] Could not set restrictive file permissions:', errorMessage);
   }
 }
 
@@ -2096,7 +2115,7 @@ function updateWindowsFileCredentials(
     }
 
     if (isDebug) {
-      console.warn('[CredentialUtils:Windows:Update] Successfully updated credentials file:', credentialsPath);
+      debugLog('[CredentialUtils:Windows:Update] Successfully updated credentials file:', credentialsPath);
     }
 
     // Clear cached credentials to ensure fresh values are read
@@ -2153,7 +2172,7 @@ function updateWindowsCredentials(
       // Credential Manager failed but file succeeded - this is acceptable
       // Claude CLI will use the file, which has the latest tokens
       if (isDebug) {
-        console.warn('[CredentialUtils:Windows:Update] Credential Manager update failed (file update succeeded):', credManagerResult.error);
+        debugLog('[CredentialUtils:Windows:Update] Credential Manager update failed (file update succeeded):', credManagerResult.error);
       }
     }
   }

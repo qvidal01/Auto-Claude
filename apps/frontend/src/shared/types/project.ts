@@ -312,6 +312,7 @@ export interface ProjectEnvConfig {
   githubRepo?: string; // Format: owner/repo
   githubAutoSync?: boolean; // Auto-sync issues on project load
   githubAuthMethod?: 'oauth' | 'pat'; // How the token was obtained
+  githubExcludedCIChecks?: string[]; // CI check names to exclude from blocking (e.g., stuck/broken checks)
 
   // GitLab Integration
   gitlabEnabled: boolean;

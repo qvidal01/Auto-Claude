@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Github, RefreshCw, KeyRound, Info, CheckCircle2 } from 'lucide-react';
+import { Github, RefreshCw, KeyRound, Info, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { CollapsibleSection } from './CollapsibleSection';
 import { StatusBadge } from './StatusBadge';
 import { PasswordInput } from './PasswordInput';
@@ -7,6 +7,7 @@ import { ConnectionStatus } from './ConnectionStatus';
 import { GitHubOAuthFlow } from './GitHubOAuthFlow';
 import { Label } from '../ui/label';
 import { Input } from '../ui/input';
+import { Textarea } from '../ui/textarea';
 import { Switch } from '../ui/switch';
 import { Separator } from '../ui/separator';
 import { Button } from '../ui/button';
@@ -213,6 +214,44 @@ export function GitHubIntegrationSection({
               checked={envConfig.githubAutoSync || false}
               onCheckedChange={(checked) => onUpdateConfig({ githubAutoSync: checked })}
             />
+          </div>
+
+          <Separator />
+
+          {/* CI Check Exclusion */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4 text-warning" />
+              <Label className="text-sm font-medium text-foreground">Excluded CI Checks</Label>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              CI checks listed here will be ignored during PR reviews. Use this for broken or stuck checks
+              that never complete. Enter check names separated by commas.
+            </p>
+            <Textarea
+              placeholder="license/cla, flaky-e2e-test, deprecated-scan"
+              value={(envConfig.githubExcludedCIChecks || []).join(', ')}
+              onChange={(e) => {
+                const value = e.target.value;
+                const checks = value
+                  .split(',')
+                  .map(s => s.trim())
+                  .filter(Boolean);
+                onUpdateConfig({ githubExcludedCIChecks: checks });
+              }}
+              className="min-h-[60px] font-mono text-xs"
+            />
+            {(envConfig.githubExcludedCIChecks?.length ?? 0) > 0 && (
+              <div className="rounded-lg border border-warning/30 bg-warning/5 p-3">
+                <div className="flex items-start gap-2">
+                  <AlertTriangle className="h-4 w-4 text-warning mt-0.5 shrink-0" />
+                  <p className="text-xs text-muted-foreground">
+                    <span className="font-medium text-warning">{envConfig.githubExcludedCIChecks?.length}</span> check(s) will be
+                    ignored. PRs may be approved even if these checks fail or remain pending.
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
         </>
       )}

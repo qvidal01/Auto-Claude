@@ -5,6 +5,7 @@
 export interface GitHubConfig {
   token: string;
   repo: string;
+  excludedCIChecks?: string[];
 }
 
 export interface GitHubAPIIssue {

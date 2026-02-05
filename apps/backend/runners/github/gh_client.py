@@ -818,7 +818,9 @@ class GHClient:
             return commits[-1].get("oid")
         return None
 
-    async def get_pr_checks(self, pr_number: int) -> dict[str, Any]:
+    async def get_pr_checks(
+        self, pr_number: int, excluded_checks: list[str] | None = None
+    ) -> dict[str, Any]:
         """
         Get CI check runs status for a PR.
 
@@ -826,6 +828,7 @@ class GHClient:
 
         Args:
             pr_number: PR number
+            excluded_checks: List of check names to exclude from counts (for stuck/broken checks)
 
         Returns:
             Dict with:
@@ -834,7 +837,9 @@ class GHClient:
             - failing: Number of failing checks
             - pending: Number of pending checks
             - failed_checks: List of failed check names
+            - excluded_checks: List of checks that were excluded from counting
         """
+        excluded_set = set(excluded_checks or [])
         try:
             # Note: gh pr checks --json only supports: bucket, completedAt, description,
             # event, link, name, startedAt, state, workflow
@@ -849,10 +854,19 @@ class GHClient:
             failing = 0
             pending = 0
             failed_checks = []
+            excluded_from_count = []
 
             for check in checks:
                 state = check.get("state", "").upper()
                 name = check.get("name", "Unknown")
+
+                # Skip excluded checks (for stuck/broken CI checks)
+                if name in excluded_set:
+                    excluded_from_count.append(name)
+                    logger.info(
+                        f"Excluding CI check '{name}' from counts (user-configured)"
+                    )
+                    continue
 
                 # gh pr checks 'state' directly contains: SUCCESS, FAILURE, PENDING, NEUTRAL, etc.
                 if state in ("SUCCESS", "NEUTRAL", "SKIPPED"):
@@ -870,6 +884,7 @@ class GHClient:
                 "failing": failing,
                 "pending": pending,
                 "failed_checks": failed_checks,
+                "excluded_checks": excluded_from_count,
             }
         except (GHCommandError, GHTimeoutError, json.JSONDecodeError) as e:
             logger.warning(f"Failed to get PR checks for #{pr_number}: {e}")
@@ -879,6 +894,7 @@ class GHClient:
                 "failing": 0,
                 "pending": 0,
                 "failed_checks": [],
+                "excluded_checks": [],
                 "error": str(e),
             }
 
@@ -973,7 +989,9 @@ class GHClient:
             logger.warning(f"Failed to approve workflow run {run_id}: {e}")
             return False
 
-    async def get_pr_checks_comprehensive(self, pr_number: int) -> dict[str, Any]:
+    async def get_pr_checks_comprehensive(
+        self, pr_number: int, excluded_checks: list[str] | None = None
+    ) -> dict[str, Any]:
         """
         Get comprehensive CI status including workflows awaiting approval.
 
@@ -983,12 +1001,13 @@ class GHClient:
 
         Args:
             pr_number: PR number
+            excluded_checks: List of check names to exclude from counts (for stuck/broken checks)
 
         Returns:
             Dict with all check information including awaiting_approval count
         """
-        # Get standard checks
-        checks = await self.get_pr_checks(pr_number)
+        # Get standard checks (with exclusions applied)
+        checks = await self.get_pr_checks(pr_number, excluded_checks=excluded_checks)
 
         # Get workflows awaiting approval
         awaiting = await self.get_workflows_awaiting_approval(pr_number)

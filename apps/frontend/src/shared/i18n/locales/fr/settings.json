@@ -423,6 +423,22 @@
   "integrations": {
     "title": "Intégrations",
     "description": "Gérer les comptes Claude et les clés API",
+    "github": {
+      "defaultBranch": {
+        "label": "Branche par défaut",
+        "description": "Branche de base pour créer les worktrees de tâches",
+        "autoDetect": "Détection automatique (main/master)",
+        "searchPlaceholder": "Rechercher des branches...",
+        "noBranchesFound": "Aucune branche trouvée",
+        "selectedBranchHelp": "Toutes les nouvelles tâches partiront de {{branch}}"
+      },
+      "excludedCIChecks": {
+        "label": "Vérifications CI exclues",
+        "description": "Les vérifications CI listées ici seront ignorées lors des revues de PR. Utilisez ceci pour les vérifications cassées ou bloquées qui ne se terminent jamais. Entrez les noms des vérifications séparés par des virgules.",
+        "placeholder": "license/cla, flaky-e2e-test, deprecated-scan",
+        "warningCount": "{{count}} vérification(s) sera(ont) ignorée(s). Les PR peuvent être approuvées même si ces vérifications échouent ou restent en attente."
+      }
+    },
     "claudeAccounts": "Comptes Claude",
     "claudeAccountsDescription": "Ajoutez plusieurs abonnements Claude pour basculer automatiquement entre eux quand vous atteignez les limites.",
     "claudeAccountsWarning": "Lors de l'authentification, assurez-vous d'être connecté au bon compte Claude dans votre navigateur. Chaque profil doit utiliser un abonnement différent.",

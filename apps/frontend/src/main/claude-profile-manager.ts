@@ -55,6 +55,24 @@ import {
 } from './claude-profile/profile-utils';
 
 /**
+ * Debug flag - only log verbose profile operations when DEBUG=true
+ */
+const IS_DEBUG = process.env.DEBUG === 'true';
+
+/**
+ * Debug log helper - only logs when DEBUG=true
+ */
+function debugLog(message: string, data?: unknown): void {
+  if (IS_DEBUG) {
+    if (data !== undefined) {
+      console.warn(message, data);
+    } else {
+      console.warn(message);
+    }
+  }
+}
+
+/**
  * Manages Claude Code profiles for multi-account support.
  * Profiles are stored in the app's userData directory.
  * Each profile points to a separate Claude config directory.
@@ -121,7 +139,7 @@ export class ClaudeProfileManager {
       const configEmail = getEmailFromConfigDir(profile.configDir);
 
       if (configEmail && profile.email !== configEmail) {
-        console.warn('[ClaudeProfileManager] Migrating corrupted email for profile:', {
+        debugLog('[ClaudeProfileManager] Migrating corrupted email for profile:', {
           profileId: profile.id,
           oldEmail: profile.email,
           newEmail: configEmail
@@ -133,7 +151,7 @@ export class ClaudeProfileManager {
 
     if (needsSave) {
       this.save();
-      console.warn('[ClaudeProfileManager] Email migration complete');
+      debugLog('[ClaudeProfileManager] Email migration complete');
     }
   }
 
@@ -168,7 +186,7 @@ export class ClaudeProfileManager {
 
       if (result.subscriptionTypeUpdated) {
         needsSave = true;
-        console.warn('[ClaudeProfileManager] Populated subscriptionType for profile:', {
+        debugLog('[ClaudeProfileManager] Populated subscriptionType for profile:', {
           profileId: profile.id,
           subscriptionType: result.subscriptionType
         });
@@ -176,7 +194,7 @@ export class ClaudeProfileManager {
 
       if (result.rateLimitTierUpdated) {
         needsSave = true;
-        console.warn('[ClaudeProfileManager] Populated rateLimitTier for profile:', {
+        debugLog('[ClaudeProfileManager] Populated rateLimitTier for profile:', {
           profileId: profile.id,
           rateLimitTier: result.rateLimitTier
         });
@@ -185,7 +203,7 @@ export class ClaudeProfileManager {
 
     if (needsSave) {
       this.save();
-      console.warn('[ClaudeProfileManager] Subscription metadata population complete');
+      debugLog('[ClaudeProfileManager] Subscription metadata population complete');
     }
   }
 
@@ -203,7 +221,7 @@ export class ClaudeProfileManager {
     const loadedData = loadProfileStore(this.storePath);
     if (loadedData) {
       if (process.env.DEBUG === 'true') {
-        console.warn('[ClaudeProfileManager] Loaded profiles:', {
+        debugLog('[ClaudeProfileManager] Loaded profiles:', {
           count: loadedData.profiles.length,
           activeProfileId: loadedData.activeProfileId,
           profiles: loadedData.profiles.map(p => ({
@@ -334,7 +352,7 @@ export class ClaudeProfileManager {
       // If somehow no default exists, return first profile
       const fallback = this.data.profiles[0];
       if (process.env.DEBUG === 'true') {
-        console.warn('[ClaudeProfileManager] getActiveProfile - using fallback:', {
+        debugLog('[ClaudeProfileManager] getActiveProfile - using fallback:', {
           id: fallback.id,
           name: fallback.name,
           email: fallback.email
@@ -344,7 +362,7 @@ export class ClaudeProfileManager {
     }
 
     if (process.env.DEBUG === 'true') {
-      console.warn('[ClaudeProfileManager] getActiveProfile:', {
+      debugLog('[ClaudeProfileManager] getActiveProfile:', {
         id: active.id,
         name: active.name,
         email: active.email
@@ -435,12 +453,12 @@ export class ClaudeProfileManager {
     const previousProfileId = this.data.activeProfileId;
     const profile = this.getProfile(profileId);
     if (!profile) {
-      console.warn('[ClaudeProfileManager] setActiveProfile failed - profile not found:', { profileId });
+      debugLog('[ClaudeProfileManager] setActiveProfile failed - profile not found:', { profileId });
       return false;
     }
 
     if (process.env.DEBUG === 'true') {
-      console.warn('[ClaudeProfileManager] setActiveProfile:', {
+      debugLog('[ClaudeProfileManager] setActiveProfile:', {
         from: previousProfileId,
         to: profileId,
         profileName: profile.name
@@ -555,10 +573,10 @@ export class ClaudeProfileManager {
 
       env.CLAUDE_CONFIG_DIR = expandedConfigDir;
       if (process.env.DEBUG === 'true') {
-        console.warn('[ClaudeProfileManager] Using CLAUDE_CONFIG_DIR for profile:', profile.name, expandedConfigDir);
+        debugLog('[ClaudeProfileManager] Using CLAUDE_CONFIG_DIR for profile:', { profileName: profile.name, configDir: expandedConfigDir });
       }
     } else {
-      console.warn('[ClaudeProfileManager] Profile has no configDir configured:', profile?.name);
+      debugLog('[ClaudeProfileManager] Profile has no configDir configured:', profile?.name);
     }
 
     return env;
@@ -778,7 +796,7 @@ export class ClaudeProfileManager {
     );
 
     if (process.env.DEBUG === 'true') {
-      console.warn('[ClaudeProfileManager] getProfileEnv:', {
+      debugLog('[ClaudeProfileManager] getProfileEnv:', {
         profileId,
         profileName: profile.name,
         isDefault: profile.isDefault,
@@ -799,7 +817,7 @@ export class ClaudeProfileManager {
       if (credentials.token) {
         env.CLAUDE_CODE_OAUTH_TOKEN = credentials.token;
         if (process.env.DEBUG === 'true') {
-          console.warn('[ClaudeProfileManager] Retrieved OAuth token from Keychain for profile:', profile.name);
+          debugLog('[ClaudeProfileManager] Retrieved OAuth token from Keychain for profile:', profile.name);
         }
       }
     } catch (error) {
@@ -855,7 +873,7 @@ export class ClaudeProfileManager {
     }
 
     this.save();
-    console.warn('[ClaudeProfileManager] Cleared migrated profile:', profileId);
+    debugLog('[ClaudeProfileManager] Cleared migrated profile:', profileId);
   }
 
   /**

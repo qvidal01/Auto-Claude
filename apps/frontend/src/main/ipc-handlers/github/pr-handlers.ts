@@ -246,6 +246,29 @@ function getClaudeMdEnv(project: Project): Record<string, string> | undefined {
 }
 
 /**
+ * Builds extra environment variables for PR review subprocess.
+ * Includes Claude.md setting and GitHub-specific config like excluded CI checks.
+ */
+function getPRReviewExtraEnv(
+  project: Project,
+  config: { excludedCIChecks?: string[] } | null
+): Record<string, string> {
+  const env: Record<string, string> = {};
+
+  // Add Claude.md setting
+  if (project.settings?.useClaudeMd !== false) {
+    env.USE_CLAUDE_MD = "true";
+  }
+
+  // Add excluded CI checks (for stuck/broken CI like license/cla)
+  if (config?.excludedCIChecks && config.excludedCIChecks.length > 0) {
+    env.GITHUB_EXCLUDED_CI_CHECKS = config.excludedCIChecks.join(",");
+  }
+
+  return env;
+}
+
+/**
  * PR review finding from AI analysis
  */
 export interface PRReviewFinding {
@@ -1304,8 +1327,8 @@ async function runPRReview(
   const repo = config?.repo || project.name || "unknown";
   const logCollector = new PRLogCollector(project, prNumber, repo, false);
 
-  // Build environment with project settings
-  const subprocessEnv = await getRunnerEnv(getClaudeMdEnv(project));
+  // Build environment with project settings (including excluded CI checks)
+  const subprocessEnv = await getRunnerEnv(getPRReviewExtraEnv(project, config));
 
   const { process: childProcess, promise } = runPythonSubprocess<PRReviewResult>({
     pythonPath: getPythonPath(backendPath),
@@ -2709,8 +2732,8 @@ export function registerPRHandlers(getMainWindow: () => BrowserWindow | null): v
           const repo = config?.repo || project.name || "unknown";
           const logCollector = new PRLogCollector(project, prNumber, repo, true);
 
-          // Build environment with project settings
-          const followupEnv = await getRunnerEnv(getClaudeMdEnv(project));
+          // Build environment with project settings (including excluded CI checks)
+          const followupEnv = await getRunnerEnv(getPRReviewExtraEnv(project, config));
 
           const { process: childProcess, promise } = runPythonSubprocess<PRReviewResult>({
             pythonPath: getPythonPath(backendPath),

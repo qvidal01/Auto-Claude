@@ -423,6 +423,22 @@
   "integrations": {
     "title": "Integrations",
     "description": "Manage Claude accounts and API keys",
+    "github": {
+      "defaultBranch": {
+        "label": "Default Branch",
+        "description": "Base branch for creating task worktrees",
+        "autoDetect": "Auto-detect (main/master)",
+        "searchPlaceholder": "Search branches...",
+        "noBranchesFound": "No branches found",
+        "selectedBranchHelp": "All new tasks will branch from {{branch}}"
+      },
+      "excludedCIChecks": {
+        "label": "Excluded CI Checks",
+        "description": "CI checks listed here will be ignored during PR reviews. Use this for broken or stuck checks that never complete. Enter check names separated by commas.",
+        "placeholder": "license/cla, flaky-e2e-test, deprecated-scan",
+        "warningCount": "{{count}} check(s) will be ignored. PRs may be approved even if these checks fail or remain pending."
+      }
+    },
     "claudeAccounts": "Claude Accounts",
     "claudeAccountsDescription": "Add multiple Claude subscriptions to automatically switch between them when you hit rate limits.",
     "claudeAccountsWarning": "When authenticating, ensure you're logged into the correct Claude account in your browser. Each profile should use a different subscription.",

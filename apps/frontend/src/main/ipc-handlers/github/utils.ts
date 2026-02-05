@@ -81,7 +81,14 @@ export function getGitHubConfig(project: Project): GitHubConfig | null {
     }
 
     if (!token || !repo) return null;
-    return { token, repo };
+
+    // Parse excluded CI checks (comma-separated list)
+    const excludedCIChecksRaw = vars['GITHUB_EXCLUDED_CI_CHECKS'];
+    const excludedCIChecks = excludedCIChecksRaw
+      ? excludedCIChecksRaw.split(',').map((s) => s.trim()).filter(Boolean)
+      : undefined;
+
+    return { token, repo, excludedCIChecks };
   } catch {
     return null;
   }

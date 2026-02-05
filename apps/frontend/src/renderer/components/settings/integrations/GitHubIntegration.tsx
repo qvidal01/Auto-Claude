@@ -1,8 +1,9 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Github, RefreshCw, KeyRound, Loader2, CheckCircle2, AlertCircle, User, Lock, Globe, ChevronDown, GitBranch } from 'lucide-react';
+import { Github, RefreshCw, KeyRound, Loader2, CheckCircle2, AlertCircle, User, Lock, Globe, ChevronDown, GitBranch, AlertTriangle } from 'lucide-react';
 import { Input } from '../../ui/input';
 import { Label } from '../../ui/label';
+import { Textarea } from '../../ui/textarea';
 import { Switch } from '../../ui/switch';
 import { Separator } from '../../ui/separator';
 import { Button } from '../../ui/button';
@@ -413,6 +414,14 @@ export function GitHubIntegration({
             enabled={envConfig.githubAutoSync || false}
             onToggle={(checked) => updateEnvConfig({ githubAutoSync: checked })}
           />
+
+          <Separator />
+
+          {/* CI Check Exclusion */}
+          <ExcludedCIChecks
+            excludedChecks={envConfig.githubExcludedCIChecks || []}
+            onUpdate={(checks) => updateEnvConfig({ githubExcludedCIChecks: checks })}
+          />
         </>
       )}
     </div>
@@ -658,6 +667,52 @@ function AutoSyncToggle({ enabled, onToggle }: AutoSyncToggleProps) {
         </p>
       </div>
       <Switch checked={enabled} onCheckedChange={onToggle} />
+    </div>
+  );
+}
+
+interface ExcludedCIChecksProps {
+  excludedChecks: string[];
+  onUpdate: (checks: string[]) => void;
+}
+
+function ExcludedCIChecks({ excludedChecks, onUpdate }: ExcludedCIChecksProps) {
+  const { t } = useTranslation(['settings']);
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center gap-2">
+        <AlertTriangle className="h-4 w-4 text-warning" />
+        <Label className="text-sm font-medium text-foreground">
+          {t('settings:integrations.github.excludedCIChecks.label')}
+        </Label>
+      </div>
+      <p className="text-xs text-muted-foreground">
+        {t('settings:integrations.github.excludedCIChecks.description')}
+      </p>
+      <Textarea
+        placeholder={t('settings:integrations.github.excludedCIChecks.placeholder')}
+        value={excludedChecks.join(', ')}
+        onChange={(e) => {
+          const value = e.target.value;
+          const checks = value
+            .split(',')
+            .map(s => s.trim())
+            .filter(Boolean);
+          onUpdate(checks);
+        }}
+        className="min-h-[60px] font-mono text-xs"
+      />
+      {excludedChecks.length > 0 && (
+        <div className="rounded-lg border border-warning/30 bg-warning/5 p-3">
+          <div className="flex items-start gap-2">
+            <AlertTriangle className="h-4 w-4 text-warning mt-0.5 shrink-0" />
+            <p className="text-xs text-muted-foreground">
+              {t('settings:integrations.github.excludedCIChecks.warningCount', { count: excludedChecks.length })}
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

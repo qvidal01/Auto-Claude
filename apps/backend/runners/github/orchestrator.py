@@ -14,6 +14,7 @@ REFACTORED: Service layer architecture - orchestrator delegates to specialized s
 
 from __future__ import annotations
 
+import os
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
@@ -155,6 +156,17 @@ class GitHubOrchestrator:
 
         # Initialize rate limiter singleton
         self.rate_limiter = RateLimiter.get_instance()
+
+        # Load excluded CI checks from environment (for stuck/broken checks)
+        excluded_ci_env = os.environ.get("GITHUB_EXCLUDED_CI_CHECKS", "")
+        self.excluded_ci_checks: list[str] = [
+            check.strip() for check in excluded_ci_env.split(",") if check.strip()
+        ]
+        if self.excluded_ci_checks:
+            safe_print(
+                f"[CI] Excluding checks from review: {', '.join(self.excluded_ci_checks)}",
+                flush=True,
+            )
 
         # Initialize service layer
         self.pr_review_engine = PRReviewEngine(
@@ -431,7 +443,10 @@ class GitHubOrchestrator:
             )
 
             # Check CI status (comprehensive - includes workflows awaiting approval)
-            ci_status = await self.gh_client.get_pr_checks_comprehensive(pr_number)
+            # Excluded checks are filtered out based on user configuration
+            ci_status = await self.gh_client.get_pr_checks_comprehensive(
+                pr_number, excluded_checks=self.excluded_ci_checks
+            )
 
             # Log CI status with awaiting approval info
             awaiting = ci_status.get("awaiting_approval", 0)
@@ -704,7 +719,10 @@ class GitHubOrchestrator:
 
             # ALWAYS fetch current CI status to detect CI recovery
             # This must happen BEFORE the early return check to avoid stale CI verdicts
-            ci_status = await self.gh_client.get_pr_checks_comprehensive(pr_number)
+            # Excluded checks are filtered out based on user configuration
+            ci_status = await self.gh_client.get_pr_checks_comprehensive(
+                pr_number, excluded_checks=self.excluded_ci_checks
+            )
             followup_context.ci_status = ci_status
 
             if not has_commits and not has_file_changes:

@@ -118,6 +118,14 @@ export function registerEnvHandlers(
     if (config.githubAutoSync !== undefined) {
       existingVars['GITHUB_AUTO_SYNC'] = config.githubAutoSync ? 'true' : 'false';
     }
+    // GitHub CI check exclusion (comma-separated list of check names to ignore)
+    if (config.githubExcludedCIChecks !== undefined) {
+      if (config.githubExcludedCIChecks.length > 0) {
+        existingVars['GITHUB_EXCLUDED_CI_CHECKS'] = config.githubExcludedCIChecks.join(',');
+      } else {
+        delete existingVars['GITHUB_EXCLUDED_CI_CHECKS'];
+      }
+    }
     // GitLab Integration
     if (config.gitlabEnabled !== undefined) {
       existingVars[GITLAB_ENV_KEYS.ENABLED] = config.gitlabEnabled ? 'true' : 'false';
@@ -251,6 +259,9 @@ ${existingVars['LINEAR_REALTIME_SYNC'] !== undefined ? `LINEAR_REALTIME_SYNC=${e
 ${existingVars['GITHUB_TOKEN'] ? `GITHUB_TOKEN=${existingVars['GITHUB_TOKEN']}` : '# GITHUB_TOKEN='}
 ${existingVars['GITHUB_REPO'] ? `GITHUB_REPO=${existingVars['GITHUB_REPO']}` : '# GITHUB_REPO=owner/repo'}
 ${existingVars['GITHUB_AUTO_SYNC'] !== undefined ? `GITHUB_AUTO_SYNC=${existingVars['GITHUB_AUTO_SYNC']}` : '# GITHUB_AUTO_SYNC=false'}
+# CI check names to exclude from blocking during PR reviews (comma-separated)
+# Useful for stuck/broken CI checks that never complete
+${existingVars['GITHUB_EXCLUDED_CI_CHECKS'] ? `GITHUB_EXCLUDED_CI_CHECKS=${existingVars['GITHUB_EXCLUDED_CI_CHECKS']}` : '# GITHUB_EXCLUDED_CI_CHECKS='}
 
 # =============================================================================
 # GITLAB INTEGRATION (OPTIONAL)
@@ -429,6 +440,13 @@ ${existingVars['GRAPHITI_DB_PATH'] ? `GRAPHITI_DB_PATH=${existingVars['GRAPHITI_
       }
       if (vars['GITHUB_AUTO_SYNC']?.toLowerCase() === 'true') {
         config.githubAutoSync = true;
+      }
+      // Parse excluded CI checks (comma-separated list)
+      if (vars['GITHUB_EXCLUDED_CI_CHECKS']) {
+        config.githubExcludedCIChecks = vars['GITHUB_EXCLUDED_CI_CHECKS']
+          .split(',')
+          .map(s => s.trim())
+          .filter(Boolean);
       }
 
       // GitLab config
