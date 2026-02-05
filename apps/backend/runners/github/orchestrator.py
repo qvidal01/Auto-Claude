@@ -714,11 +714,14 @@ class GitHubOrchestrator:
                 # If CI was failing before but now passes, we need to update the verdict
                 current_failing = ci_status.get("failing", 0)
                 current_awaiting = ci_status.get("awaiting_approval", 0)
+                current_pending = ci_status.get("pending", 0)
 
-                # Helper to detect CI-related blockers (includes workflows pending)
+                # Helper to detect CI-related blockers (includes workflows pending and CI pending)
                 def is_ci_blocker(b: str) -> bool:
-                    return b.startswith("CI Failed:") or b.startswith(
-                        "Workflows Pending:"
+                    return (
+                        b.startswith("CI Failed:")
+                        or b.startswith("Workflows Pending:")
+                        or b.startswith("CI Pending:")
                     )
 
                 previous_blockers = getattr(previous_review, "blockers", [])
@@ -728,11 +731,13 @@ class GitHubOrchestrator:
                 )
 
                 # Determine the appropriate verdict based on current CI status
-                # CI/Workflow status check (both block merging)
-                ci_or_workflow_blocking = current_failing > 0 or current_awaiting > 0
+                # CI/Workflow/Pending status check (all block merging)
+                ci_or_workflow_blocking = (
+                    current_failing > 0 or current_awaiting > 0 or current_pending > 0
+                )
 
                 if ci_or_workflow_blocking:
-                    # CI is still failing or workflows pending - keep blocked verdict
+                    # CI is still failing, pending, or workflows pending - keep blocked verdict
                     updated_verdict = MergeVerdict.BLOCKED
                     if current_failing > 0:
                         updated_reasoning = (
@@ -748,6 +753,15 @@ class GitHubOrchestrator:
                         no_change_summary = (
                             f"No new commits since last review. "
                             f"CI status: {current_failing} check(s) failing.{ci_note}"
+                        )
+                    elif current_pending > 0:
+                        updated_reasoning = (
+                            f"No code changes since last review. "
+                            f"{current_pending} CI check(s) still pending."
+                        )
+                        no_change_summary = (
+                            f"No new commits since last review. "
+                            f"CI status: {current_pending} check(s) still running."
                         )
                     else:
                         updated_reasoning = (
@@ -834,6 +848,14 @@ class GitHubOrchestrator:
                 # Add back workflows pending if any
                 if current_awaiting > 0:
                     blocker_msg = f"Workflows Pending: {current_awaiting} workflow(s) awaiting maintainer approval"
+                    if blocker_msg not in blockers:
+                        blockers.append(blocker_msg)
+
+                # Add pending CI checks to blockers
+                if current_pending > 0:
+                    blocker_msg = (
+                        f"CI Pending: {current_pending} check(s) still running"
+                    )
                     if blocker_msg not in blockers:
                         blockers.append(blocker_msg)
 
@@ -958,6 +980,36 @@ class GitHubOrchestrator:
                 )
                 if ci_warning not in result.summary:
                     result.summary += ci_warning
+
+            # Also check for pending CI checks
+            pending_checks = followup_context.ci_status.get("pending", 0)
+            if pending_checks > 0:
+                safe_print(
+                    f"[Followup] CI checks still pending: {pending_checks}",
+                    flush=True,
+                )
+                # Override verdict if CI is pending
+                if result.verdict in (
+                    MergeVerdict.READY_TO_MERGE,
+                    MergeVerdict.MERGE_WITH_CHANGES,
+                ):
+                    result.verdict = MergeVerdict.BLOCKED
+                    result.verdict_reasoning = (
+                        f"Blocked: {pending_checks} CI check(s) still running. "
+                        "Wait for CI to complete before merge."
+                    )
+                    result.overall_status = "request_changes"
+                # Add pending CI to blockers
+                blocker_msg = f"CI Pending: {pending_checks} check(s) still running"
+                if blocker_msg not in result.blockers:
+                    result.blockers.append(blocker_msg)
+                # Update summary to reflect CI status
+                ci_pending_warning = (
+                    f"\n\n**⏳ CI Status:** {pending_checks} check(s) still running. "
+                    "Wait for CI to complete."
+                )
+                if ci_pending_warning not in result.summary:
+                    result.summary += ci_pending_warning
 
             # Save result
             await result.save(self.github_dir)
