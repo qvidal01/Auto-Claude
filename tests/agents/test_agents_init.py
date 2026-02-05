@@ -1,6 +1,8 @@
 """Tests for agents.__init__ module lazy import functionality."""
 
 import sys
+import importlib
+from unittest.mock import patch, MagicMock
 import pytest
 
 
@@ -62,21 +64,18 @@ class TestModuleInitLazyImports:
         assert callable(agents.sync_spec_to_source)
 
     def test_lazy_import_constants_from_base(self):
-        """Test that constants from agents.base are accessible.
-
-        Note: agents.base is explicitly imported for CodeQL compliance,
-        so it's already in sys.modules when agents is imported.
-        """
+        """Test lazy import of constants from agents.base."""
         import agents
 
-        # agents.base is imported explicitly for CodeQL compliance
-        assert "agents.base" in sys.modules
+        # Constants should not be imported until accessed
+        assert "agents.base" not in sys.modules
 
-        # Constants should still be accessible
+        # Access first constant
         delay = agents.AUTO_CONTINUE_DELAY_SECONDS
+        assert "agents.base" in sys.modules
         assert delay == 3
 
-        # Access second constant
+        # Access second constant - module already loaded
         pause_file = agents.HUMAN_INTERVENTION_FILE
         assert pause_file == "PAUSE"
 
@@ -254,17 +253,25 @@ class TestModuleInitLazyImports:
         assert agents.__doc__ is not None
         assert "lazy imports" in agents.__doc__.lower()
 
-    def test_lazy_import_repeated_access(self):
-        """Test that repeated access works correctly with lazy imports."""
+    def test_reloading_module_preserves_lazy_imports(self):
+        """Test that reloading the module preserves lazy import behavior."""
         import agents
 
         # Access a symbol to load its module
         _ = agents.run_autonomous_agent
         assert "agents.coder" in sys.modules
 
-        # Access again - should still work
-        func = agents.run_autonomous_agent
-        assert callable(func)
+        # Reload agents module
+        importlib.reload(agents)
+
+        # Clear coder module
+        if "agents.coder" in sys.modules:
+            del sys.modules["agents.coder"]
+
+        # Access again - should trigger lazy import again
+        assert "agents.coder" not in sys.modules
+        _ = agents.run_autonomous_agent
+        assert "agents.coder" in sys.modules
 
     def test_star_import_works(self):
         """Test that 'from agents import *' imports all symbols."""
@@ -328,6 +335,7 @@ class TestModuleInitIntegration:
 
     def test_concurrent_access_thread_safety(self):
         """Test that lazy imports handle concurrent access gracefully."""
+        import agents
         import threading
 
         results = {}
