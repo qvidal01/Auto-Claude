@@ -63,12 +63,8 @@ class ProjectAnalyzer:
                             if service_info.get("framework"):
                                 context["tech_stack"].append(service_info["framework"])
                         context["tech_stack"] = list(set(context["tech_stack"]))
-            except (
-                json.JSONDecodeError,
-                KeyError,
-                AttributeError,
-            ):  # Invalid JSON; skip
-                pass  # no-op: skip invalid files
+            except (json.JSONDecodeError, KeyError, AttributeError):
+                pass
 
         # Get roadmap context if enabled
         if self.include_roadmap:
