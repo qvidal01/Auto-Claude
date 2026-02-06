@@ -955,7 +955,7 @@ class TestFallbackMenuExceptions:
         with patch("builtins.input", side_effect=EOFError):
             # Act
 
-            result = select_menu("Test Menu", options)
+            result = select_menu("Test Menu", options, _interactive=True)
 
         # Assert
         assert result is None
@@ -972,7 +972,7 @@ class TestFallbackMenuExceptions:
         with patch("builtins.input", side_effect=KeyboardInterrupt):
             # Act
 
-            result = select_menu("Test Menu", options)
+            result = select_menu("Test Menu", options, _interactive=True)
 
         # Assert
         assert result is None
@@ -988,7 +988,7 @@ class TestFallbackMenuExceptions:
         with patch("builtins.input", side_effect=EOFError):
             # Act
 
-            result = select_menu("Test Menu", options, allow_quit=False)
+            result = select_menu("Test Menu", options, allow_quit=False, _interactive=True)
 
         # Assert
         assert result is None
@@ -1004,7 +1004,7 @@ class TestFallbackMenuExceptions:
         with patch("builtins.input", side_effect=KeyboardInterrupt):
             # Act
 
-            result = select_menu("Test Menu", options, allow_quit=False)
+            result = select_menu("Test Menu", options, allow_quit=False, _interactive=True)
 
         # Assert
         assert result is None
@@ -1020,7 +1020,7 @@ class TestFallbackMenuExceptions:
         with patch("builtins.input", side_effect=["invalid", EOFError]):
             # Act
 
-            result = select_menu("Test Menu", options)
+            result = select_menu("Test Menu", options, _interactive=True)
 
         # Assert
         assert result is None
@@ -1036,7 +1036,7 @@ class TestFallbackMenuExceptions:
         with patch("builtins.input", side_effect=["q", "1"]):
             # Act - 'q' should be treated as invalid, then '1' selects
 
-            result = select_menu("Test Menu", options, allow_quit=False)
+            result = select_menu("Test Menu", options, allow_quit=False, _interactive=True)
 
         # Assert
         assert result == "1"
@@ -1053,7 +1053,7 @@ class TestFallbackMenuExceptions:
         with patch("builtins.input", side_effect=["1", "2"]):
             # Act - '1' is disabled (invalid), '2' is valid
 
-            result = select_menu("Test Menu", options)
+            result = select_menu("Test Menu", options, _interactive=True)
 
         # Assert
         assert result == "2"
@@ -1069,7 +1069,7 @@ class TestFallbackMenuExceptions:
         with patch("builtins.input", side_effect=["0", "1"]):
             # Act - '0' is invalid, '1' is valid
 
-            result = select_menu("Test Menu", options)
+            result = select_menu("Test Menu", options, _interactive=True)
 
         # Assert
         assert result == "1"
@@ -1085,7 +1085,7 @@ class TestFallbackMenuExceptions:
         with patch("builtins.input", side_effect=["-1", "1"]):
             # Act - '-1' causes ValueError, '1' is valid
 
-            result = select_menu("Test Menu", options)
+            result = select_menu("Test Menu", options, _interactive=True)
 
         # Assert
         assert result == "1"
@@ -1101,7 +1101,7 @@ class TestFallbackMenuExceptions:
         with patch("builtins.input", side_effect=["abc", "1"]):
             # Act - 'abc' causes ValueError, '1' is valid
 
-            result = select_menu("Test Menu", options)
+            result = select_menu("Test Menu", options, _interactive=True)
 
         # Assert
         assert result == "1"
@@ -1117,7 +1117,7 @@ class TestFallbackMenuExceptions:
         with patch("builtins.input", side_effect=["", "1"]):
             # Act - empty string causes ValueError, '1' is valid
 
-            result = select_menu("Test Menu", options)
+            result = select_menu("Test Menu", options, _interactive=True)
 
         # Assert
         assert result == "1"
@@ -1133,7 +1133,7 @@ class TestFallbackMenuExceptions:
         with patch("builtins.input", return_value="1"):
             # Act - should not raise
 
-            result = select_menu("Test Menu", options)
+            result = select_menu("Test Menu", options, _interactive=True)
 
         # Assert
         assert result == "1"
@@ -1149,7 +1149,7 @@ class TestFallbackMenuExceptions:
         with patch("builtins.input", return_value="q"):
             # Act
 
-            result = select_menu("Test Menu", options, allow_quit=True)
+            result = select_menu("Test Menu", options, allow_quit=True, _interactive=True)
 
         # Assert
         assert result is None
@@ -1165,7 +1165,7 @@ class TestFallbackMenuExceptions:
         with patch("builtins.input", return_value="Q"):
             # Act
 
-            result = select_menu("Test Menu", options, allow_quit=True)
+            result = select_menu("Test Menu", options, allow_quit=True, _interactive=True)
 
         # Assert
         assert result is None
@@ -1181,7 +1181,7 @@ class TestFallbackMenuExceptions:
         with patch("builtins.input", return_value="  1  "):
             # Act - whitespace should be stripped
 
-            result = select_menu("Test Menu", options)
+            result = select_menu("Test Menu", options, _interactive=True)
 
         # Assert
         assert result == "1"
@@ -1207,7 +1207,7 @@ class TestSelectMenuRenderFunction:
         with patch.object(menu_module, "_getch", return_value="\r"):
             # Act
 
-            result = select_menu("Test Menu", options)
+            result = select_menu("Test Menu", options, _interactive=True)
 
         # Assert
         assert result == "1"
@@ -1223,8 +1223,8 @@ class TestSelectMenuRenderFunction:
 
         with patch.object(menu_module, "_getch") as mock_getch:
             mock_getch.side_effect = ["DOWN", "\r"]
-        # Act
-        result = select_menu("Test Menu", options)
+            # Act
+            result = select_menu("Test Menu", options, _interactive=True)
 
         # Assert
         assert result == "2"
@@ -1239,7 +1239,7 @@ class TestSelectMenuRenderFunction:
         with patch.object(menu_module, "_getch", return_value="\r"):
             # Act
 
-            result = select_menu("Test Menu", options, subtitle="Choose wisely")
+            result = select_menu("Test Menu", options, subtitle="Choose wisely", _interactive=True)
 
         # Assert
         assert result == "1"
@@ -1255,7 +1255,7 @@ class TestSelectMenuRenderFunction:
         with patch.object(menu_module, "_getch", return_value="\r"):
             # Act
 
-            result = select_menu("Test Menu", options)
+            result = select_menu("Test Menu", options, _interactive=True)
 
         # Assert
         # Should select option 2 since option 1 is disabled
@@ -1272,7 +1272,7 @@ class TestSelectMenuRenderFunction:
         with patch.object(menu_module, "_getch", return_value="\r"):
             # Act
 
-            result = select_menu("Test Menu", options)
+            result = select_menu("Test Menu", options, _interactive=True)
 
         # Assert
         assert result == "1"
@@ -1287,7 +1287,7 @@ class TestSelectMenuRenderFunction:
         with patch.object(menu_module, "_getch", return_value="\r"):
             # Act
 
-            result = select_menu("Test Menu", options, allow_quit=False)
+            result = select_menu("Test Menu", options, allow_quit=False, _interactive=True)
 
         # Assert
         assert result == "1"
@@ -1303,7 +1303,7 @@ class TestSelectMenuRenderFunction:
         with patch.object(menu_module, "_getch", return_value="\r"):
             # Act
 
-            result = select_menu("Test Menu", options)
+            result = select_menu("Test Menu", options, _interactive=True)
 
         # Assert
         assert result == "1"
@@ -1478,7 +1478,7 @@ class TestModuleImportFailure:
         with patch.object(menu_module, "_getch", return_value="\r"):
             # Act
 
-                result = select_menu("Single Menu", options)
+                result = select_menu("Single Menu", options, _interactive=True)
 
                 # Assert
                 assert result == "only"
@@ -1496,7 +1496,7 @@ class TestModuleImportFailure:
 
             mock_getch.side_effect = ["x", "\r"]
             # Act
-            result = select_menu("Test Menu", options)
+            result = select_menu("Test Menu", options, _interactive=True)
 
             # Assert
             # Should still select first option
