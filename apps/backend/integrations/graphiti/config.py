@@ -146,7 +146,7 @@ class GraphitiConfig:
     # OpenRouter settings (multi-provider aggregator)
     openrouter_api_key: str = ""
     openrouter_base_url: str = "https://openrouter.ai/api"
-    openrouter_llm_model: str = "anthropic/claude-3.5-sonnet"
+    openrouter_llm_model: str = "anthropic/claude-sonnet-4"
     openrouter_embedding_model: str = "openai/text-embedding-3-small"
 
     # Ollama settings (local)
