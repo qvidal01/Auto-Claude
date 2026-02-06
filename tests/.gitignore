@@ -7,6 +7,3 @@
 .worktrees/
 .security-key
 logs/security/
-
-# Test results from parallel test runners
-test-results/
