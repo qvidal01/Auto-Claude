@@ -7,6 +7,7 @@ import { DEFAULT_PROJECT_SETTINGS, AUTO_BUILD_PATHS, getSpecsDir, JSON_ERROR_PRE
 import { getAutoBuildPath, isInitialized } from './project-initializer';
 import { getTaskWorktreeDir } from './worktree-paths';
 import { findAllSpecPaths } from './utils/spec-path-helpers';
+import { ensureAbsolutePath } from './utils/path-helpers';
 
 interface TabState {
   openProjectIds: string[];
@@ -558,7 +559,7 @@ export class ProjectStore {
           subtasks,
           logs: [],
           metadata,
-          ...(finalReviewReason !== undefined && { reviewReason: finalReviewReason }),
+          ...(correctedReviewReason !== undefined && { reviewReason: correctedReviewReason }),
           ...(executionProgress && { executionProgress }),
           stagedInMainProject,
           stagedAt,
@@ -574,6 +575,75 @@ export class ProjectStore {
     }
 
     return tasks;
+  }
+
+  /**
+   * Correct stale task status when all subtasks are completed but status wasn't persisted.
+   * Extracted from loadTasksFromSpecsDir to keep read/write separation clear.
+   *
+   * NOTE: This method intentionally writes to implementation_plan.json to persist the
+   * correction and prevent repeated auto-corrections on every getTasks() call. The plan
+   * object is NOT mutated unless the write succeeds, preserving memory/disk consistency.
+   */
+  private correctStaleTaskStatus(
+    subtasks: { status: string }[],
+    hasJsonError: boolean,
+    finalStatus: TaskStatus,
+    finalReviewReason: ReviewReason | undefined,
+    plan: ImplementationPlan | null,
+    planPath: string,
+    taskName: string
+  ): { status: TaskStatus; reviewReason: ReviewReason | undefined } {
+    if (subtasks.length === 0 || hasJsonError) {
+      return { status: finalStatus, reviewReason: finalReviewReason };
+    }
+
+    const completedCount = subtasks.filter(s => s.status === 'completed').length;
+    const allCompleted = completedCount === subtasks.length;
+
+    // Only auto-correct if all subtasks are done and status is in an incomplete coding state.
+    // Preserve ai_review (QA in progress), error (needs investigation), human_review, done, pr_created.
+    if (!allCompleted || finalStatus === 'human_review' || finalStatus === 'done' || finalStatus === 'pr_created' || finalStatus === 'ai_review' || finalStatus === 'error') {
+      return { status: finalStatus, reviewReason: finalReviewReason };
+    }
+
+    // Skip auto-correction if plan was recently updated (backend may still be writing)
+    if (plan?.updated_at) {
+      const updatedAt = new Date(plan.updated_at).getTime();
+      const ageMs = Date.now() - updatedAt;
+      if (ageMs < 30_000) {
+        return { status: finalStatus, reviewReason: finalReviewReason };
+      }
+    }
+
+    console.warn(`[ProjectStore] Auto-correcting task ${taskName}: all ${subtasks.length} subtasks completed but status was ${finalStatus}. Setting to human_review.`);
+
+    if (plan) {
+      // Clone before mutation — only apply to the original plan object if the write succeeds
+      const correctedPlan = {
+        ...plan,
+        status: 'human_review' as const,
+        planStatus: 'review',
+        reviewReason: 'completed' as ReviewReason,
+        updated_at: new Date().toISOString(),
+        xstateState: 'human_review',
+        executionPhase: 'complete'
+      };
+      try {
+        writeFileSync(planPath, JSON.stringify(correctedPlan, null, 2), 'utf-8');
+        // Write succeeded — apply mutations to the in-memory plan so the rest of
+        // loadTasksFromSpecsDir sees the corrected values (e.g., executionProgress)
+        Object.assign(plan, correctedPlan);
+        console.warn(`[ProjectStore] Persisted corrected status for task ${taskName}`);
+      } catch (writeError) {
+        // Write failed — leave the plan object unchanged and return the original status
+        // so there's no memory/disk inconsistency
+        console.error(`[ProjectStore] Failed to persist corrected status for task ${taskName}:`, writeError);
+        return { status: finalStatus, reviewReason: finalReviewReason };
+      }
+    }
+
+    return { status: 'human_review', reviewReason: 'completed' };
   }
 
   /**

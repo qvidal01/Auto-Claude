@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { arrayMove } from '@dnd-kit/sortable';
 import type { Task, TaskStatus, SubtaskStatus, ImplementationPlan, Subtask, TaskMetadata, ExecutionProgress, ExecutionPhase, ReviewReason, TaskDraft, ImageAttachment, TaskOrderState } from '../../shared/types';
-import { debugLog } from '../../shared/utils/debug-logger';
+import { debugLog, debugWarn } from '../../shared/utils/debug-logger';
 
 interface TaskState {
   tasks: Task[];
@@ -481,7 +481,10 @@ export const useTaskStore = create<TaskState>((set, get) => ({
     // Record activity for stuck detection — log output proves the task is alive
     recordTaskActivity(taskId);
     return set((state) => {
-      if (logs.length === 0) return state;
+      if (logs.length === 0) {
+        debugLog('[TaskStore.batchAppendLogs] No logs to append for task:', taskId);
+        return state;
+      }
       const index = findTaskIndex(state.tasks, taskId);
       if (index === -1) {
         debugWarn('[TaskStore.batchAppendLogs] Task not found:', taskId);
