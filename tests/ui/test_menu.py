@@ -8,6 +8,7 @@ import pytest
 
 from ui.icons import Icons
 from ui.menu import MenuOption, _getch, select_menu, _HAS_TERMIOS, _HAS_MSVCRT
+import ui.menu as menu_module
 
 
 def test_MenuOption():
@@ -145,7 +146,7 @@ def test_select_menu_empty_options():
     # Arrange
     options = []
 
-    with patch("ui.menu._getch", return_value="q"):
+    with patch.object(menu_module, "_getch", return_value="q"):
         # Act - should handle gracefully
 
         result = select_menu("Empty Menu", options, allow_quit=True, _interactive=True)
@@ -163,7 +164,7 @@ def test_select_menu_all_disabled():
         MenuOption(key="2", label="Option 2", disabled=True),
     ]
 
-    with patch("ui.menu._getch", return_value="q"):
+    with patch.object(menu_module, "_getch", return_value="q"):
         # Act - should handle gracefully
 
         result = select_menu("Disabled Menu", options, allow_quit=True, _interactive=True)
@@ -612,13 +613,13 @@ class TestSelectMenuInteractive:
         MenuOption(key="3", label="Option 3"),
         ]
 
-        with patch("ui.menu._getch") as mock_getch:
+        with patch.object(menu_module, "_getch") as mock_getch:
             # Simulate: UP key moves selection to previous, then Enter to select
 
             mock_getch.side_effect = ["UP", "\r"]
 
-            # Act
-            result = select_menu("Test Menu", options)
+            # Act - force interactive mode for CI environments
+            result = select_menu("Test Menu", options, _interactive=True)
 
             # Assert - starting at option 1 (index 1), UP moves to option 0
             # Actually looking at code: selected starts at valid_options[0] which is index 0
@@ -638,13 +639,13 @@ class TestSelectMenuInteractive:
         MenuOption(key="3", label="Option 3"),
         ]
 
-        with patch("ui.menu._getch") as mock_getch:
+        with patch.object(menu_module, "_getch") as mock_getch:
             # Simulate: DOWN key moves selection to next, then Enter to select
 
             mock_getch.side_effect = ["DOWN", "\r"]
 
             # Act
-            result = select_menu("Test Menu", options)
+            result = select_menu("Test Menu", options, _interactive=True)
 
             # Assert - starting at index 0, DOWN moves to index 1
             # selected=0, valid_options=[0,1,2]
@@ -662,16 +663,16 @@ class TestSelectMenuInteractive:
         ]
 
         # Test 'k' key (up)
-        with patch("ui.menu._getch") as mock_getch:
+        with patch.object(menu_module, "_getch") as mock_getch:
             mock_getch.side_effect = ["k", "\r"]
-            result = select_menu("Test Menu", options)
+            result = select_menu("Test Menu", options, _interactive=True)
             # 'k' at index 0 does nothing
             assert result == "1"
 
         # Test 'j' key (down)
-        with patch("ui.menu._getch") as mock_getch:
+        with patch.object(menu_module, "_getch") as mock_getch:
             mock_getch.side_effect = ["j", "\r"]
-            result = select_menu("Test Menu", options)
+            result = select_menu("Test Menu", options, _interactive=True)
             # 'j' at index 0 moves to index 1
             assert result == "2"
 
@@ -684,13 +685,13 @@ class TestSelectMenuInteractive:
         ]
 
         # Test with \r (carriage return)
-        with patch("ui.menu._getch", return_value="\r"):
-            result = select_menu("Test Menu", options)
+        with patch.object(menu_module, "_getch", return_value="\r"):
+            result = select_menu("Test Menu", options, _interactive=True)
             assert result == "1"
 
         # Test with \n (newline)
-        with patch("ui.menu._getch", return_value="\n"):
-            result = select_menu("Test Menu", options)
+        with patch.object(menu_module, "_getch", return_value="\n"):
+            result = select_menu("Test Menu", options, _interactive=True)
             assert result == "1"
 
     def test_select_menu_interactive_quit_with_q(self):
@@ -701,10 +702,10 @@ class TestSelectMenuInteractive:
         MenuOption(key="2", label="Option 2"),
         ]
 
-        with patch("ui.menu._getch", return_value="q"):
+        with patch.object(menu_module, "_getch", return_value="q"):
             # Act
 
-            result = select_menu("Test Menu", options, allow_quit=True)
+            result = select_menu("Test Menu", options, allow_quit=True, _interactive=True)
 
             # Assert
             assert result is None
@@ -717,11 +718,11 @@ class TestSelectMenuInteractive:
         MenuOption(key="2", label="Option 2"),
         ]
 
-        with patch("ui.menu._getch") as mock_getch:
+        with patch.object(menu_module, "_getch") as mock_getch:
             # 'q' should be ignored, then Enter to select
 
             mock_getch.side_effect = ["q", "\r"]
-            result = select_menu("Test Menu", options, allow_quit=False)
+            result = select_menu("Test Menu", options, allow_quit=False, _interactive=True)
             assert result == "1"
 
     def test_select_menu_interactive_number_key_selection(self):
@@ -734,10 +735,10 @@ class TestSelectMenuInteractive:
         ]
 
         for i in range(1, 4):
-            with patch("ui.menu._getch", return_value=str(i)):
+            with patch.object(menu_module, "_getch", return_value=str(i)):
                 # Act
 
-                result = select_menu("Test Menu", options)
+                result = select_menu("Test Menu", options, _interactive=True)
 
                 # Assert
                 assert result == str(i)
@@ -750,11 +751,11 @@ class TestSelectMenuInteractive:
         MenuOption(key="2", label="Option 2"),
         ]
 
-        with patch("ui.menu._getch") as mock_getch:
+        with patch.object(menu_module, "_getch") as mock_getch:
             # Press '1' (disabled), should be ignored, then Enter selects option 2
 
             mock_getch.side_effect = ["1", "\r"]
-            result = select_menu("Test Menu", options)
+            result = select_menu("Test Menu", options, _interactive=True)
             # Should skip disabled option and select first valid (index 1)
             assert result == "2"
 
@@ -766,11 +767,11 @@ class TestSelectMenuInteractive:
         MenuOption(key="2", label="Option 2"),
         ]
 
-        with patch("ui.menu._getch") as mock_getch:
+        with patch.object(menu_module, "_getch") as mock_getch:
             # Press '9' (out of range), should be ignored, then Enter
 
             mock_getch.side_effect = ["9", "\r"]
-            result = select_menu("Test Menu", options)
+            result = select_menu("Test Menu", options, _interactive=True)
             assert result == "1"
 
     def test_select_menu_interactive_arrow_key_at_upper_boundary(self):
@@ -781,11 +782,11 @@ class TestSelectMenuInteractive:
         MenuOption(key="2", label="Option 2"),
         ]
 
-        with patch("ui.menu._getch") as mock_getch:
+        with patch.object(menu_module, "_getch") as mock_getch:
             # UP at index 0 stays at index 0
 
             mock_getch.side_effect = ["UP", "\r"]
-            result = select_menu("Test Menu", options)
+            result = select_menu("Test Menu", options, _interactive=True)
             assert result == "1"
 
     def test_select_menu_interactive_arrow_key_at_lower_boundary(self):
@@ -796,13 +797,13 @@ class TestSelectMenuInteractive:
         MenuOption(key="2", label="Option 2"),
         ]
 
-        with patch("ui.menu._getch") as mock_getch:
+        with patch.object(menu_module, "_getch") as mock_getch:
             # Move to last option with DOWN, then DOWN again (should stay)
 
             # First DOWN: 0 -> 1, second DOWN: at 1, current_idx=1, not < 1, so no change
 
             mock_getch.side_effect = ["DOWN", "DOWN", "\r"]
-            result = select_menu("Test Menu", options)
+            result = select_menu("Test Menu", options, _interactive=True)
             assert result == "2"
 
     def test_select_menu_interactive_with_disabled_options(self):
@@ -814,7 +815,7 @@ class TestSelectMenuInteractive:
         MenuOption(key="3", label="Option 3"),
         ]
 
-        with patch("ui.menu._getch") as mock_getch:
+        with patch.object(menu_module, "_getch") as mock_getch:
             # DOWN should skip disabled option 2
 
             # valid_options = [0, 2], selected starts at 0
@@ -822,7 +823,7 @@ class TestSelectMenuInteractive:
             # DOWN: 0 -> 2 (skipping 1 which is disabled)
 
             mock_getch.side_effect = ["DOWN", "\r"]
-            result = select_menu("Test Menu", options)
+            result = select_menu("Test Menu", options, _interactive=True)
             assert result == "3"
 
     def test_select_menu_interactive_fallback_on_exception(self):
@@ -833,10 +834,10 @@ class TestSelectMenuInteractive:
         MenuOption(key="2", label="Option 2"),
         ]
 
-        with patch("ui.menu._getch", side_effect=RuntimeError("Terminal error")):
+        with patch.object(menu_module, "_getch", side_effect=RuntimeError("Terminal error")):
             with patch("builtins.input", return_value="1"):
                 # Act
-                result = select_menu("Test Menu", options)
+                result = select_menu("Test Menu", options, _interactive=True)
 
                 # Assert
                 assert result == "1"
@@ -848,10 +849,10 @@ class TestSelectMenuInteractive:
         MenuOption(key="1", label="Option 1"),
         ]
 
-        with patch("ui.menu._getch", return_value="\r"):
+        with patch.object(menu_module, "_getch", return_value="\r"):
             # Act - should not raise
 
-            result = select_menu("Test Menu", options, subtitle="Choose wisely")
+            result = select_menu("Test Menu", options, subtitle="Choose wisely", _interactive=True)
 
             # Assert
             assert result == "1"
@@ -864,10 +865,10 @@ class TestSelectMenuInteractive:
         MenuOption(key="2", label="Option 2"),
         ]
 
-        with patch("ui.menu._getch", return_value="\r"):
+        with patch.object(menu_module, "_getch", return_value="\r"):
             # Act - should render description for selected option
 
-            result = select_menu("Test Menu", options)
+            result = select_menu("Test Menu", options, _interactive=True)
 
             # Assert
             assert result == "1"
@@ -881,11 +882,11 @@ class TestSelectMenuInteractive:
         MenuOption(key="3", label="Option 3", description="Third option description"),
         ]
 
-        with patch("ui.menu._getch") as mock_getch:
+        with patch.object(menu_module, "_getch") as mock_getch:
             # Select option 2, which should show its description
 
             mock_getch.side_effect = ["DOWN", "\r"]
-            result = select_menu("Test Menu", options)
+            result = select_menu("Test Menu", options, _interactive=True)
             assert result == "2"
 
     def test_select_menu_interactive_multiple_down_moves(self):
@@ -898,11 +899,11 @@ class TestSelectMenuInteractive:
         MenuOption(key="4", label="Option 4"),
         ]
 
-        with patch("ui.menu._getch") as mock_getch:
+        with patch.object(menu_module, "_getch") as mock_getch:
             # Move down twice
 
             mock_getch.side_effect = ["DOWN", "DOWN", "\r"]
-            result = select_menu("Test Menu", options)
+            result = select_menu("Test Menu", options, _interactive=True)
             # Start at 0, DOWN -> 1, DOWN -> 2
             assert result == "3"
 
@@ -915,11 +916,11 @@ class TestSelectMenuInteractive:
         MenuOption(key="3", label="Option 3"),
         ]
 
-        with patch("ui.menu._getch") as mock_getch:
+        with patch.object(menu_module, "_getch") as mock_getch:
             # DOWN to option 2, UP back to option 1
 
             mock_getch.side_effect = ["DOWN", "UP", "\r"]
-            result = select_menu("Test Menu", options)
+            result = select_menu("Test Menu", options, _interactive=True)
             assert result == "1"
 
 
@@ -1192,7 +1193,7 @@ class TestSelectMenuRenderFunction:
         ]
 
         # Don't mock print - let render() execute normally
-        with patch("ui.menu._getch", return_value="\r"):
+        with patch.object(menu_module, "_getch", return_value="\r"):
             # Act
 
             result = select_menu("Test Menu", options)
@@ -1209,7 +1210,7 @@ class TestSelectMenuRenderFunction:
         MenuOption(key="3", label="Option 3"),
         ]
 
-        with patch("ui.menu._getch") as mock_getch:
+        with patch.object(menu_module, "_getch") as mock_getch:
             mock_getch.side_effect = ["DOWN", "\r"]
         # Act
         result = select_menu("Test Menu", options)
@@ -1224,7 +1225,7 @@ class TestSelectMenuRenderFunction:
         MenuOption(key="1", label="Option 1"),
         ]
 
-        with patch("ui.menu._getch", return_value="\r"):
+        with patch.object(menu_module, "_getch", return_value="\r"):
             # Act
 
             result = select_menu("Test Menu", options, subtitle="Choose wisely")
@@ -1240,7 +1241,7 @@ class TestSelectMenuRenderFunction:
         MenuOption(key="2", label="Option 2"),
         ]
 
-        with patch("ui.menu._getch", return_value="\r"):
+        with patch.object(menu_module, "_getch", return_value="\r"):
             # Act
 
             result = select_menu("Test Menu", options)
@@ -1257,7 +1258,7 @@ class TestSelectMenuRenderFunction:
         MenuOption(key="2", label="Option 2", description="This is option 2"),
         ]
 
-        with patch("ui.menu._getch", return_value="\r"):
+        with patch.object(menu_module, "_getch", return_value="\r"):
             # Act
 
             result = select_menu("Test Menu", options)
@@ -1272,7 +1273,7 @@ class TestSelectMenuRenderFunction:
         MenuOption(key="1", label="Option 1"),
         ]
 
-        with patch("ui.menu._getch", return_value="\r"):
+        with patch.object(menu_module, "_getch", return_value="\r"):
             # Act
 
             result = select_menu("Test Menu", options, allow_quit=False)
@@ -1288,7 +1289,7 @@ class TestSelectMenuRenderFunction:
         MenuOption(key="2", label="Option 2", icon=Icons.ERROR),
         ]
 
-        with patch("ui.menu._getch", return_value="\r"):
+        with patch.object(menu_module, "_getch", return_value="\r"):
             # Act
 
             result = select_menu("Test Menu", options)
@@ -1463,7 +1464,7 @@ class TestModuleImportFailure:
         MenuOption(key="only", label="Only Option"),
         ]
 
-        with patch("ui.menu._getch", return_value="\r"):
+        with patch.object(menu_module, "_getch", return_value="\r"):
             # Act
 
                 result = select_menu("Single Menu", options)
@@ -1479,7 +1480,7 @@ class TestModuleImportFailure:
             MenuOption(key="2", label="Option 2"),
         ]
 
-        with patch("ui.menu._getch") as mock_getch:
+        with patch.object(menu_module, "_getch") as mock_getch:
             # Press an invalid key (not handled), then Enter
 
             mock_getch.side_effect = ["x", "\r"]
