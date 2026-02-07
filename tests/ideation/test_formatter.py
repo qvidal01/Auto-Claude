@@ -14,9 +14,9 @@ def test_IdeationFormatter___init__():
 
     formatter = IdeationFormatter(output_dir, project_dir)
 
-    # Use resolve() for cross-platform compatibility (macOS /tmp -> /private/tmp)
-    assert formatter.output_dir == output_dir.resolve()
-    assert formatter.project_dir == project_dir.resolve()
+    # Compare paths without resolve() since the implementation stores paths as-is
+    assert str(formatter.output_dir) == str(output_dir)
+    assert str(formatter.project_dir) == str(project_dir)
 
 
 @patch("ideation.formatter.Path.exists")
