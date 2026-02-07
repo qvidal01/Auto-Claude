@@ -142,7 +142,7 @@ class TestIsGitRepo:
     """Tests for _is_git_repo function"""
 
     @patch("init.get_git_executable")
-    @patch("subprocess.run")
+    @patch("init.subprocess.run")
     def test_is_git_repo_success(self, mock_run, mock_git, tmp_path):
         """Test returns True when inside git repo"""
         # Arrange
@@ -160,7 +160,7 @@ class TestIsGitRepo:
         assert "--is-inside-work-tree" in args
 
     @patch("init.get_git_executable")
-    @patch("subprocess.run")
+    @patch("init.subprocess.run")
     def test_is_git_repo_failure(self, mock_run, mock_git, tmp_path):
         """Test returns False when not inside git repo"""
         # Arrange
@@ -174,7 +174,7 @@ class TestIsGitRepo:
         assert result is False
 
     @patch("init.get_git_executable")
-    @patch("subprocess.run")
+    @patch("init.subprocess.run")
     def test_is_git_repo_timeout(self, mock_run, mock_git, tmp_path):
         """Test returns False when subprocess times out"""
         # Arrange
@@ -188,7 +188,7 @@ class TestIsGitRepo:
         assert result is False
 
     @patch("init.get_git_executable")
-    @patch("subprocess.run")
+    @patch("init.subprocess.run")
     def test_is_git_repo_exception(self, mock_run, mock_git, tmp_path):
         """Test returns False on any exception"""
         # Arrange
@@ -207,7 +207,7 @@ class TestCommitGitignore:
 
     @patch("init._is_git_repo")
     @patch("init.get_git_executable")
-    @patch("subprocess.run")
+    @patch("init.subprocess.run")
     def test_commit_success(self, mock_run, mock_git, mock_is_repo, tmp_path):
         """Test successful git commit"""
         # Arrange
@@ -227,7 +227,7 @@ class TestCommitGitignore:
 
     @patch("init._is_git_repo")
     @patch("init.get_git_executable")
-    @patch("subprocess.run")
+    @patch("init.subprocess.run")
     def test_commit_nothing_to_commit(self, mock_run, mock_git, mock_is_repo, tmp_path):
         """Test commit returns True when nothing to commit"""
         # Arrange
@@ -250,7 +250,7 @@ class TestCommitGitignore:
 
     @patch("init._is_git_repo")
     @patch("init.get_git_executable")
-    @patch("subprocess.run")
+    @patch("init.subprocess.run")
     def test_commit_not_git_repo(self, mock_run, mock_git, mock_is_repo, tmp_path):
         """Test returns False when not a git repo"""
         # Arrange
@@ -266,7 +266,7 @@ class TestCommitGitignore:
 
     @patch("init._is_git_repo")
     @patch("init.get_git_executable")
-    @patch("subprocess.run")
+    @patch("init.subprocess.run")
     def test_commit_add_fails(self, mock_run, mock_git, mock_is_repo, tmp_path):
         """Test returns False when git add fails"""
         # Arrange
@@ -282,7 +282,7 @@ class TestCommitGitignore:
 
     @patch("init._is_git_repo")
     @patch("init.get_git_executable")
-    @patch("subprocess.run")
+    @patch("init.subprocess.run")
     def test_commit_timeout(self, mock_run, mock_git, mock_is_repo, tmp_path):
         """Test returns False on timeout"""
         # Arrange
@@ -298,7 +298,7 @@ class TestCommitGitignore:
 
     @patch("init._is_git_repo")
     @patch("init.get_git_executable")
-    @patch("subprocess.run")
+    @patch("init.subprocess.run")
     def test_commit_uses_correct_env(self, mock_run, mock_git, mock_is_repo, tmp_path):
         """Test commit uses LC_ALL=C environment"""
         # Arrange

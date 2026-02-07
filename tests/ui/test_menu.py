@@ -375,12 +375,24 @@ class TestGetchUnix:
         mock_termios.tcgetattr.return_value = old_settings
         mock_tty = MagicMock()
 
-        with patch("ui.menu.termios", mock_termios):
-            with patch("ui.menu.tty", mock_tty):
-                with patch.object(menu_module.sys.stdin, "fileno", return_value=1):
-                    with patch.object(menu_module.sys.stdin, "read", return_value="a"):
-                        # Act
-                        result = menu_module._getch()
+        # Patch the function's globals to use mocked termios/tty
+        original_termios = menu_module._getch.__globals__.get('termios')
+        original_tty = menu_module._getch.__globals__.get('tty')
+
+        try:
+            menu_module._getch.__globals__['termios'] = mock_termios
+            menu_module._getch.__globals__['tty'] = mock_tty
+
+            with patch.object(menu_module.sys.stdin, "fileno", return_value=1):
+                with patch.object(menu_module.sys.stdin, "read", return_value="a"):
+                    # Act
+                    result = menu_module._getch()
+        finally:
+            # Restore original globals
+            if original_termios is not None:
+                menu_module._getch.__globals__['termios'] = original_termios
+            if original_tty is not None:
+                menu_module._getch.__globals__['tty'] = original_tty
 
         # Assert
         assert result == "a"
@@ -397,12 +409,24 @@ class TestGetchUnix:
         mock_termios.tcgetattr.return_value = old_settings
         mock_tty = MagicMock()
 
-        with patch("ui.menu.termios", mock_termios):
-            with patch("ui.menu.tty", mock_tty):
-                with patch.object(menu_module.sys.stdin, "fileno", return_value=1):
-                    with patch.object(menu_module.sys.stdin, "read", side_effect=["\x1b", "[", "A"]):
-                        # Act
-                        result = menu_module._getch()
+        # Patch the function's globals to use mocked termios/tty
+        original_termios = menu_module._getch.__globals__.get('termios')
+        original_tty = menu_module._getch.__globals__.get('tty')
+
+        try:
+            menu_module._getch.__globals__['termios'] = mock_termios
+            menu_module._getch.__globals__['tty'] = mock_tty
+
+            with patch.object(menu_module.sys.stdin, "fileno", return_value=1):
+                with patch.object(menu_module.sys.stdin, "read", side_effect=["\x1b", "[", "A"]):
+                    # Act
+                    result = menu_module._getch()
+        finally:
+            # Restore original globals
+            if original_termios is not None:
+                menu_module._getch.__globals__['termios'] = original_termios
+            if original_tty is not None:
+                menu_module._getch.__globals__['tty'] = original_tty
 
         # Assert
         assert result == "UP"
@@ -419,12 +443,24 @@ class TestGetchUnix:
         mock_termios.tcgetattr.return_value = old_settings
         mock_tty = MagicMock()
 
-        with patch("ui.menu.termios", mock_termios):
-            with patch("ui.menu.tty", mock_tty):
-                with patch.object(menu_module.sys.stdin, "fileno", return_value=1):
-                    with patch.object(menu_module.sys.stdin, "read", side_effect=["\x1b", "[", "B"]):
-                        # Act
-                        result = menu_module._getch()
+        # Patch the function's globals to use mocked termios/tty
+        original_termios = menu_module._getch.__globals__.get('termios')
+        original_tty = menu_module._getch.__globals__.get('tty')
+
+        try:
+            menu_module._getch.__globals__['termios'] = mock_termios
+            menu_module._getch.__globals__['tty'] = mock_tty
+
+            with patch.object(menu_module.sys.stdin, "fileno", return_value=1):
+                with patch.object(menu_module.sys.stdin, "read", side_effect=["\x1b", "[", "B"]):
+                    # Act
+                    result = menu_module._getch()
+        finally:
+            # Restore original globals
+            if original_termios is not None:
+                menu_module._getch.__globals__['termios'] = original_termios
+            if original_tty is not None:
+                menu_module._getch.__globals__['tty'] = original_tty
 
         # Assert
         assert result == "DOWN"
@@ -441,12 +477,24 @@ class TestGetchUnix:
         mock_termios.tcgetattr.return_value = old_settings
         mock_tty = MagicMock()
 
-        with patch("ui.menu.termios", mock_termios):
-            with patch("ui.menu.tty", mock_tty):
-                with patch.object(menu_module.sys.stdin, "fileno", return_value=1):
-                    with patch.object(menu_module.sys.stdin, "read", side_effect=["\x1b", "[", "C"]):
-                        # Act
-                        result = menu_module._getch()
+        # Patch the function's globals to use mocked termios/tty
+        original_termios = menu_module._getch.__globals__.get('termios')
+        original_tty = menu_module._getch.__globals__.get('tty')
+
+        try:
+            menu_module._getch.__globals__['termios'] = mock_termios
+            menu_module._getch.__globals__['tty'] = mock_tty
+
+            with patch.object(menu_module.sys.stdin, "fileno", return_value=1):
+                with patch.object(menu_module.sys.stdin, "read", side_effect=["\x1b", "[", "C"]):
+                    # Act
+                    result = menu_module._getch()
+        finally:
+            # Restore original globals
+            if original_termios is not None:
+                menu_module._getch.__globals__['termios'] = original_termios
+            if original_tty is not None:
+                menu_module._getch.__globals__['tty'] = original_tty
 
         # Assert
         assert result == "RIGHT"
@@ -463,12 +511,24 @@ class TestGetchUnix:
         mock_termios.tcgetattr.return_value = old_settings
         mock_tty = MagicMock()
 
-        with patch("ui.menu.termios", mock_termios):
-            with patch("ui.menu.tty", mock_tty):
-                with patch.object(menu_module.sys.stdin, "fileno", return_value=1):
-                    with patch.object(menu_module.sys.stdin, "read", side_effect=["\x1b", "[", "D"]):
-                        # Act
-                        result = menu_module._getch()
+        # Patch the function's globals to use mocked termios/tty
+        original_termios = menu_module._getch.__globals__.get('termios')
+        original_tty = menu_module._getch.__globals__.get('tty')
+
+        try:
+            menu_module._getch.__globals__['termios'] = mock_termios
+            menu_module._getch.__globals__['tty'] = mock_tty
+
+            with patch.object(menu_module.sys.stdin, "fileno", return_value=1):
+                with patch.object(menu_module.sys.stdin, "read", side_effect=["\x1b", "[", "D"]):
+                    # Act
+                    result = menu_module._getch()
+        finally:
+            # Restore original globals
+            if original_termios is not None:
+                menu_module._getch.__globals__['termios'] = original_termios
+            if original_tty is not None:
+                menu_module._getch.__globals__['tty'] = original_tty
 
         # Assert
         assert result == "LEFT"
@@ -485,12 +545,24 @@ class TestGetchUnix:
         mock_termios.tcgetattr.return_value = old_settings
         mock_tty = MagicMock()
 
-        with patch("ui.menu.termios", mock_termios):
-            with patch("ui.menu.tty", mock_tty):
-                with patch.object(menu_module.sys.stdin, "fileno", return_value=1):
-                    with patch.object(menu_module.sys.stdin, "read", side_effect=["\x1b", "x"]):
-                        # Act
-                        result = menu_module._getch()
+        # Patch the function's globals to use mocked termios/tty
+        original_termios = menu_module._getch.__globals__.get('termios')
+        original_tty = menu_module._getch.__globals__.get('tty')
+
+        try:
+            menu_module._getch.__globals__['termios'] = mock_termios
+            menu_module._getch.__globals__['tty'] = mock_tty
+
+            with patch.object(menu_module.sys.stdin, "fileno", return_value=1):
+                with patch.object(menu_module.sys.stdin, "read", side_effect=["\x1b", "x"]):
+                    # Act
+                    result = menu_module._getch()
+        finally:
+            # Restore original globals
+            if original_termios is not None:
+                menu_module._getch.__globals__['termios'] = original_termios
+            if original_tty is not None:
+                menu_module._getch.__globals__['tty'] = original_tty
 
         # Assert - should return the escape character itself
         assert result == "\x1b"
@@ -507,12 +579,24 @@ class TestGetchUnix:
         mock_termios.tcgetattr.return_value = old_settings
         mock_tty = MagicMock()
 
-        with patch("ui.menu.termios", mock_termios):
-            with patch("ui.menu.tty", mock_tty):
-                with patch.object(menu_module.sys.stdin, "fileno", return_value=1):
-                    with patch.object(menu_module.sys.stdin, "read", side_effect=["\x1b", "[", "Z"]):
-                        # Act
-                        result = menu_module._getch()
+        # Patch the function's globals to use mocked termios/tty
+        original_termios = menu_module._getch.__globals__.get('termios')
+        original_tty = menu_module._getch.__globals__.get('tty')
+
+        try:
+            menu_module._getch.__globals__['termios'] = mock_termios
+            menu_module._getch.__globals__['tty'] = mock_tty
+
+            with patch.object(menu_module.sys.stdin, "fileno", return_value=1):
+                with patch.object(menu_module.sys.stdin, "read", side_effect=["\x1b", "[", "Z"]):
+                    # Act
+                    result = menu_module._getch()
+        finally:
+            # Restore original globals
+            if original_termios is not None:
+                menu_module._getch.__globals__['termios'] = original_termios
+            if original_tty is not None:
+                menu_module._getch.__globals__['tty'] = original_tty
 
         # Assert - should return the escape character
         assert result == "\x1b"
@@ -529,12 +613,24 @@ class TestGetchUnix:
         mock_termios.tcgetattr.return_value = old_settings
         mock_tty = MagicMock()
 
-        with patch("ui.menu.termios", mock_termios):
-            with patch("ui.menu.tty", mock_tty):
-                with patch.object(menu_module.sys.stdin, "fileno", return_value=1):
-                    with patch.object(menu_module.sys.stdin, "read", return_value="\n"):
-                        # Act
-                        result = menu_module._getch()
+        # Patch the function's globals to use mocked termios/tty
+        original_termios = menu_module._getch.__globals__.get('termios')
+        original_tty = menu_module._getch.__globals__.get('tty')
+
+        try:
+            menu_module._getch.__globals__['termios'] = mock_termios
+            menu_module._getch.__globals__['tty'] = mock_tty
+
+            with patch.object(menu_module.sys.stdin, "fileno", return_value=1):
+                with patch.object(menu_module.sys.stdin, "read", return_value="\n"):
+                    # Act
+                    result = menu_module._getch()
+        finally:
+            # Restore original globals
+            if original_termios is not None:
+                menu_module._getch.__globals__['termios'] = original_termios
+            if original_tty is not None:
+                menu_module._getch.__globals__['tty'] = original_tty
 
         # Assert
         assert result == "\n"
@@ -551,12 +647,24 @@ class TestGetchUnix:
         mock_termios.tcgetattr.return_value = old_settings
         mock_tty = MagicMock()
 
-        with patch("ui.menu.termios", mock_termios):
-            with patch("ui.menu.tty", mock_tty):
-                with patch.object(menu_module.sys.stdin, "fileno", return_value=1):
-                    with patch.object(menu_module.sys.stdin, "read", return_value="\r"):
-                        # Act
-                        result = menu_module._getch()
+        # Patch the function's globals to use mocked termios/tty
+        original_termios = menu_module._getch.__globals__.get('termios')
+        original_tty = menu_module._getch.__globals__.get('tty')
+
+        try:
+            menu_module._getch.__globals__['termios'] = mock_termios
+            menu_module._getch.__globals__['tty'] = mock_tty
+
+            with patch.object(menu_module.sys.stdin, "fileno", return_value=1):
+                with patch.object(menu_module.sys.stdin, "read", return_value="\r"):
+                    # Act
+                    result = menu_module._getch()
+        finally:
+            # Restore original globals
+            if original_termios is not None:
+                menu_module._getch.__globals__['termios'] = original_termios
+            if original_tty is not None:
+                menu_module._getch.__globals__['tty'] = original_tty
 
         # Assert
         assert result == "\r"
@@ -573,12 +681,24 @@ class TestGetchUnix:
         mock_termios.tcgetattr.return_value = old_settings
         mock_tty = MagicMock()
 
-        with patch("ui.menu.termios", mock_termios):
-            with patch("ui.menu.tty", mock_tty):
-                with patch.object(menu_module.sys.stdin, "fileno", return_value=1):
-                    with patch.object(menu_module.sys.stdin, "read", return_value="j"):
-                        # Act
-                        result = menu_module._getch()
+        # Patch the function's globals to use mocked termios/tty
+        original_termios = menu_module._getch.__globals__.get('termios')
+        original_tty = menu_module._getch.__globals__.get('tty')
+
+        try:
+            menu_module._getch.__globals__['termios'] = mock_termios
+            menu_module._getch.__globals__['tty'] = mock_tty
+
+            with patch.object(menu_module.sys.stdin, "fileno", return_value=1):
+                with patch.object(menu_module.sys.stdin, "read", return_value="j"):
+                    # Act
+                    result = menu_module._getch()
+        finally:
+            # Restore original globals
+            if original_termios is not None:
+                menu_module._getch.__globals__['termios'] = original_termios
+            if original_tty is not None:
+                menu_module._getch.__globals__['tty'] = original_tty
 
         # Assert
         assert result == "j"
@@ -595,12 +715,24 @@ class TestGetchUnix:
         mock_termios.tcgetattr.return_value = old_settings
         mock_tty = MagicMock()
 
-        with patch("ui.menu.termios", mock_termios):
-            with patch("ui.menu.tty", mock_tty):
-                with patch.object(menu_module.sys.stdin, "fileno", return_value=1):
-                    with patch.object(menu_module.sys.stdin, "read", return_value="k"):
-                        # Act
-                        result = menu_module._getch()
+        # Patch the function's globals to use mocked termios/tty
+        original_termios = menu_module._getch.__globals__.get('termios')
+        original_tty = menu_module._getch.__globals__.get('tty')
+
+        try:
+            menu_module._getch.__globals__['termios'] = mock_termios
+            menu_module._getch.__globals__['tty'] = mock_tty
+
+            with patch.object(menu_module.sys.stdin, "fileno", return_value=1):
+                with patch.object(menu_module.sys.stdin, "read", return_value="k"):
+                    # Act
+                    result = menu_module._getch()
+        finally:
+            # Restore original globals
+            if original_termios is not None:
+                menu_module._getch.__globals__['termios'] = original_termios
+            if original_tty is not None:
+                menu_module._getch.__globals__['tty'] = original_tty
 
         # Assert
         assert result == "k"
@@ -956,15 +1088,22 @@ class TestSelectMenuInteractive:
             assert result == "1"
 
     def test_mock_verification(self):
-        """Verify that patch.object works correctly for _getch"""
+        """Verify that patch works correctly for _getch"""
         import sys
+        import importlib
         from unittest.mock import patch
 
-        # Use patch directly on ui.menu._getch to avoid issues with menu_module reference
-        with patch('ui.menu._getch', return_value="\r") as mock_getch:
+        # Re-import ui.menu to ensure we have the current module from sys.modules
+        # This is needed because other tests (like test_import_does_not_pollute_global_namespace)
+        # may have cleared and restored sys.modules['ui.menu'], leaving stale references
+        import ui.menu as ui_menu
+
+        # Patch on the current ui.menu module
+        with patch.object(ui_menu, '_getch', return_value="\r") as mock_getch:
             options = [MenuOption(key="1", label="Option 1")]
 
-            result = select_menu("Test Menu", options, _interactive=True)
+            # Use the freshly imported select_menu to ensure it uses the patched module
+            result = ui_menu.select_menu("Test Menu", options, _interactive=True)
 
             # Verify mock was called
             assert mock_getch.called, "Mock was not called!"
@@ -1389,18 +1528,29 @@ class TestGetchActualExecution:
         mock_tty = MagicMock()
         old_settings = MagicMock()
 
-        with patch("ui.menu.termios", mock_termios):
-            with patch("ui.menu.tty", mock_tty):
-                with patch("ui.menu.sys.stdin.fileno", return_value=1):
-                    with patch("ui.menu.sys.stdin.read", return_value="Y"):
-                        with patch("ui.menu.termios.tcgetattr", return_value=old_settings):
-                            # Act
+        # Patch the function's globals to use mocked termios/tty
+        original_termios = menu_module._getch.__globals__.get('termios')
+        original_tty = menu_module._getch.__globals__.get('tty')
 
-                            result = menu_module._getch()
+        try:
+            menu_module._getch.__globals__['termios'] = mock_termios
+            menu_module._getch.__globals__['tty'] = mock_tty
 
-                            # Assert - verify Unix path was executed
-                            assert result == "Y"
-                            mock_tty.setraw.assert_called_once()
+            with patch("ui.menu.sys.stdin.fileno", return_value=1):
+                with patch("ui.menu.sys.stdin.read", return_value="Y"):
+                    with patch("ui.menu.termios.tcgetattr", return_value=old_settings):
+                        # Act
+                        result = menu_module._getch()
+
+                        # Assert - verify Unix path was executed
+                        assert result == "Y"
+                        mock_tty.setraw.assert_called_once()
+        finally:
+            # Restore original globals
+            if original_termios is not None:
+                menu_module._getch.__globals__['termios'] = original_termios
+            if original_tty is not None:
+                menu_module._getch.__globals__['tty'] = original_tty
 
     @patch("ui.menu._HAS_MSVCRT", False)
     @patch("ui.menu._HAS_TERMIOS", False)

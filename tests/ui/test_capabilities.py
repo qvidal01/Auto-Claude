@@ -32,19 +32,22 @@ class TestEnableWindowsAnsiSupport:
 
     def test_non_windows_platform_returns_true(self):
         """Test that non-Windows platforms always return True"""
-        with patch("ui.capabilities.sys.platform", "linux"):
-            result = enable_windows_ansi_support()
+        import ui.capabilities
+        with patch.object(sys, "platform", "linux"):
+            result = ui.capabilities.enable_windows_ansi_support()
             assert result is True
 
     def test_non_windows_macos_returns_true(self):
         """Test that macOS returns True"""
-        with patch("ui.capabilities.sys.platform", "darwin"):
-            result = enable_windows_ansi_support()
+        import ui.capabilities
+        with patch.object(sys, "platform", "darwin"):
+            result = ui.capabilities.enable_windows_ansi_support()
             assert result is True
 
-    @patch("ui.capabilities.sys.platform", "win32")
+    @patch.object(sys, "platform", "win32")
     def test_windows_successfully_enables_ansi(self):
         """Test successful ANSI enablement on Windows"""
+        import ui.capabilities
         # Mock the ctypes module and its sub-components
         mock_dword = MagicMock()
         mock_dword.value = 0
@@ -62,12 +65,13 @@ class TestEnableWindowsAnsiSupport:
         mock_ctypes.wintypes = mock_wintypes
 
         with patch("builtins.__import__", side_effect=_create_import_side_effect(mock_ctypes)):
-            result = enable_windows_ansi_support()
+            result = ui.capabilities.enable_windows_ansi_support()
             assert result is True
 
-    @patch("ui.capabilities.sys.platform", "win32")
+    @patch.object(sys, "platform", "win32")
     def test_windows_ansi_already_enabled(self):
         """Test when ANSI is already enabled on Windows"""
+        import ui.capabilities
         # Setup mock for DWORD with ANSI flag already set
         mock_dword = MagicMock()
         mock_dword.value = 0x0004  # ENABLE_VIRTUAL_TERMINAL_PROCESSING
@@ -84,12 +88,13 @@ class TestEnableWindowsAnsiSupport:
         mock_ctypes.wintypes = mock_wintypes
 
         with patch("builtins.__import__", side_effect=_create_import_side_effect(mock_ctypes)):
-            result = enable_windows_ansi_support()
+            result = ui.capabilities.enable_windows_ansi_support()
             assert result is True
 
-    @patch("ui.capabilities.sys.platform", "win32")
+    @patch.object(sys, "platform", "win32")
     def test_windows_invalid_handle_continues(self):
         """Test when GetStdHandle returns -1 (invalid handle)"""
+        import ui.capabilities
         mock_dword = MagicMock()
         mock_dword.value = 0
 
@@ -106,12 +111,13 @@ class TestEnableWindowsAnsiSupport:
         mock_ctypes.wintypes = mock_wintypes
 
         with patch("builtins.__import__", side_effect=_create_import_side_effect(mock_ctypes)):
-            result = enable_windows_ansi_support()
+            result = ui.capabilities.enable_windows_ansi_support()
             assert result is True
 
-    @patch("ui.capabilities.sys.platform", "win32")
+    @patch.object(sys, "platform", "win32")
     def test_windows_get_console_mode_fails(self):
         """Test when GetConsoleMode fails"""
+        import ui.capabilities
         mock_dword = MagicMock()
         mock_dword.value = 0
 
@@ -127,12 +133,13 @@ class TestEnableWindowsAnsiSupport:
         mock_ctypes.wintypes = mock_wintypes
 
         with patch("builtins.__import__", side_effect=_create_import_side_effect(mock_ctypes)):
-            result = enable_windows_ansi_support()
+            result = ui.capabilities.enable_windows_ansi_support()
             assert result is True
 
-    @patch("ui.capabilities.sys.platform", "win32")
+    @patch.object(sys, "platform", "win32")
     def test_windows_ctypes_import_error_falls_back_to_colorama(self):
         """Test fallback to colorama when ctypes import fails"""
+        import ui.capabilities
         mock_colorama = MagicMock()
         mock_colorama.init.return_value = None
 
@@ -144,13 +151,14 @@ class TestEnableWindowsAnsiSupport:
             return __import__(name, *args, **kwargs)
 
         with patch("builtins.__import__", side_effect=import_side_effect):
-            result = enable_windows_ansi_support()
+            result = ui.capabilities.enable_windows_ansi_support()
             assert result is True
             mock_colorama.init.assert_called_once()
 
-    @patch("ui.capabilities.sys.platform", "win32")
+    @patch.object(sys, "platform", "win32")
     def test_windows_ctypes_attribute_error(self):
         """Test handling of AttributeError from ctypes"""
+        import ui.capabilities
         mock_ctypes = MagicMock()
         mock_ctypes.windll.kernel32.GetStdHandle.side_effect = AttributeError("No attribute")
 
@@ -165,13 +173,14 @@ class TestEnableWindowsAnsiSupport:
             return __import__(name, *args, **kwargs)
 
         with patch("builtins.__import__", side_effect=import_side_effect):
-            result = enable_windows_ansi_support()
+            result = ui.capabilities.enable_windows_ansi_support()
             assert result is True
             mock_colorama.init.assert_called_once()
 
-    @patch("ui.capabilities.sys.platform", "win32")
+    @patch.object(sys, "platform", "win32")
     def test_windows_oserror_falls_back_to_colorama(self):
         """Test OSError handling falls back to colorama"""
+        import ui.capabilities
         mock_ctypes = MagicMock()
         mock_ctypes.windll.kernel32.GetStdHandle.side_effect = OSError("Failed")
 
@@ -186,13 +195,14 @@ class TestEnableWindowsAnsiSupport:
             return __import__(name, *args, **kwargs)
 
         with patch("builtins.__import__", side_effect=import_side_effect):
-            result = enable_windows_ansi_support()
+            result = ui.capabilities.enable_windows_ansi_support()
             assert result is True
             mock_colorama.init.assert_called_once()
 
-    @patch("ui.capabilities.sys.platform", "win32")
+    @patch.object(sys, "platform", "win32")
     def test_windows_colorama_import_error_returns_false(self):
         """Test when both ctypes and colorama fail"""
+        import ui.capabilities
         # Patch both ctypes and colorama imports to fail
         import builtins
         original_import = builtins.__import__
@@ -205,7 +215,7 @@ class TestEnableWindowsAnsiSupport:
             return original_import(name, *args, **kwargs)
 
         with patch("builtins.__import__", side_effect=import_side_effect):
-            result = enable_windows_ansi_support()
+            result = ui.capabilities.enable_windows_ansi_support()
 
         assert result is False
 
@@ -226,17 +236,19 @@ class TestConfigureSafeEncoding:
 
     def test_non_windows_returns_early(self):
         """Test that non-Windows platforms return early"""
-        with patch("ui.capabilities.sys.platform", "linux"):
+        import ui.capabilities
+        with patch.object(sys, "platform", "linux"):
             original_stdout = sys.stdout
             original_stderr = sys.stderr
-            configure_safe_encoding()
+            ui.capabilities.configure_safe_encoding()
             # Should not modify stdout/stderr on non-Windows
             assert sys.stdout is original_stdout
             assert sys.stderr is original_stderr
 
-    @patch("ui.capabilities.sys.platform", "win32")
+    @patch.object(sys, "platform", "win32")
     def test_windows_reconfigure_method_works(self):
         """Test successful reconfigure on Windows"""
+        import ui.capabilities
         mock_stdout = MagicMock()
         mock_stdout.reconfigure.return_value = None
         mock_stderr = MagicMock()
@@ -244,7 +256,7 @@ class TestConfigureSafeEncoding:
 
         with patch("ui.capabilities.sys.stdout", mock_stdout):
             with patch("ui.capabilities.sys.stderr", mock_stderr):
-                configure_safe_encoding()
+                ui.capabilities.configure_safe_encoding()
 
                 mock_stdout.reconfigure.assert_called_once_with(
                     encoding="utf-8", errors="replace"
@@ -253,9 +265,10 @@ class TestConfigureSafeEncoding:
                     encoding="utf-8", errors="replace"
                 )
 
-    @patch("ui.capabilities.sys.platform", "win32")
+    @patch.object(sys, "platform", "win32")
     def test_windows_reconfigure_unsupported_operation_falls_back_to_wrapper(self):
         """Test fallback to TextIOWrapper when reconfigure fails"""
+        import ui.capabilities
         mock_buffer = MagicMock()
         mock_stdout = MagicMock()
         mock_stdout.reconfigure.side_effect = io.UnsupportedOperation()
@@ -263,35 +276,38 @@ class TestConfigureSafeEncoding:
 
         with patch("ui.capabilities.sys.stdout", mock_stdout):
             with patch("ui.capabilities.sys", sys):
-                configure_safe_encoding()
+                ui.capabilities.configure_safe_encoding()
                 # Should wrap with TextIOWrapper
                 # (actual sys.stdout would be replaced)
 
-    @patch("ui.capabilities.sys.platform", "win32")
+    @patch.object(sys, "platform", "win32")
     def test_windows_reconfigure_attribute_error(self):
         """Test handling AttributeError during reconfigure"""
+        import ui.capabilities
         mock_stdout = MagicMock()
         mock_stdout.reconfigure.side_effect = AttributeError("No reconfigure")
 
         with patch("ui.capabilities.sys.stdout", mock_stdout):
             with patch("ui.capabilities.sys.stderr", mock_stdout):
                 # Should not raise exception
-                configure_safe_encoding()
+                ui.capabilities.configure_safe_encoding()
 
-    @patch("ui.capabilities.sys.platform", "win32")
+    @patch.object(sys, "platform", "win32")
     def test_windows_reconfigure_oserror(self):
         """Test handling OSError during reconfigure"""
+        import ui.capabilities
         mock_stdout = MagicMock()
         mock_stdout.reconfigure.side_effect = OSError("Failed")
 
         with patch("ui.capabilities.sys.stdout", mock_stdout):
             with patch("ui.capabilities.sys.stderr", mock_stdout):
                 # Should not raise exception
-                configure_safe_encoding()
+                ui.capabilities.configure_safe_encoding()
 
-    @patch("ui.capabilities.sys.platform", "win32")
+    @patch.object(sys, "platform", "win32")
     def test_windows_no_buffer_attribute(self):
         """Test when stream has no buffer attribute"""
+        import ui.capabilities
         mock_stdout = MagicMock()
         mock_stdout.reconfigure.side_effect = io.UnsupportedOperation()
         # No buffer attribute - accessing it raises AttributeError
@@ -300,11 +316,12 @@ class TestConfigureSafeEncoding:
         with patch("ui.capabilities.sys.stdout", mock_stdout):
             with patch("ui.capabilities.sys.stderr", mock_stdout):
                 # Should not raise exception
-                configure_safe_encoding()
+                ui.capabilities.configure_safe_encoding()
 
-    @patch("ui.capabilities.sys.platform", "win32")
+    @patch.object(sys, "platform", "win32")
     def test_windows_textio_wrapper_creation_oserror(self):
         """Test OSError when creating TextIOWrapper"""
+        import ui.capabilities
         mock_stdout = MagicMock()
         mock_stdout.reconfigure.side_effect = io.UnsupportedOperation()
         mock_stdout.buffer = MagicMock()
@@ -312,18 +329,19 @@ class TestConfigureSafeEncoding:
         with patch("ui.capabilities.io.TextIOWrapper", side_effect=OSError("Failed")):
             with patch("ui.capabilities.sys.stdout", mock_stdout):
                 # Should not raise exception
-                configure_safe_encoding()
+                ui.capabilities.configure_safe_encoding()
 
-    @patch("ui.capabilities.sys.platform", "win32")
+    @patch.object(sys, "platform", "win32")
     def test_windows_textio_wrapper_unsupported_operation(self):
         """Test UnsupportedOperation when creating TextIOWrapper"""
+        import ui.capabilities
         mock_stdout = MagicMock()
         mock_stdout.reconfigure.side_effect = io.UnsupportedOperation()
         mock_stdout.buffer = MagicMock()
         with patch("ui.capabilities.io.TextIOWrapper", side_effect=io.UnsupportedOperation()):
             with patch("ui.capabilities.sys.stdout", mock_stdout):
                 # Should not raise exception
-                configure_safe_encoding()
+                ui.capabilities.configure_safe_encoding()
 
 
 class TestSupportsUnicode:
@@ -602,9 +620,10 @@ class TestSupportsInteractive:
 class TestEnableWindowsAnsiSupportActualPaths:
     """Tests that execute the actual Windows ANSI support code paths"""
 
-    @patch("ui.capabilities.sys.platform", "win32")
+    @patch.object(sys, "platform", "win32")
     def test_windows_ctypes_actual_import_and_execution(self):
         """Test actual ctypes import path on Windows"""
+        import ui.capabilities as cap_module
         # We need to properly mock ctypes.wintypes.DWORD
         mock_dword_instance = MagicMock()
         mock_dword_instance.value = 0
@@ -624,8 +643,6 @@ class TestEnableWindowsAnsiSupportActualPaths:
         mock_ctypes_module.wintypes.DWORD = mock_dword_class
         mock_ctypes_module.byref = mock_byref
 
-        # Patch the import to return our mock
-        import ui.capabilities as cap_module
         import builtins
 
         original_import = builtins.__import__
@@ -645,9 +662,10 @@ class TestEnableWindowsAnsiSupportActualPaths:
         # Assert
         assert result is True
 
-    @patch("ui.capabilities.sys.platform", "win32")
+    @patch.object(sys, "platform", "win32")
     def test_windows_ctypes_with_mode_already_set(self):
         """Test Windows path when ANSI mode is already enabled"""
+        import ui.capabilities as cap_module
         # Mock DWORD with ANSI flag already set
         mock_dword_instance = MagicMock()
         mock_dword_instance.value = 0x0004  # ENABLE_VIRTUAL_TERMINAL_PROCESSING
@@ -665,7 +683,6 @@ class TestEnableWindowsAnsiSupportActualPaths:
         mock_ctypes_module.wintypes.DWORD = mock_dword_class
         mock_ctypes_module.byref = mock_byref
 
-        import ui.capabilities as cap_module
         import builtins
 
         original_import = builtins.__import__
@@ -686,9 +703,10 @@ class TestEnableWindowsAnsiSupportActualPaths:
         # The code checks: if not (mode.value & ENABLE_VIRTUAL_TERMINAL_PROCESSING)
         # Since mode.value is 0x0004, the condition is False, so SetConsoleMode is not called
 
-    @patch("ui.capabilities.sys.platform", "win32")
+    @patch.object(sys, "platform", "win32")
     def test_windows_ctypes_with_both_handles(self):
         """Test Windows path with both output and error handles"""
+        import ui.capabilities as cap_module
         # Mock two different handles
         mock_dword_instance = MagicMock()
         mock_dword_instance.value = 0
@@ -708,7 +726,6 @@ class TestEnableWindowsAnsiSupportActualPaths:
         mock_ctypes_module.wintypes.DWORD = mock_dword_class
         mock_ctypes_module.byref = mock_byref
 
-        import ui.capabilities as cap_module
         import builtins
 
         original_import = builtins.__import__
@@ -733,7 +750,7 @@ class TestEnableWindowsAnsiSupportActualPaths:
 class TestConfigureSafeEncodingActualPaths:
     """Tests that execute the actual configure_safe_encoding code paths"""
 
-    @patch("ui.capabilities.sys.platform", "win32")
+    @patch.object(sys, "platform", "win32")
     def test_windows_reconfigure_success(self):
         """Test successful reconfigure on Windows"""
         # Create mocks for stdout and stderr with reconfigure method
@@ -751,7 +768,7 @@ class TestConfigureSafeEncodingActualPaths:
                 mock_stdout.reconfigure.assert_called_once_with(encoding="utf-8", errors="replace")
                 mock_stderr.reconfigure.assert_called_once_with(encoding="utf-8", errors="replace")
 
-    @patch("ui.capabilities.sys.platform", "win32")
+    @patch.object(sys, "platform", "win32")
     def test_windows_reconfigure_fails_to_textiowrapper(self):
         """Test fallback to TextIOWrapper when reconfigure fails"""
         mock_buffer = MagicMock()
@@ -774,7 +791,7 @@ class TestConfigureSafeEncodingActualPaths:
                     # Assert - TextIOWrapper should be created for both streams
                     assert mock_textio_wrapper.call_count == 2
 
-    @patch("ui.capabilities.sys.platform", "win32")
+    @patch.object(sys, "platform", "win32")
     def test_windows_no_buffer_attribute(self):
         """Test when stream has no buffer attribute"""
         mock_stdout = MagicMock()
@@ -795,7 +812,7 @@ class TestConfigureSafeEncodingActualPaths:
 
                 # Assert - no exception raised
 
-    @patch("ui.capabilities.sys.platform", "win32")
+    @patch.object(sys, "platform", "win32")
     def test_windows_textiowrapper_oserror(self):
         """Test OSError when creating TextIOWrapper"""
         mock_stdout = MagicMock()
@@ -812,7 +829,7 @@ class TestConfigureSafeEncodingActualPaths:
 
                     # Assert - no exception raised
 
-    @patch("ui.capabilities.sys.platform", "linux")
+    @patch.object(sys, "platform", "linux")
     def test_non_windows_returns_early(self):
         """Test that non-Windows platforms return early"""
         import ui.capabilities as cap_module

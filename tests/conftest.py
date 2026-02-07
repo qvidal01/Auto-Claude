@@ -82,6 +82,8 @@ def pytest_collection_modifyitems(session, config, items):
     # Replace any MagicMock modules with real ones before tests run
     # This is needed because test_spec_pipeline.py mocks certain modules
     # at import time, which affects other test files
+
+    # First, fix the mocked modules in sys.modules
     modules_to_fix = ['init', 'progress']
     for module_name in modules_to_fix:
         if module_name in sys.modules and isinstance(sys.modules[module_name], MagicMock):
@@ -91,11 +93,66 @@ def pytest_collection_modifyitems(session, config, items):
             except ImportError:
                 pass
 
+    # Also fix ui submodules
+    ui_modules = ['ui', 'ui.icons', 'ui.progress', 'ui.capabilities', 'ui.menu']
+    for module_name in ui_modules:
+        if module_name in sys.modules and isinstance(sys.modules[module_name], MagicMock):
+            del sys.modules[module_name]
+            try:
+                importlib.import_module(module_name)
+            except ImportError:
+                pass
+
+    # Now, selectively reload ONLY test_init_root because it's the only test
+    # module that imports from 'init' at module level and gets polluted by the mock
+    # We use the test items to find the module name
+    for item in items:
+        if 'test_init_root.py' in str(item.fspath):
+            # Get the module name from the item
+            test_module_name = item.module.__name__
+            if test_module_name in sys.modules:
+                try:
+                    importlib.reload(sys.modules[test_module_name])
+                except Exception:
+                    pass  # Reload might fail if module has issues
+            break  # Only need to reload once
+
+    importlib.invalidate_caches()
+
     # Reorder tests: put test_spec_pipeline.py tests at the end
     # This ensures UI tests run before test_spec_pipeline tests
     spec_pipeline_tests = [item for item in items if 'test_spec_pipeline.py' in str(item.fspath)]
     other_tests = [item for item in items if 'test_spec_pipeline.py' not in str(item.fspath)]
     items[:] = other_tests + spec_pipeline_tests
+
+
+@pytest.fixture(autouse=True)
+def ensure_real_modules_before_test():
+    """
+    Ensure that real modules are available for each test.
+
+    This fixture runs before each test to ensure that modules mocked by
+    test_spec_pipeline.py are restored to their real implementations
+    if the current test needs them.
+    """
+    import importlib
+
+    yield
+
+    # After each test, if review was mocked and needs cleanup, do it
+    # This is a safety measure for tests that run after test_spec_pipeline
+    if 'review' in sys.modules and isinstance(sys.modules['review'], MagicMock):
+        # Delete all review submodules too
+        to_delete = [key for key in sys.modules if key.startswith('review.')]
+        for sub_name in to_delete:
+            del sys.modules[sub_name]
+        del sys.modules['review']
+        try:
+            importlib.import_module('review')
+        except ImportError:
+            pass
+
+    importlib.invalidate_caches()
 
 
 # =============================================================================

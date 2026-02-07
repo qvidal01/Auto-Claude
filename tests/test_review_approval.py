@@ -39,6 +39,7 @@ class TestReviewStateApproval:
         # Get the review.state module from sys.modules
         review_state_module = sys.modules.get('review.state')
         if review_state_module is None:
+            import review.state
             review_state_module = sys.modules['review.state']
 
         # Reload review.state to get a fresh import
@@ -53,8 +54,16 @@ class TestReviewStateApproval:
             def isoformat(self):
                 return "2024-07-01T10:00:00"
 
-        with patch("review.state.datetime") as mock_datetime:
-            mock_datetime.now.return_value = MockDateTime()
+        # Patch the datetime reference inside review.state module
+        original_datetime = review_state_module.datetime
+
+        class MockDatetimeModule:
+            @staticmethod
+            def now():
+                return MockDateTime()
+
+        review_state_module.datetime = MockDatetimeModule
+        try:
             state.approve(review_spec_dir, approved_by="approver")
         finally:
             review_state_module.datetime = original_datetime
