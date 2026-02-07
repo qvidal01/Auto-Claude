@@ -119,8 +119,15 @@ async def test_ladybugdb_connection(db_path: str, database: str) -> bool:
 
         # Test basic query
         result = conn.execute("RETURN 1 + 1 as test")
-        df = result.get_as_df()
-        test_value = df["test"].iloc[0] if len(df) > 0 else None
+        query_result = result.get_as_df()
+
+        # Handle both list and DataFrame return types from get_as_df()
+        if isinstance(query_result, list):
+            # real-ladybug returns a list of dicts
+            test_value = query_result[0].get("test") if query_result else None
+        else:
+            # pandas DataFrame
+            test_value = query_result["test"].iloc[0] if len(query_result) > 0 else None
 
         if test_value == 2:
             print_result("Connection", "SUCCESS - Database responds correctly", True)
@@ -241,15 +248,29 @@ async def test_keyword_search(db_path: str, database: str) -> bool:
 
         try:
             result = conn.execute(query)
-            df = result.get_as_df()
+            query_result = result.get_as_df()
 
-            print(f"  Found {len(df)} results:")
-            for _, row in df.iterrows():
-                name = row.get("name", "unknown")[:50]
-                content = str(row.get("content", ""))[:60]
-                print(f"    - {name}: {content}...")
-
-            print_result("Keyword Search", f"Found {len(df)} results", True)
+            # Handle both list and DataFrame return types from get_as_df()
+            if isinstance(query_result, list):
+                # real-ladybug returns a list of dicts
+                print(f"  Found {len(query_result)} results:")
+                for row in query_result:
+                    name = row.get("name", "unknown")[:50]
+                    content = str(row.get("content", ""))[:60]
+                    print(f"    - {name}: {content}...")
+                print_result(
+                    "Keyword Search", f"Found {len(query_result)} results", True
+                )
+            else:
+                # pandas DataFrame
+                print(f"  Found {len(query_result)} results:")
+                for _, row in query_result.iterrows():
+                    name = row.get("name", "unknown")[:50]
+                    content = str(row.get("content", ""))[:60]
+                    print(f"    - {name}: {content}...")
+                print_result(
+                    "Keyword Search", f"Found {len(query_result)} results", True
+                )
             return True
 
         except Exception as e:
@@ -563,8 +584,15 @@ async def test_database_contents(db_path: str, database: str) -> bool:
         for table in tables_to_check:
             try:
                 result = conn.execute(f"MATCH (n:{table}) RETURN count(n) as count")
-                df = result.get_as_df()
-                count = df["count"].iloc[0] if len(df) > 0 else 0
+                query_result = result.get_as_df()
+
+                # Handle both list and DataFrame return types from get_as_df()
+                if isinstance(query_result, list):
+                    count = query_result[0].get("count", 0) if query_result else 0
+                else:
+                    count = (
+                        query_result["count"].iloc[0] if len(query_result) > 0 else 0
+                    )
                 print(f"    {table}: {count} nodes")
             except Exception as e:
                 if "not exist" in str(e).lower() or "cannot" in str(e).lower():
@@ -582,13 +610,21 @@ async def test_database_contents(db_path: str, database: str) -> bool:
                 ORDER BY e.created_at DESC
                 LIMIT 5
             """)
-            df = result.get_as_df()
+            query_result = result.get_as_df()
 
-            if len(df) == 0:
-                print("    (none)")
+            # Handle both list and DataFrame return types from get_as_df()
+            if isinstance(query_result, list):
+                if len(query_result) == 0:
+                    print("    (none)")
+                else:
+                    for row in query_result:
+                        print(f"    - {row.get('name', 'unknown')}")
             else:
-                for _, row in df.iterrows():
-                    print(f"    - {row.get('name', 'unknown')}")
+                if len(query_result) == 0:
+                    print("    (none)")
+                else:
+                    for _, row in query_result.iterrows():
+                        print(f"    - {row.get('name', 'unknown')}")
         except Exception as e:
             if "Episodic" in str(e):
                 print("    (table not created yet)")

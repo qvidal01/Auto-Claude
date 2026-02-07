@@ -48,6 +48,11 @@ mock_sdk.ClaudeAgentOptions = MagicMock()
 mock_sdk.ClaudeCodeOptions = MagicMock()
 sys.modules['claude_agent_sdk'] = mock_sdk
 
+# Mock claude_agent_sdk.types submodule
+mock_types = MagicMock()
+mock_types.HookMatcher = MagicMock()
+sys.modules['claude_agent_sdk.types'] = mock_types
+
 # Mock UI module (used by progress)
 mock_ui = MagicMock()
 mock_ui.Icons = MagicMock()

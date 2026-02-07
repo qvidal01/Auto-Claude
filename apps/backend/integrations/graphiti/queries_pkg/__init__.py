@@ -25,6 +25,14 @@ from .schema import (
     GroupIdMode,
 )
 
+# Import kuzu_driver_patched for test mocking support
+# This module is used internally but needs to be accessible for patching
+try:
+    from . import kuzu_driver_patched  # noqa: F401
+except ImportError:
+    # kuzu_driver_patched may not be available if real_ladybug is not installed
+    kuzu_driver_patched = None  # type: ignore
+
 # Re-export for convenience
 __all__ = [
     "GraphitiMemory",

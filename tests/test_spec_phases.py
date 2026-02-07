@@ -22,6 +22,7 @@ _mocked_module_names = [
     'claude_code_sdk',
     'claude_code_sdk.types',
     'claude_agent_sdk',
+    'claude_agent_sdk.types',
     'graphiti_providers',
     'validate_spec',
     'client',
@@ -45,6 +46,11 @@ mock_agent_sdk = MagicMock()
 mock_agent_sdk.ClaudeSDKClient = MagicMock()
 mock_agent_sdk.ClaudeAgentOptions = MagicMock()
 sys.modules['claude_agent_sdk'] = mock_agent_sdk
+
+# Mock claude_agent_sdk.types submodule
+mock_agent_types = MagicMock()
+mock_agent_types.HookMatcher = MagicMock()
+sys.modules['claude_agent_sdk.types'] = mock_agent_types
 
 # Mock graphiti_providers module
 mock_graphiti = MagicMock()

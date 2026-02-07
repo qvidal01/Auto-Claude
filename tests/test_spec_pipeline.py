@@ -8,6 +8,9 @@ Tests the spec/pipeline.py module functionality including:
 - Spec directory creation and naming
 - Orphaned pending folder cleanup
 - Specs directory path resolution
+
+NOTE: Integration tests with SpecOrchestrator - marked as slow.
+Can be excluded with: pytest -m "not slow"
 """
 
 import json
@@ -17,6 +20,8 @@ import time
 from datetime import datetime, timedelta
 from pathlib import Path
 from unittest.mock import MagicMock, patch, AsyncMock
+
+pytestmark = pytest.mark.slow
 
 # Add auto-claude directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent / "apps" / "backend"))
