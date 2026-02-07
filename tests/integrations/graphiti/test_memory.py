@@ -207,8 +207,8 @@ class TestTestProviderConfiguration:
             MockConfig.from_env.return_value = mock_config
 
             # Mock the test functions that are imported
-            with patch("integrations.graphiti.providers_pkg.validators.test_llm_connection") as mock_llm:
-                with patch("integrations.graphiti.providers_pkg.validators.test_embedder_connection") as mock_emb:
+            with patch("graphiti_providers.test_llm_connection") as mock_llm:
+                with patch("graphiti_providers.test_embedder_connection") as mock_emb:
                     mock_llm.return_value = (True, "OK")
                     mock_emb.return_value = (True, "OK")
 
@@ -236,9 +236,9 @@ class TestTestProviderConfiguration:
             MockConfig.from_env.return_value = mock_config
 
             # Mock the test functions that are imported
-            with patch("integrations.graphiti.providers_pkg.validators.test_llm_connection") as mock_llm:
-                with patch("integrations.graphiti.providers_pkg.validators.test_embedder_connection") as mock_emb:
-                    with patch("integrations.graphiti.providers_pkg.validators.test_ollama_connection") as mock_ollama:
+            with patch("graphiti_providers.test_llm_connection") as mock_llm:
+                with patch("graphiti_providers.test_embedder_connection") as mock_emb:
+                    with patch("graphiti_providers.test_ollama_connection") as mock_ollama:
                         mock_llm.return_value = (True, "LLM OK")
                         mock_emb.return_value = (True, "Embedder OK")
                         mock_ollama.return_value = (True, "Ollama OK")
@@ -262,8 +262,8 @@ class TestTestProviderConfiguration:
             MockConfig.from_env.return_value = mock_config
 
             # Mock the test functions that are imported
-            with patch("integrations.graphiti.providers_pkg.validators.test_llm_connection") as mock_llm:
-                with patch("integrations.graphiti.providers_pkg.validators.test_embedder_connection") as mock_emb:
+            with patch("graphiti_providers.test_llm_connection") as mock_llm:
+                with patch("graphiti_providers.test_embedder_connection") as mock_emb:
                     mock_llm.return_value = (True, "LLM OK")
                     mock_emb.return_value = (True, "Embedder OK")
 
@@ -285,8 +285,8 @@ class TestTestProviderConfiguration:
             MockConfig.from_env.return_value = mock_config
 
             # Mock the test functions that are imported
-            with patch("integrations.graphiti.providers_pkg.validators.test_llm_connection") as mock_llm:
-                with patch("integrations.graphiti.providers_pkg.validators.test_embedder_connection") as mock_emb:
+            with patch("graphiti_providers.test_llm_connection") as mock_llm:
+                with patch("graphiti_providers.test_embedder_connection") as mock_emb:
                     mock_llm.return_value = (False, "LLM failed")
                     mock_emb.return_value = (True, "Embedder OK")
 
