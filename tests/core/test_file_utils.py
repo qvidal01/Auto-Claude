@@ -504,13 +504,19 @@ class TestAtomicWriteEdgeCases:
 
     def test_atomic_write_permission_denied_parent(self, tmp_path):
         """Test atomic_write when parent directory is read-only."""
+        import sys
+        import stat
+
+        # Skip on Windows - chmod doesn't prevent file creation
+        if sys.platform == "win32":
+            pytest.skip("Directory read-only doesn't prevent file creation on Windows")
+
         # Create a directory and make it read-only
         ro_dir = tmp_path / "readonly"
         ro_dir.mkdir()
         filepath = ro_dir / "test.txt"
 
-        # Make directory read-only (skip on Windows where chmod may not work)
-        import stat
+        # Make directory read-only (skip on platforms where chmod may not work)
         try:
             ro_dir.chmod(stat.S_IRUSR | stat.S_IXUSR)
         except (OSError, AttributeError):
