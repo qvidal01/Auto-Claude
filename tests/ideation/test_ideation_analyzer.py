@@ -67,9 +67,9 @@ class TestProjectAnalyzerInit:
 
         assert isinstance(analyzer.project_dir, Path)
         assert isinstance(analyzer.output_dir, Path)
-        # Use resolve() for cross-platform compatibility (macOS /tmp -> /private/tmp)
-        assert analyzer.project_dir == Path("/tmp/test_project").resolve()
-        assert analyzer.output_dir == Path("/tmp/output").resolve()
+        # Compare paths without resolve() since the implementation stores paths as-is
+        assert str(analyzer.project_dir) == "/tmp/test_project"
+        assert str(analyzer.output_dir) == "/tmp/output"
 
     def test_init_with_pathlib_path(self):
         """Test initialization with pathlib.Path objects"""
@@ -83,9 +83,9 @@ class TestProjectAnalyzerInit:
             output_dir=output_dir,
         )
 
-        # Use resolve() for cross-platform compatibility (macOS /tmp -> /private/tmp)
-        assert analyzer.project_dir == project_dir.resolve()
-        assert analyzer.output_dir == output_dir.resolve()
+        # Compare paths without resolve() since the implementation stores paths as-is
+        assert str(analyzer.project_dir) == str(project_dir)
+        assert str(analyzer.output_dir) == str(output_dir)
 
     def test_init_include_roadmap_true(self):
         """Test include_roadmap_context=True"""

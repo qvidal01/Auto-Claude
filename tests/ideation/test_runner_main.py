@@ -35,9 +35,9 @@ def test_IdeationOrchestrator___init__(mock_init):
             append=False,
         )
 
-        # Use resolve() for cross-platform compatibility (macOS /tmp -> /private/tmp)
-        assert orchestrator.project_dir == project_dir.resolve()
-        assert orchestrator.output_dir == output_dir.resolve()
+        # Compare paths without resolve() since the implementation stores paths as-is
+        assert str(orchestrator.project_dir) == str(project_dir)
+        assert str(orchestrator.output_dir) == str(output_dir)
         assert orchestrator.model == model
         assert orchestrator.enabled_types == enabled_types
         assert orchestrator.max_ideas_per_type == max_ideas_per_type
