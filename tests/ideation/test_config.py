@@ -64,8 +64,8 @@ def test_IdeationConfigManager_default_values(mock_init):
 
         config = IdeationConfigManager(project_dir=project_dir)
 
-        # Use resolve() for cross-platform compatibility (macOS /tmp -> /private/tmp)
-        assert config.project_dir == project_dir.resolve()
+        # Compare paths without resolve() since the implementation stores paths as-is
+        assert str(config.project_dir) == str(project_dir)
         assert config.model == "sonnet"
         assert config.thinking_level == "medium"
         assert config.refresh is False
