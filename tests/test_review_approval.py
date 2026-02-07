@@ -10,6 +10,7 @@ Tests for ReviewState approval and rejection methods:
 - Auto-save functionality
 """
 
+import sys
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -32,6 +33,22 @@ class TestReviewStateApproval:
 
     def test_approve_sets_fields(self, review_spec_dir: Path) -> None:
         """approve() sets all required fields correctly."""
+        import importlib
+
+        # Import review.state module
+        from review.state import ReviewState
+
+        # Get the review.state module from sys.modules
+        review_state_module = sys.modules.get('review.state')
+        if review_state_module is None:
+            import review.state
+            review_state_module = sys.modules['review.state']
+
+        # Reload review.state to get a fresh import
+        importlib.reload(review_state_module)
+
+        # Get ReviewState from the reloaded module
+        ReviewState = review_state_module.ReviewState
         state = ReviewState()
 
         # Freeze time for consistent testing
@@ -39,9 +56,19 @@ class TestReviewStateApproval:
             def isoformat(self):
                 return "2024-07-01T10:00:00"
 
-        with patch("review.state.datetime") as mock_datetime:
-            mock_datetime.now.return_value = MockDateTime()
+        # Patch the datetime reference inside review.state module
+        original_datetime = review_state_module.datetime
+
+        class MockDatetimeModule:
+            @staticmethod
+            def now():
+                return MockDateTime()
+
+        review_state_module.datetime = MockDatetimeModule
+        try:
             state.approve(review_spec_dir, approved_by="approver")
+        finally:
+            review_state_module.datetime = original_datetime
 
         assert state.approved is True
         assert state.approved_by == "approver"

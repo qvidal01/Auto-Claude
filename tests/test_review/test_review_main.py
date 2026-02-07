@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from review import ReviewState, display_review_status, run_review_checkpoint
+import review
 from ui import print_status
 
 
@@ -14,21 +14,18 @@ class TestReviewMainImports:
 
     def test_imports_review_state(self):
         """Test that ReviewState can be imported from review."""
-        from review import ReviewState as ImportedReviewState
-
-        assert ImportedReviewState is ReviewState
+        ImportedReviewState = review.ReviewState
+        assert ImportedReviewState is review.ReviewState
 
     def test_imports_display_review_status(self):
         """Test that display_review_status can be imported from review."""
-        from review import display_review_status as ImportedDisplay
-
-        assert ImportedDisplay is display_review_status
+        ImportedDisplay = review.display_review_status
+        assert ImportedDisplay is review.display_review_status
 
     def test_imports_run_review_checkpoint(self):
         """Test that run_review_checkpoint can be imported from review."""
-        from review import run_review_checkpoint as ImportedRun
-
-        assert ImportedRun is run_review_checkpoint
+        ImportedRun = review.run_review_checkpoint
+        assert ImportedRun is review.run_review_checkpoint
 
 
 class TestReviewMainFacade:

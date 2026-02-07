@@ -228,10 +228,6 @@ class TestQASignoffStatus:
 class TestShouldRunQA:
     """Tests for should_run_qa logic."""
 
-    @pytest.mark.xfail(
-        reason="Test isolation issue: progress module mocked by test_qa_criteria.py persists due to Python import caching. Passes when run individually.",
-        strict=False,
-    )
     def test_should_run_qa_build_not_complete(self, spec_dir: Path):
         """Returns False when build not complete."""
         # Create plan with incomplete subtasks
