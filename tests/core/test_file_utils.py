@@ -284,7 +284,8 @@ class TestWriteJsonAtomic:
 
         write_json_atomic(filepath, data, ensure_ascii=False)
 
-        content = filepath.read_text()
+        # Explicitly read with UTF-8 encoding on all platforms
+        content = filepath.read_text(encoding="utf-8")
         assert "世界" in content  # Raw unicode preserved
         assert "\\u4e16\\u754c" not in content
 

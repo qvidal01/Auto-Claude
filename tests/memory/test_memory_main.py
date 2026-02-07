@@ -599,6 +599,12 @@ class TestCLIActualExecution:
         )
         append_pattern(temp_spec_dir, "Test pattern")
 
+        # Get backend path dynamically (same as conftest.py)
+        # tests/conftest.py is at tests/, so parent.parent is repo root
+        from pathlib import Path as PathLib
+        project_root = PathLib(__file__).parent.parent.parent
+        backend_path = project_root / "apps" / "backend"
+
         # Run the CLI module directly
         result = subprocess.run(
             [
@@ -612,7 +618,7 @@ class TestCLIActualExecution:
             ],
             capture_output=True,
             text=True,
-            cwd="/opt/dev/Auto-Claude/.worktrees/tests-align/test-coverage-improvements/apps/backend",
+            cwd=str(backend_path),
         )
 
         # Should execute without error (exit code 0 or 1 if dir check fails)
