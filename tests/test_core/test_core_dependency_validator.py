@@ -392,13 +392,17 @@ class TestPlatformSpecificBehavior:
                 raise ImportError("No module named 'pywintypes'")
             return original_import(name, *args, **kwargs)
         with patch("builtins.__import__", side_effect=mock_import):
-            with patch("sys.exit"):
+            # Clear any previous output before the test
+            capsys.readouterr()
+            # Don't mock sys.exit - let it raise SystemExit to stop execution
+            with pytest.raises(SystemExit):
                 validate_platform_dependencies()
-                # Should have exited for Windows (pywin32)
-                # Linux warning should not appear
-                captured = capsys.readouterr()
-                # Should not have Linux warning (because we exited first)
-                assert "secretstorage" not in captured.err
+            # Linux warning should not appear since we exited first
+            captured = capsys.readouterr()
+            # The Windows error goes to stdout via sys.exit(), not stderr
+            # We verify no Linux-specific warning appears in stderr
+            assert "secretstorage" not in captured.err.lower()
+            assert "Warning: Linux" not in captured.err
 
     @patch("core.dependency_validator.is_windows", return_value=False)
     @patch("core.dependency_validator.is_linux", return_value=False)
