@@ -333,7 +333,6 @@ def cmd_search(args):
             True,
             data={"memories": memories, "count": len(memories), "query": args.query},
         )
-        return None
 
     except Exception as e:
         if "Episodic" in str(e) and (
@@ -342,7 +341,6 @@ def cmd_search(args):
             output_json(True, data={"memories": [], "count": 0, "query": args.query})
         else:
             output_error(f"Search failed: {e}")
-        return None
 
 
 def cmd_semantic_search(args):

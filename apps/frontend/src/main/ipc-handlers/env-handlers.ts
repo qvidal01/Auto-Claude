@@ -4,7 +4,7 @@ import { IPC_CHANNELS, DEFAULT_APP_SETTINGS } from '../../shared/constants';
 import type { IPCResult, ProjectEnvConfig, ClaudeAuthResult, AppSettings } from '../../shared/types';
 import path from 'path';
 import { app } from 'electron';
-import { existsSync, readFileSync, writeFileSync } from 'fs';
+import { readFileSync, writeFileSync } from 'fs';
 import { spawn } from 'child_process';
 import { projectStore } from '../project-store';
 import { parseEnvFile } from './utils';
@@ -358,13 +358,11 @@ ${existingVars['GRAPHITI_DB_PATH'] ? `GRAPHITI_DB_PATH=${existingVars['GRAPHITI_
 
       // Load global settings for fallbacks
       let globalSettings: AppSettings = { ...DEFAULT_APP_SETTINGS };
-      if (existsSync(settingsPath)) {
-        try {
-          const content = readFileSync(settingsPath, 'utf-8');
-          globalSettings = { ...globalSettings, ...JSON.parse(content) };
-        } catch {
-          // Use defaults
-        }
+      try {
+        const content = readFileSync(settingsPath, 'utf-8');
+        globalSettings = { ...globalSettings, ...JSON.parse(content) };
+      } catch {
+        // Use defaults - file not found or parse error
       }
 
       // Default config
@@ -381,13 +379,11 @@ ${existingVars['GRAPHITI_DB_PATH'] ? `GRAPHITI_DB_PATH=${existingVars['GRAPHITI_
 
       // Parse project-specific .env if it exists
       let vars: Record<string, string> = {};
-      if (existsSync(envPath)) {
-        try {
-          const content = readFileSync(envPath, 'utf-8');
-          vars = parseEnvFile(content);
-        } catch {
-          // Continue with empty vars
-        }
+      try {
+        const content = readFileSync(envPath, 'utf-8');
+        vars = parseEnvFile(content);
+      } catch {
+        // Continue with empty vars - file not found or parse error
       }
 
       // Claude OAuth Token: project-specific takes precedence, then global

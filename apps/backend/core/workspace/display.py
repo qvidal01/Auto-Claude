@@ -15,6 +15,15 @@ from ui import (
 )
 from worktree import WorktreeManager
 
+__all__ = [
+    "print_merge_success",
+    "print_conflict_info",
+    "_print_merge_success",
+    "_print_conflict_info",
+    "show_build_summary",
+    "show_changed_files",
+]
+
 
 def show_build_summary(manager: WorktreeManager, spec_name: str) -> None:
     """Show a summary of what was built."""

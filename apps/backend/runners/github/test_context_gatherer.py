@@ -6,10 +6,10 @@ Tests the context gathering functionality without requiring actual GitHub API ca
 """
 
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
-from context_gatherer import ChangedFile, PRContext, PRContextGatherer
+from context_gatherer import PRContextGatherer
 
 
 @pytest.mark.asyncio

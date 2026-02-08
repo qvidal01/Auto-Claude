@@ -21,7 +21,7 @@ import type {
 } from "../../shared/types";
 import type { RoadmapConfig } from "../agent/types";
 import path from "path";
-import { existsSync, readFileSync, mkdirSync, readdirSync, unlinkSync } from "fs";
+import { readFileSync, writeFileSync, mkdirSync, readdirSync, unlinkSync } from "fs";
 import { projectStore } from "../project-store";
 import { AgentManager } from "../agent";
 import { debugLog, debugError } from "../../shared/utils/debug-logger";
@@ -110,10 +110,6 @@ export function registerRoadmapHandlers(
         AUTO_BUILD_PATHS.ROADMAP_FILE
       );
 
-      if (!existsSync(roadmapPath)) {
-        return { success: true, data: null };
-      }
-
       try {
         const content = await readFileWithRetry(roadmapPath, { encoding: "utf-8" }) as string;
         const rawRoadmap = JSON.parse(content);
@@ -125,59 +121,57 @@ export function registerRoadmapHandlers(
           AUTO_BUILD_PATHS.COMPETITOR_ANALYSIS
         );
         let competitorAnalysis: CompetitorAnalysis | undefined;
-        if (existsSync(competitorAnalysisPath)) {
-          try {
-            const competitorContent = await readFileWithRetry(competitorAnalysisPath, { encoding: "utf-8" }) as string;
-            const rawCompetitor = JSON.parse(competitorContent);
-            // Transform snake_case to camelCase for frontend
-            competitorAnalysis = {
-              projectContext: {
-                projectName: rawCompetitor.project_context?.project_name || "",
-                projectType: rawCompetitor.project_context?.project_type || "",
-                targetAudience: rawCompetitor.project_context?.target_audience || "",
-              },
-              competitors: (rawCompetitor.competitors || []).map((c: Record<string, unknown>) => ({
-                id: c.id,
-                name: c.name,
-                url: c.url,
-                description: c.description,
-                relevance: c.relevance || "medium",
-                painPoints: ((c.pain_points as Array<Record<string, unknown>>) || []).map((p) => ({
-                  id: p.id,
-                  description: p.description,
-                  source: p.source,
-                  severity: p.severity || "medium",
-                  frequency: p.frequency || "",
-                  opportunity: p.opportunity || "",
-                })),
-                strengths: (c.strengths as string[]) || [],
-                marketPosition: (c.market_position as string) || "",
+        try {
+          const competitorContent = readFileSync(competitorAnalysisPath, "utf-8");
+          const rawCompetitor = JSON.parse(competitorContent);
+          // Transform snake_case to camelCase for frontend
+          competitorAnalysis = {
+            projectContext: {
+              projectName: rawCompetitor.project_context?.project_name || "",
+              projectType: rawCompetitor.project_context?.project_type || "",
+              targetAudience: rawCompetitor.project_context?.target_audience || "",
+            },
+            competitors: (rawCompetitor.competitors || []).map((c: Record<string, unknown>) => ({
+              id: c.id,
+              name: c.name,
+              url: c.url,
+              description: c.description,
+              relevance: c.relevance || "medium",
+              painPoints: ((c.pain_points as Array<Record<string, unknown>>) || []).map((p) => ({
+                id: p.id,
+                description: p.description,
+                source: p.source,
+                severity: p.severity || "medium",
+                frequency: p.frequency || "",
+                opportunity: p.opportunity || "",
               })),
-              marketGaps: (rawCompetitor.market_gaps || []).map((g: Record<string, unknown>) => ({
-                id: g.id,
-                description: g.description,
-                affectedCompetitors: (g.affected_competitors as string[]) || [],
-                opportunitySize: g.opportunity_size || "medium",
-                suggestedFeature: (g.suggested_feature as string) || "",
-              })),
-              insightsSummary: {
-                topPainPoints: rawCompetitor.insights_summary?.top_pain_points || [],
-                differentiatorOpportunities:
-                  rawCompetitor.insights_summary?.differentiator_opportunities || [],
-                marketTrends: rawCompetitor.insights_summary?.market_trends || [],
-              },
-              researchMetadata: {
-                searchQueriesUsed: rawCompetitor.research_metadata?.search_queries_used || [],
-                sourcesConsulted: rawCompetitor.research_metadata?.sources_consulted || [],
-                limitations: rawCompetitor.research_metadata?.limitations || [],
-              },
-              createdAt: rawCompetitor.metadata?.created_at
-                ? new Date(rawCompetitor.metadata.created_at)
-                : new Date(),
-            };
-          } catch {
-            // Ignore competitor analysis parsing errors - it's optional
-          }
+              strengths: (c.strengths as string[]) || [],
+              marketPosition: (c.market_position as string) || "",
+            })),
+            marketGaps: (rawCompetitor.market_gaps || []).map((g: Record<string, unknown>) => ({
+              id: g.id,
+              description: g.description,
+              affectedCompetitors: (g.affected_competitors as string[]) || [],
+              opportunitySize: g.opportunity_size || "medium",
+              suggestedFeature: (g.suggested_feature as string) || "",
+            })),
+            insightsSummary: {
+              topPainPoints: rawCompetitor.insights_summary?.top_pain_points || [],
+              differentiatorOpportunities:
+                rawCompetitor.insights_summary?.differentiator_opportunities || [],
+              marketTrends: rawCompetitor.insights_summary?.market_trends || [],
+            },
+            researchMetadata: {
+              searchQueriesUsed: rawCompetitor.research_metadata?.search_queries_used || [],
+              sourcesConsulted: rawCompetitor.research_metadata?.sources_consulted || [],
+              limitations: rawCompetitor.research_metadata?.limitations || [],
+            },
+            createdAt: rawCompetitor.metadata?.created_at
+              ? new Date(rawCompetitor.metadata.created_at)
+              : new Date(),
+          };
+        } catch {
+          // Ignore competitor analysis parsing errors - it's optional
         }
 
         // Transform snake_case to camelCase for frontend
@@ -235,6 +229,10 @@ export function registerRoadmapHandlers(
 
         return { success: true, data: roadmap };
       } catch (error) {
+        // ENOENT (file not found) is expected - return null data
+        if ((error as NodeJS.ErrnoException)?.code === 'ENOENT') {
+          return { success: true, data: null };
+        }
         return {
           success: false,
           error: error instanceof Error ? error.message : "Failed to read roadmap",
@@ -559,18 +557,19 @@ ${(feature.acceptance_criteria || []).map((c: string) => `- [ ] ${c}`).join("\n"
         const specsBaseDir = getSpecsDir(project.autoBuildPath);
         const specsDir = path.join(project.path, specsBaseDir);
 
-        // Ensure specs directory exists
-        if (!existsSync(specsDir)) {
-          mkdirSync(specsDir, { recursive: true });
-        }
+        // Ensure specs directory exists (mkdirSync with recursive: true doesn't error if exists)
+        mkdirSync(specsDir, { recursive: true });
 
         // Find next available spec number
         let specNumber = 1;
-        const existingDirs = existsSync(specsDir)
-          ? readdirSync(specsDir, { withFileTypes: true })
-              .filter((d) => d.isDirectory())
-              .map((d) => d.name)
-          : [];
+        let existingDirs: string[] = [];
+        try {
+          existingDirs = readdirSync(specsDir, { withFileTypes: true })
+            .filter((d) => d.isDirectory())
+            .map((d) => d.name);
+        } catch {
+          // Directory doesn't exist yet - use empty array
+        }
         const existingNumbers = existingDirs
           .map((name) => {
             const match = name.match(/^(\d+)/);
@@ -691,10 +690,8 @@ ${(feature.acceptance_criteria || []).map((c: string) => `- [ ] ${c}`).join("\n"
       const progressPath = path.join(roadmapDir, AUTO_BUILD_PATHS.GENERATION_PROGRESS);
 
       try {
-        // Ensure roadmap directory exists
-        if (!existsSync(roadmapDir)) {
-          mkdirSync(roadmapDir, { recursive: true });
-        }
+        // Ensure roadmap directory exists (mkdirSync with recursive: true doesn't error if exists)
+        mkdirSync(roadmapDir, { recursive: true });
 
         // Derive isRunning from phase (active phases are running)
         const isRunning = progressData.phase !== 'idle' && progressData.phase !== 'complete' && progressData.phase !== 'error';
@@ -740,10 +737,6 @@ ${(feature.acceptance_criteria || []).map((c: string) => `- [ ] ${c}`).join("\n"
         AUTO_BUILD_PATHS.GENERATION_PROGRESS
       );
 
-      if (!existsSync(progressPath)) {
-        return { success: true, data: null };
-      }
-
       try {
         const content = await readFileWithRetry(progressPath, { encoding: "utf-8" }) as string;
         const rawData = JSON.parse(content);
@@ -770,6 +763,10 @@ ${(feature.acceptance_criteria || []).map((c: string) => `- [ ] ${c}`).join("\n"
 
         return { success: true, data: progressData };
       } catch (error) {
+        // ENOENT (file not found) is expected - return null data
+        if ((error as NodeJS.ErrnoException)?.code === 'ENOENT') {
+          return { success: true, data: null };
+        }
         debugError("[Roadmap Handler] Failed to load progress:", error);
         return {
           success: false,
@@ -794,17 +791,21 @@ ${(feature.acceptance_criteria || []).map((c: string) => `- [ ] ${c}`).join("\n"
       );
 
       try {
-        if (existsSync(progressPath)) {
-          unlinkSync(progressPath);
-          debugLog("[Roadmap Handler] Cleared progress checkpoint:", { projectId });
-        }
+        // unlinkSync errors if file doesn't exist - catch and ignore ENOENT
+        unlinkSync(progressPath);
+        debugLog("[Roadmap Handler] Cleared progress checkpoint:", { projectId });
         return { success: true };
       } catch (error) {
-        debugError("[Roadmap Handler] Failed to clear progress:", error);
-        return {
-          success: false,
-          error: error instanceof Error ? error.message : "Failed to clear progress",
-        };
+        // ENOENT (file not found) is expected when clearing a non-existent progress file
+        if ((error as NodeJS.ErrnoException)?.code !== 'ENOENT') {
+          debugError("[Roadmap Handler] Failed to clear progress:", error);
+          return {
+            success: false,
+            error: error instanceof Error ? error.message : "Failed to clear progress",
+          };
+        }
+        // File didn't exist - that's fine, consider it cleared
+        return { success: true };
       }
     }
   );

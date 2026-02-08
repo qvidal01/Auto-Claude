@@ -519,7 +519,7 @@ def rate_limited(
             return result
     """
 
-    def decorator(func: F) -> F:
+    def decorator(func: F) -> Any:  # Returns wrapper, not F
         @functools.wraps(func)
         async def async_wrapper(*args, **kwargs):
             limiter = RateLimiter.get_instance()

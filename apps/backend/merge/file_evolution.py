@@ -13,9 +13,9 @@ The actual implementation has been modularized into:
 - file_evolution/tracker.py: Main FileEvolutionTracker class
 
 For new code, prefer importing directly from the package:
-    from .file_evolution import FileEvolutionTracker
+    from .file_evolution.tracker import FileEvolutionTracker
 """
 
-from .file_evolution import FileEvolutionTracker
+from .file_evolution.tracker import FileEvolutionTracker
 
 __all__ = ["FileEvolutionTracker"]

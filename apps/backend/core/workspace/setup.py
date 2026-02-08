@@ -31,6 +31,16 @@ from worktree import WorktreeManager
 from .git_utils import has_uncommitted_changes
 from .models import WorkspaceMode
 
+__all__ = [
+    "setup_workspace",
+    "copy_spec_to_worktree",
+    "choose_workspace",
+    "ensure_timeline_hook_installed",
+    "initialize_timeline_tracking",
+    "_ensure_timeline_hook_installed",
+    "_initialize_timeline_tracking",
+]
+
 # Import debug utilities
 try:
     from debug import debug, debug_warning

@@ -23,18 +23,18 @@ tailored security profiles.
 """
 
 # Re-export all command registries from the package
-from .command_registry import (
+from .command_registry.base import (
     BASE_COMMANDS,
-    CLOUD_COMMANDS,
-    CODE_QUALITY_COMMANDS,
-    DATABASE_COMMANDS,
-    FRAMEWORK_COMMANDS,
-    INFRASTRUCTURE_COMMANDS,
-    LANGUAGE_COMMANDS,
-    PACKAGE_MANAGER_COMMANDS,
     VALIDATED_COMMANDS,
-    VERSION_MANAGER_COMMANDS,
 )
+from .command_registry.cloud import CLOUD_COMMANDS
+from .command_registry.code_quality import CODE_QUALITY_COMMANDS
+from .command_registry.databases import DATABASE_COMMANDS
+from .command_registry.frameworks import FRAMEWORK_COMMANDS
+from .command_registry.infrastructure import INFRASTRUCTURE_COMMANDS
+from .command_registry.languages import LANGUAGE_COMMANDS
+from .command_registry.package_managers import PACKAGE_MANAGER_COMMANDS
+from .command_registry.version_managers import VERSION_MANAGER_COMMANDS
 
 __all__ = [
     "BASE_COMMANDS",

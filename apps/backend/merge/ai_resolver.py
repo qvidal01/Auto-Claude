@@ -22,14 +22,12 @@ refactored ai_resolver package.
 from __future__ import annotations
 
 # Re-export all public APIs from the ai_resolver package
-from .ai_resolver import (
+from .ai_resolver.resolver import (
+    AICallFunction,
     AIResolver,
     ConflictContext,
     create_claude_resolver,
 )
-
-# For backwards compatibility, also expose the AICallFunction type
-from .ai_resolver.resolver import AICallFunction
 
 __all__ = [
     "AIResolver",

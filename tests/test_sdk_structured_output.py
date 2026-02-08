@@ -158,7 +158,7 @@ Provide a verdict (PASS or FAIL), reason, and score.
                     print(f"     verdict: {validated.verdict}")
                     print(f"     reason: {validated.reason}")
                     print(f"     score: {validated.score}")
-                except Exception as e:
+                except (ValueError, TypeError) as e:
                     print(f"\n  ❌ Failed to validate structured_output: {e}")
 
             if result and isinstance(result, (dict, str)):

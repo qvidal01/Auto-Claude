@@ -44,14 +44,10 @@ try:
         debug_success,
         debug_verbose,
         debug_warning,
-        is_debug_enabled,
     )
 except ImportError:
 
     def debug(*args, **kwargs):
-        pass
-
-    def debug_detailed(*args, **kwargs):
         pass
 
     def debug_verbose(*args, **kwargs):
@@ -65,9 +61,6 @@ except ImportError:
 
     def debug_warning(*args, **kwargs):
         pass
-
-    def is_debug_enabled():
-        return False
 
 
 # Import merge system

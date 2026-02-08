@@ -15,6 +15,13 @@ from project_analyzer import (
 
 from .constants import ALLOWLIST_FILENAME, PROFILE_FILENAME
 
+__all__ = [
+    "get_security_profile",
+    "reset_profile_cache",
+    "_get_profile_path",
+    "_get_allowlist_path",
+]
+
 # =============================================================================
 # GLOBAL STATE
 # =============================================================================

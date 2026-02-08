@@ -1,6 +1,6 @@
 import { EventEmitter } from 'events';
 import path from 'path';
-import { existsSync, readFileSync, readdirSync, writeFileSync } from 'fs';
+import { readFileSync, readdirSync, writeFileSync } from 'fs';
 import { execFileSync, spawn } from 'child_process';
 import type {
   ReleaseableVersion,
@@ -32,11 +32,13 @@ export class ReleaseService extends EventEmitter {
   parseChangelogVersions(projectPath: string): ReleaseableVersion[] {
     const changelogPath = path.join(projectPath, DEFAULT_CHANGELOG_PATH);
 
-    if (!existsSync(changelogPath)) {
+    let content: string;
+    try {
+      content = readFileSync(changelogPath, 'utf-8');
+    } catch {
+      // Changelog doesn't exist or can't be read
       return [];
     }
-
-    const content = readFileSync(changelogPath, 'utf-8');
     const versions: ReleaseableVersion[] = [];
 
     // Match version headers: ## [1.2.3] - 2025-12-13
@@ -345,10 +347,6 @@ export class ReleaseService extends EventEmitter {
   ): Promise<UnmergedWorktreeInfo[]> {
     const unmerged: UnmergedWorktreeInfo[] = [];
     const worktreesDir = path.join(projectPath, '.auto-claude', 'worktrees', 'tasks');
-
-    if (!existsSync(worktreesDir)) {
-      return [];
-    }
 
     let worktreeFolders: string[];
     try {

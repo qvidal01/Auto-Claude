@@ -9,11 +9,12 @@ This module has been refactored into smaller components:
 - pipeline/agent_runner.py: Agent execution logic
 - pipeline/orchestrator.py: Main SpecOrchestrator class
 
-For backward compatibility, this module re-exports the main classes and functions.
+Import from the pipeline subpackage for the main classes.
 """
 
-# Re-export main classes and functions for backward compatibility
-from .pipeline import SpecOrchestrator, get_specs_dir
+# Re-export main classes and functions from the pipeline subpackage
+from .pipeline.models import get_specs_dir
+from .pipeline.orchestrator import SpecOrchestrator
 
 __all__ = [
     "SpecOrchestrator",

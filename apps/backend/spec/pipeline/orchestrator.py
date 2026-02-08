@@ -330,7 +330,7 @@ class SpecOrchestrator:
         # === PHASE 3: AI COMPLEXITY ASSESSMENT ===
         result = await run_phase(
             "complexity_assessment",
-            lambda: self._phase_complexity_assessment_with_requirements(),
+            self._phase_complexity_assessment_with_requirements,
         )
         results.append(result)
         if not result.success:

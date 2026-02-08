@@ -3,7 +3,7 @@
  */
 
 import path from 'path';
-import { existsSync, mkdirSync, writeFileSync, readFileSync } from 'fs';
+import { mkdirSync, writeFileSync, readFileSync } from 'fs';
 import { AUTO_BUILD_PATHS, getSpecsDir } from '../../../shared/constants';
 import type { Project, TaskMetadata } from '../../../shared/types';
 import { withSpecNumberLock } from '../../utils/spec-number-lock';
@@ -16,6 +16,28 @@ export interface SpecCreationData {
   specDir: string;
   taskDescription: string;
   metadata: TaskMetadata;
+}
+
+/**
+ * Validate that a spec ID is safe for file system operations
+ * Prevents path traversal attacks by ensuring the spec ID:
+ * - Does not contain path separators (/, \)
+ * - Does not contain parent directory references (..)
+ * - Contains only alphanumeric characters, dashes, and underscores
+ */
+function isValidSpecId(specId: string): boolean {
+  // Reject empty strings
+  if (!specId || specId.length === 0) return false;
+
+  // Reject path traversal patterns
+  if (specId.includes('..') || specId.includes('/') || specId.includes('\\')) {
+    return false;
+  }
+
+  // Allow only alphanumeric, dash, underscore, and dot (for extension-like patterns)
+  // After slugifyTitle, we expect: "123-safe-title-here"
+  const validPattern = /^[a-zA-Z0-9._-]+$/;
+  return validPattern.test(specId);
 }
 
 /**
@@ -104,9 +126,8 @@ export async function createSpecForIssue(
   const specsBaseDir = getSpecsDir(project.autoBuildPath);
   const specsDir = path.join(project.path, specsBaseDir);
 
-  if (!existsSync(specsDir)) {
-    mkdirSync(specsDir, { recursive: true });
-  }
+  // mkdirSync with recursive: true doesn't error if directory exists (no TOCTOU issue)
+  mkdirSync(specsDir, { recursive: true });
 
   // Sanitize network-sourced data before writing to disk
   const safeTitle = sanitizeText(issueTitle, 500);
@@ -120,6 +141,11 @@ export async function createSpecForIssue(
     const specNumber = lock.getNextSpecNumber(project.autoBuildPath);
     const slugifiedTitle = slugifyTitle(safeTitle);
     const specId = `${String(specNumber).padStart(3, '0')}-${slugifiedTitle}`;
+
+    // Validate specId is safe for file system operations
+    if (!isValidSpecId(specId)) {
+      throw new Error(`Invalid spec ID generated: ${specId}`);
+    }
 
     // Create spec directory (inside lock to ensure atomicity)
     const specDir = path.join(specsDir, specId);

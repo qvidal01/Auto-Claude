@@ -28,7 +28,8 @@ auto_merger module. The actual implementation has been split into:
 
 from __future__ import annotations
 
-# Re-export for backward compatibility
-from .auto_merger import AutoMerger, MergeContext
+# Re-export for backward compatibility from the actual implementation modules
+from .auto_merger.context import MergeContext
+from .auto_merger.merger import AutoMerger
 
 __all__ = ["AutoMerger", "MergeContext"]

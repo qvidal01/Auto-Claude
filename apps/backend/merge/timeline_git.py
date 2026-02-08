@@ -23,14 +23,8 @@ logger = logging.getLogger(__name__)
 
 # Import debug utilities
 try:
-    from debug import debug, debug_error, debug_warning
+    from debug import debug_warning
 except ImportError:
-
-    def debug(*args, **kwargs):
-        pass
-
-    def debug_error(*args, **kwargs):
-        pass
 
     def debug_warning(*args, **kwargs):
         pass
@@ -175,7 +169,7 @@ class TimelineGitHelper:
                 )
 
         except Exception:  # Non-critical error; continue
-            pass
+            pass  # no-op: non-critical, skip error
 
         return info
 
@@ -307,7 +301,7 @@ class TimelineGitHelper:
                     return upstream.split("/", 1)[1]
                 return upstream
         except Exception:  # Non-critical error; continue
-            pass
+            pass  # no-op: non-critical, skip error
 
         for branch in ["main", "master", "develop"]:
             try:

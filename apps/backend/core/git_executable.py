@@ -15,6 +15,13 @@ import shutil
 import subprocess
 from pathlib import Path
 
+__all__ = [
+    "get_git_executable",
+    "get_isolated_git_env",
+    "run_git",
+    "GIT_ENV_VARS_TO_CLEAR",
+]
+
 # Git environment variables that can interfere with worktree operations
 # when set by pre-commit hooks or other git configurations.
 # These must be cleared to prevent cross-worktree contamination.

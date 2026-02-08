@@ -402,7 +402,7 @@ class SecurityScanner:
                             )
                         )
                 except json.JSONDecodeError:  # Invalid JSON; skip
-                    pass  # no-op: skip invalid JSON
+                    pass  # no-op: invalid audit output, skip
 
         except FileNotFoundError:
             pass  # pip-audit not available
@@ -604,7 +604,12 @@ def main() -> None:
         if result.secrets:
             print("\nSecrets Detected:")
             for secret in result.secrets:
-                print(f"  - {secret['pattern']} in {secret['file']}:{secret['line']}")
+                # Only log safe fields (pattern name, file path, line number)
+                # The actual secret value is already redacted in matched_text
+                pattern = secret.get("pattern", "unknown")
+                file_path = secret.get("file", "unknown")
+                line_num = secret.get("line", "?")
+                print(f"  - {pattern} in {file_path}:{line_num}")
 
         if result.vulnerabilities:
             print(f"\nVulnerabilities ({len(result.vulnerabilities)}):")

@@ -325,29 +325,15 @@ def _detect_parallel_task_conflicts(
 try:
     from debug import (
         debug,
-        debug_detailed,
         debug_error,
         debug_section,
         debug_success,
         debug_verbose,
-        is_debug_enabled,
     )
 except ImportError:
 
     def debug(*args, **kwargs):
         """Fallback debug function when debug module is not available."""
-        pass
-
-    def debug_detailed(*args, **kwargs):
-        """Fallback debug_detailed function when debug module is not available."""
-        pass
-
-    def debug_verbose(*args, **kwargs):
-        """Fallback debug_verbose function when debug module is not available."""
-        pass
-
-    def debug_success(*args, **kwargs):
-        """Fallback debug_success function when debug module is not available."""
         pass
 
     def debug_error(*args, **kwargs):
@@ -358,9 +344,13 @@ except ImportError:
         """Fallback debug_section function when debug module is not available."""
         pass
 
-    def is_debug_enabled():
-        """Fallback is_debug_enabled function when debug module is not available."""
-        return False
+    def debug_success(*args, **kwargs):
+        """Fallback debug_success function when debug module is not available."""
+        pass
+
+    def debug_verbose(*args, **kwargs):
+        """Fallback debug_verbose function when debug module is not available."""
+        pass
 
 
 MODULE = "cli.workspace_commands"

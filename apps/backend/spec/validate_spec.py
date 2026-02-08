@@ -58,6 +58,7 @@ if sys.platform == "win32":
 import argparse
 import json
 from pathlib import Path
+from typing import Any
 
 from validate_pkg import SpecValidator, auto_fix_plan
 
@@ -96,6 +97,7 @@ def main() -> None:
         auto_fix_plan(args.spec_dir)
 
     # Run validations
+    results: list[Any] = []  # Initialize to avoid CodeQL uninitialized variable warning
     if args.checkpoint == "all":
         results = validator.validate_all()
     elif args.checkpoint == "prereqs":
@@ -106,9 +108,6 @@ def main() -> None:
         results = [validator.validate_spec_document()]
     elif args.checkpoint == "plan":
         results = [validator.validate_implementation_plan()]
-    else:
-        # This should never happen due to argparse choices, but included for completeness
-        results = []
 
     # Output
     all_valid = all(r.valid for r in results)

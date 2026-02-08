@@ -15,6 +15,8 @@ from pathlib import Path
 
 from .types import FileAnalysis
 
+__all__ = ["SemanticAnalyzer", "analyze_with_regex"]
+
 # Import debug utilities
 try:
     from debug import (
