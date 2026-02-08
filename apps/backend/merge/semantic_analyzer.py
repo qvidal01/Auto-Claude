@@ -20,16 +20,12 @@ from .types import FileAnalysis
 try:
     from debug import (
         debug,
-        debug_detailed,
         debug_success,
         debug_verbose,
     )
 except ImportError:
     # Fallback if debug module not available
     def debug(*args, **kwargs):
-        pass
-
-    def debug_detailed(*args, **kwargs):
         pass
 
     def debug_verbose(*args, **kwargs):

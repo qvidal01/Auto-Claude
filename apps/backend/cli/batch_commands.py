@@ -140,7 +140,6 @@ def handle_batch_status_command(project_dir: str) -> bool:
         spec_name = spec_dir.name
         req_file = spec_dir / "requirements.json"
 
-        status = "unknown"
         title = spec_name
 
         if req_file.exists():
@@ -149,6 +148,7 @@ def handle_batch_status_command(project_dir: str) -> bool:
                     req = json.load(f)
                     title = req.get("task_description", title)
             except json.JSONDecodeError:
+                # Invalid JSON; use default title from directory name
                 pass
 
         # Determine status

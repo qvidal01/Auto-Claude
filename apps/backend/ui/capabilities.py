@@ -62,6 +62,7 @@ def enable_windows_ansi_support() -> bool:
             colorama.init()
             return True
         except ImportError:
+            # Module not available; skip
             pass
 
         return False
@@ -91,6 +92,7 @@ def configure_safe_encoding() -> None:
                 stream.reconfigure(encoding="utf-8", errors="replace")
                 continue
             except (AttributeError, io.UnsupportedOperation, OSError):
+                # File or directory not accessible; skip
                 pass
 
         # Method 2: Wrap with TextIOWrapper for piped output
@@ -105,6 +107,7 @@ def configure_safe_encoding() -> None:
                 )
                 setattr(sys, stream_name, new_stream)
         except (AttributeError, io.UnsupportedOperation, OSError):
+            # File or directory not accessible; skip
             pass
 
 

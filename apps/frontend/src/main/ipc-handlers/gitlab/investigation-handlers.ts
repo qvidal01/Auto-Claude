@@ -8,8 +8,8 @@ import { IPC_CHANNELS } from '../../../shared/constants';
 import type { GitLabInvestigationStatus, GitLabInvestigationResult } from '../../../shared/types';
 import { projectStore } from '../../project-store';
 import { getGitLabConfig, gitlabFetch, encodeProjectPath } from './utils';
-import type { GitLabAPIIssue, GitLabAPINote } from './types';
-import { buildIssueContext, createSpecForIssue } from './spec-utils';
+import type { GitLabAPIIssue } from './types';
+import { createSpecForIssue } from './spec-utils';
 import type { AgentManager } from '../../agent';
 
 // Debug logging helper
@@ -108,18 +108,6 @@ export function registerInvestigateIssue(
           config.instanceUrl,
           `/projects/${encodedProject}/issues/${issueIid}`
         ) as GitLabAPIIssue;
-
-        // Fetch notes if any selected
-        let selectedNotes: GitLabAPINote[] = [];
-        if (selectedNoteIds && selectedNoteIds.length > 0) {
-          const allNotes = await gitlabFetch(
-            config.token,
-            config.instanceUrl,
-            `/projects/${encodedProject}/issues/${issueIid}/notes`
-          ) as GitLabAPINote[];
-
-          selectedNotes = allNotes.filter(note => selectedNoteIds.includes(note.id));
-        }
 
         // Phase 2: Analyzing
         sendProgress(getMainWindow, project.id, {

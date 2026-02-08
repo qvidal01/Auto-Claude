@@ -64,6 +64,7 @@ class ProjectAnalyzer:
                                 context["tech_stack"].append(service_info["framework"])
                         context["tech_stack"] = list(set(context["tech_stack"]))
             except (json.JSONDecodeError, KeyError, AttributeError):
+                # Invalid JSON; skip
                 pass
 
         # Get roadmap context if enabled
@@ -82,6 +83,7 @@ class ProjectAnalyzer:
                         audience = roadmap.get("target_audience", {})
                         context["target_audience"] = audience.get("primary")
                 except (json.JSONDecodeError, KeyError):
+                    # Invalid JSON; skip
                     pass
 
             # Also check discovery for audience
@@ -101,6 +103,7 @@ class ProjectAnalyzer:
                             "existing_features", []
                         )
                 except (json.JSONDecodeError, KeyError):
+                    # Invalid JSON; skip
                     pass
 
         # Get kanban context if enabled

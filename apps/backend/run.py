@@ -52,6 +52,7 @@ if sys.platform == "win32":
                 _stream.reconfigure(encoding="utf-8", errors="replace")
                 continue
             except (AttributeError, io.UnsupportedOperation, OSError):
+                # Event loop not available; use sync fallback
                 pass
         # Method 2: Wrap with TextIOWrapper for piped output
         try:

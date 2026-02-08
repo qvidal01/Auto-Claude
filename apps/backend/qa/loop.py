@@ -21,12 +21,7 @@ from linear_updater import (
     linear_qa_rejected,
     linear_qa_started,
 )
-from phase_config import (
-    get_fast_mode,
-    get_phase_client_thinking_kwargs,
-    get_phase_model,
-    get_phase_model_betas,
-)
+from phase_config import get_phase_model, get_phase_thinking_budget
 from phase_event import ExecutionPhase, emit_phase
 from progress import count_subtasks, is_build_complete
 from security.constants import PROJECT_DIR_ENV_VAR
@@ -35,22 +30,12 @@ from task_logger import (
     get_task_logger,
 )
 
-from .criteria import (
-    get_qa_iteration_count,
-    get_qa_signoff_status,
-    is_qa_approved,
-)
-from .fixer import run_qa_fixer_session
-from .report import (
-    create_manual_test_plan,
-    escalate_to_human,
-    get_iteration_history,
-    get_recurring_issue_summary,
-    has_recurring_issues,
-    is_no_test_project,
-    record_iteration,
-)
-from .reviewer import run_qa_agent_session
+# Imports moved to function level to avoid circular import:
+# from .criteria import get_qa_iteration_count, get_qa_signoff_status, is_qa_approved
+# from .fixer import run_qa_fixer_session
+# from .report import (create_manual_test_plan, escalate_to_human, get_iteration_history,
+#                      get_recurring_issue_summary, has_recurring_issues, is_no_test_project, record_iteration)
+# from .reviewer import run_qa_agent_session
 
 # Configuration
 MAX_QA_ITERATIONS = 50
@@ -91,6 +76,24 @@ async def run_qa_validation_loop(
     Returns:
         True if QA approved, False otherwise
     """
+    # Local imports to avoid circular imports
+    from .criteria import (
+        get_qa_iteration_count,
+        get_qa_signoff_status,
+        is_qa_approved,
+    )
+    from .fixer import run_qa_fixer_session
+    from .report import (
+        create_manual_test_plan,
+        escalate_to_human,
+        get_iteration_history,
+        get_recurring_issue_summary,
+        has_recurring_issues,
+        is_no_test_project,
+        record_iteration,
+    )
+    from .reviewer import run_qa_agent_session
+
     # Set environment variable for security hooks to find the correct project directory
     # This is needed because os.getcwd() may return the wrong directory in worktree mode
     os.environ[PROJECT_DIR_ENV_VAR] = str(project_dir.resolve())
@@ -130,8 +133,6 @@ async def run_qa_validation_loop(
         {"iteration": 1, "maxIterations": MAX_QA_ITERATIONS},
     )
 
-    fast_mode = get_fast_mode(spec_dir)
-
     # Check if there's pending human feedback that needs to be processed
     fix_request_file = spec_dir / "QA_FIX_REQUEST.md"
     has_human_feedback = fix_request_file.exists()
@@ -162,23 +163,18 @@ async def run_qa_validation_loop(
 
         # Get model and thinking budget for fixer (uses QA phase config)
         qa_model = get_phase_model(spec_dir, "qa", model)
-        qa_betas = get_phase_model_betas(spec_dir, "qa", model)
-        fixer_thinking_kwargs = get_phase_client_thinking_kwargs(
-            spec_dir, "qa", qa_model
-        )
+        fixer_thinking_budget = get_phase_thinking_budget(spec_dir, "qa")
 
         fix_client = create_client(
             project_dir,
             spec_dir,
             qa_model,
             agent_type="qa_fixer",
-            betas=qa_betas,
-            fast_mode=fast_mode,
-            **fixer_thinking_kwargs,
+            max_thinking_tokens=fixer_thinking_budget,
         )
 
         async with fix_client:
-            fix_status, fix_response, fix_error_info = await run_qa_fixer_session(
+            fix_status, fix_response = await run_qa_fixer_session(
                 fix_client,
                 spec_dir,
                 0,
@@ -187,31 +183,7 @@ async def run_qa_validation_loop(
 
         if fix_status == "error":
             debug_error("qa_loop", f"Fixer error: {fix_response[:200]}")
-            task_event_emitter.emit(
-                "QA_FIXING_FAILED",
-                {"iteration": 0, "error": fix_response[:200]},
-            )
             print(f"\n❌ Fixer encountered error: {fix_response}")
-            # Only delete fix request file on permanent errors
-            # Preserve on transient errors (rate limit, concurrency) so user feedback isn't lost
-            is_transient = fix_error_info.get("type") in (
-                "tool_concurrency",
-                "rate_limit",
-            )
-            if is_transient:
-                debug(
-                    "qa_loop",
-                    "Preserving QA_FIX_REQUEST.md (transient error - user feedback retained)",
-                )
-            else:
-                try:
-                    fix_request_file.unlink()
-                    debug(
-                        "qa_loop",
-                        "Removed QA_FIX_REQUEST.md after permanent fixer error",
-                    )
-                except OSError:
-                    pass
             return False
 
         debug_success("qa_loop", "Human feedback fixes applied")
@@ -274,27 +246,24 @@ async def run_qa_validation_loop(
 
         # Run QA reviewer with phase-specific model and thinking budget
         qa_model = get_phase_model(spec_dir, "qa", model)
-        qa_betas = get_phase_model_betas(spec_dir, "qa", model)
-        qa_thinking_kwargs = get_phase_client_thinking_kwargs(spec_dir, "qa", qa_model)
+        qa_thinking_budget = get_phase_thinking_budget(spec_dir, "qa")
         debug(
             "qa_loop",
             "Creating client for QA reviewer session...",
             model=qa_model,
-            thinking_budget=qa_thinking_kwargs.get("max_thinking_tokens"),
+            thinking_budget=qa_thinking_budget,
         )
         client = create_client(
             project_dir,
             spec_dir,
             qa_model,
             agent_type="qa_reviewer",
-            betas=qa_betas,
-            fast_mode=fast_mode,
-            **qa_thinking_kwargs,
+            max_thinking_tokens=qa_thinking_budget,
         )
 
         async with client:
             debug("qa_loop", "Running QA reviewer agent session...")
-            status, response, _error_info = await run_qa_agent_session(
+            status, response = await run_qa_agent_session(
                 client,
                 project_dir,  # Pass project_dir for capability-based tool injection
                 spec_dir,
@@ -465,15 +434,12 @@ async def run_qa_validation_loop(
                 break
 
             # Run fixer with phase-specific thinking budget
-            fixer_betas = get_phase_model_betas(spec_dir, "qa", model)
-            fixer_thinking_kwargs = get_phase_client_thinking_kwargs(
-                spec_dir, "qa", qa_model
-            )
+            fixer_thinking_budget = get_phase_thinking_budget(spec_dir, "qa")
             debug(
                 "qa_loop",
                 "Starting QA fixer session...",
                 model=qa_model,
-                thinking_budget=fixer_thinking_kwargs.get("max_thinking_tokens"),
+                thinking_budget=fixer_thinking_budget,
             )
             emit_phase(ExecutionPhase.QA_FIXING, "Fixing QA issues")
             task_event_emitter.emit(
@@ -487,13 +453,11 @@ async def run_qa_validation_loop(
                 spec_dir,
                 qa_model,
                 agent_type="qa_fixer",
-                betas=fixer_betas,
-                fast_mode=fast_mode,
-                **fixer_thinking_kwargs,
+                max_thinking_tokens=fixer_thinking_budget,
             )
 
             async with fix_client:
-                fix_status, fix_response, _fix_error_info = await run_qa_fixer_session(
+                fix_status, fix_response = await run_qa_fixer_session(
                     fix_client, spec_dir, qa_iteration, verbose
                 )
 

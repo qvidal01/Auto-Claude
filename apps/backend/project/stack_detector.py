@@ -254,6 +254,7 @@ class StackDetector:
                             self.stack.infrastructure.append("kubernetes")
                             break
                 except OSError:
+                    # Non-critical failure; continue
                     pass
 
         # Helm

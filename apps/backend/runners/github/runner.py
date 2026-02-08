@@ -543,8 +543,6 @@ async def cmd_analyze_preview(args) -> int:
 
     This is the "proactive" workflow for reviewing issue groupings before action.
     """
-    import json
-
     config = get_config(args)
     orchestrator = GitHubOrchestrator(
         project_dir=args.project,
@@ -612,8 +610,6 @@ async def cmd_approve_batches(args) -> int:
 
     Usage: runner.py approve-batches approved_batches.json
     """
-    import json
-
     config = get_config(args)
     orchestrator = GitHubOrchestrator(
         project_dir=args.project,

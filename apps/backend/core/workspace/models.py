@@ -88,7 +88,7 @@ class MergeLock:
                 fd = os.open(
                     str(self.lock_file),
                     os.O_CREAT | os.O_EXCL | os.O_WRONLY,
-                    0o644,
+                    0o600,
                 )
                 os.close(fd)
 
@@ -178,7 +178,7 @@ class SpecNumberLock:
                 fd = os.open(
                     str(self.lock_file),
                     os.O_CREAT | os.O_EXCL | os.O_WRONLY,
-                    0o644,
+                    0o600,
                 )
                 os.close(fd)
 
@@ -270,6 +270,7 @@ class SpecNumberLock:
                 num = int(folder.name[:3])
                 max_num = max(max_num, num)
             except ValueError:
+                # Folder name doesn't start with a number; skip it
                 pass
 
         return max_num

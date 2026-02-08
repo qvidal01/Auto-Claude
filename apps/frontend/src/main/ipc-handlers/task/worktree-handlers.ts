@@ -1,4 +1,5 @@
 import { ipcMain, BrowserWindow, shell, app } from 'electron';
+import log from 'electron-log/main.js';
 import { IPC_CHANNELS, AUTO_BUILD_PATHS, DEFAULT_APP_SETTINGS, DEFAULT_FEATURE_MODELS, DEFAULT_FEATURE_THINKING, MODEL_ID_MAP, THINKING_BUDGET_MAP, getSpecsDir } from '../../../shared/constants';
 import type { IPCResult, WorktreeStatus, WorktreeDiff, WorktreeDiffFile, WorktreeMergeResult, WorktreeDiscardResult, WorktreeListResult, WorktreeListItem, WorktreeCreatePROptions, WorktreeCreatePRResult, SupportedIDE, SupportedTerminal, AppSettings } from '../../../shared/types';
 import path from 'path';
@@ -24,6 +25,13 @@ import { cleanupWorktree } from '../../utils/worktree-cleanup';
 import { killProcessGracefully } from '../../platform';
 import { stripAnsiCodes } from '../../../shared/utils/ansi-sanitizer';
 import { taskStateManager } from '../../task-state-manager';
+
+// Initialize electron-log (safe for re-import scenarios)
+try {
+  log.initialize();
+} catch {
+  // Already initialized, ignore
+}
 
 // Regex pattern for validating git branch names
 export const GIT_BRANCH_REGEX = /^[a-zA-Z0-9][a-zA-Z0-9._/-]*[a-zA-Z0-9]$|^[a-zA-Z0-9]$/;
@@ -119,7 +127,7 @@ function getUtilitySettings(): { model: string; modelId: string; thinkingLevel: 
     }
   } catch (error) {
     // Log parse errors to help diagnose corrupted settings
-    console.warn('[getUtilitySettings] Failed to parse settings.json:', error);
+    log.warn('[getUtilitySettings] Failed to parse settings.json:', error);
   }
 
   // Return defaults if settings file doesn't exist or fails to parse
@@ -203,7 +211,7 @@ function fixMisconfiguredBareRepo(projectPath: string): boolean {
       const hasGlobMatch = GLOB_MARKERS.some(pattern => {
         // Validate pattern - only support simple glob patterns for security
         if (pattern.includes('..') || pattern.includes('/')) {
-          console.warn(`[GIT] Unsupported glob pattern ignored: ${pattern}`);
+          log.warn(`[GIT] Unsupported glob pattern ignored: ${pattern}`);
           return false;
         }
 
@@ -214,11 +222,11 @@ function fixMisconfiguredBareRepo(projectPath: string): boolean {
             // Limit to first N entries to avoid performance issues
             directoryFiles = allFiles.slice(0, MAX_FILES_TO_CHECK);
             if (allFiles.length > MAX_FILES_TO_CHECK) {
-              console.warn(`[GIT] Directory has ${allFiles.length} entries, checking only first ${MAX_FILES_TO_CHECK}`);
+              log.warn(`[GIT] Directory has ${allFiles.length} entries, checking only first ${MAX_FILES_TO_CHECK}`);
             }
           } catch (error) {
             // Log the error for debugging instead of silently swallowing
-            console.warn(`[GIT] Failed to read directory ${projectPath}:`, error instanceof Error ? error.message : String(error));
+            log.warn(`[GIT] Failed to read directory ${projectPath}:`, error instanceof Error ? error.message : String(error));
             directoryFiles = [];
           }
         }
@@ -233,13 +241,13 @@ function fixMisconfiguredBareRepo(projectPath: string): boolean {
     }
 
     // Fix the misconfiguration
-    console.warn('[GIT] Detected misconfigured bare repository with source files. Auto-fixing by unsetting core.bare...');
+    log.warn('[GIT] Detected misconfigured bare repository with source files. Auto-fixing by unsetting core.bare...');
     execFileSync(
       getToolPath('git'),
       ['config', '--unset', 'core.bare'],
       { cwd: projectPath, encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] }
     );
-    console.warn('[GIT] Fixed: core.bare has been unset. Git operations should now work correctly.');
+    log.warn('[GIT] Fixed: core.bare has been unset. Git operations should now work correctly.');
     return true;
   } catch {
     return false;
@@ -1084,7 +1092,7 @@ function isAppInstalled(
 
     // Validate path doesn't contain traversal attempts after expansion
     if (!isPathSafe(expandedPath)) {
-      console.warn('[detectTool] Skipping potentially unsafe path:', checkPath);
+      log.warn('[detectTool] Skipping potentially unsafe path:', checkPath);
       continue;
     }
 
@@ -1108,7 +1116,7 @@ async function detectInstalledTools(): Promise<DetectedTools> {
   const terminals: DetectedTool[] = [];
 
   // Build app cache using platform-native detection (fast!)
-  console.log('[DevTools] Starting smart app detection...');
+  log.info('[DevTools] Starting smart app detection...');
   const startTime = Date.now();
 
   if (platform === 'darwin') {
@@ -1119,7 +1127,7 @@ async function detectInstalledTools(): Promise<DetectedTools> {
     installedAppsCache = await detectLinuxApps();
   }
 
-  console.log(`[DevTools] Found ${installedAppsCache.size} apps in ${Date.now() - startTime}ms`);
+  log.info(`[DevTools] Found ${installedAppsCache.size} apps in ${Date.now() - startTime}ms`);
 
   // Detect IDEs using cached app list + specific path checks
   for (const [id, config] of Object.entries(IDE_DETECTION)) {
@@ -1195,7 +1203,7 @@ async function detectInstalledTools(): Promise<DetectedTools> {
     });
   }
 
-  console.log(`[DevTools] Detection complete: ${ides.length} IDEs, ${terminals.length} terminals`);
+  log.info(`[DevTools] Detection complete: ${ides.length} IDEs, ${terminals.length} terminals`);
   return { ides, terminals };
 }
 
@@ -1254,7 +1262,7 @@ async function openInIDE(dirPath: string, ide: SupportedIDE, customPath?: string
     await execFileAsync(command, [dirPath]);
     return { success: true };
   } catch (error) {
-    console.error(`Failed to open in IDE ${ide}:`, error);
+    log.error(`Failed to open in IDE ${ide}:`, error);
     return { success: false, error: error instanceof Error ? error.message : 'Failed to open IDE' };
   }
 }
@@ -1344,7 +1352,7 @@ async function openInTerminal(dirPath: string, terminal: SupportedTerminal, cust
 
     return { success: true };
   } catch (error) {
-    console.error(`Failed to open in terminal ${terminal}:`, error);
+    log.error(`Failed to open in terminal ${terminal}:`, error);
     return { success: false, error: error instanceof Error ? error.message : 'Failed to open terminal' };
   }
 }
@@ -1356,7 +1364,7 @@ async function openInTerminal(dirPath: string, terminal: SupportedTerminal, cust
 function getTaskBaseBranch(specDir: string): string | undefined {
   // Defensive check for undefined input
   if (!specDir || typeof specDir !== 'string') {
-    console.error('[getTaskBaseBranch] specDir is undefined or not a string');
+    log.error('[getTaskBaseBranch] specDir is undefined or not a string');
     return undefined;
   }
 
@@ -1373,7 +1381,7 @@ function getTaskBaseBranch(specDir: string): string | undefined {
       }
     }
   } catch (e) {
-    console.warn('[getTaskBaseBranch] Failed to read task metadata:', e);
+    log.warn('[getTaskBaseBranch] Failed to read task metadata:', e);
   }
   return undefined;
 }
@@ -1392,11 +1400,11 @@ function getTaskBaseBranch(specDir: string): string | undefined {
 function getEffectiveBaseBranch(projectPath: string, specId: string, projectMainBranch?: string): string {
   // Defensive check for undefined inputs
   if (!projectPath || typeof projectPath !== 'string') {
-    console.error('[getEffectiveBaseBranch] projectPath is undefined or not a string');
+    log.error('[getEffectiveBaseBranch] projectPath is undefined or not a string');
     return 'main';
   }
   if (!specId || typeof specId !== 'string') {
-    console.error('[getEffectiveBaseBranch] specId is undefined or not a string');
+    log.error('[getEffectiveBaseBranch] specId is undefined or not a string');
     return 'main';
   }
 
@@ -1796,14 +1804,14 @@ export function registerWorktreeHandlers(
             }
           };
         } catch (gitError) {
-          console.error('Git error getting worktree status:', gitError);
+          log.error('Git error getting worktree status:', gitError);
           return {
             success: true,
             data: { exists: true, worktreePath }
           };
         }
       } catch (error) {
-        console.error('Failed to get worktree status:', error);
+        log.error('Failed to get worktree status:', error);
         return {
           success: false,
           error: error instanceof Error ? error.message : 'Failed to get worktree status'
@@ -1882,7 +1890,7 @@ export function registerWorktreeHandlers(
             });
           });
         } catch (diffError) {
-          console.error('Error getting diff:', diffError);
+          log.error('Error getting diff:', diffError);
         }
 
         // Generate summary
@@ -1895,7 +1903,7 @@ export function registerWorktreeHandlers(
           data: { files, summary }
         };
       } catch (error) {
-        console.error('Failed to get worktree diff:', error);
+        log.error('Failed to get worktree diff:', error);
         return {
           success: false,
           error: error instanceof Error ? error.message : 'Failed to get worktree diff'
@@ -1913,7 +1921,7 @@ export function registerWorktreeHandlers(
       const isDebugMode = process.env.DEBUG === 'true' || process.env.NODE_ENV === 'development';
       const debug = (...args: unknown[]) => {
         if (isDebugMode) {
-          console.warn('[MERGE DEBUG]', ...args);
+          log.warn('[MERGE DEBUG]', ...args);
         }
       };
 
@@ -2310,6 +2318,7 @@ export function registerWorktreeHandlers(
                     worktreePath,
                     projectPath: project.path,
                     specId: task.specId,
+                    commitMessage: 'Auto-save before merge cleanup',
                     logPrefix: '[TASK_WORKTREE_MERGE]',
                     deleteBranch: true
                   });
@@ -2409,7 +2418,7 @@ export function registerWorktreeHandlers(
                   }
                   // Only log error if main plan fails; worktree plan might legitimately be missing or read-only
                   if (isMain) {
-                    console.error('Failed to persist task status to main plan after retries:', err);
+                    log.error('Failed to persist task status to main plan after retries:', err);
                   } else {
                     debug('Failed to persist task status to worktree plan (non-critical):', err);
                   }
@@ -2425,7 +2434,7 @@ export function registerWorktreeHandlers(
                 );
                 // Log if main plan update failed (first element)
                 if (!results[0]) {
-                  console.warn('Background plan update: main plan write may not have persisted');
+                  log.warn('Background plan update: main plan write may not have persisted');
                 }
               };
 
@@ -2493,7 +2502,7 @@ export function registerWorktreeHandlers(
             if (resolved) return;
             resolved = true;
             if (timeoutId) clearTimeout(timeoutId);
-            console.error('[MERGE] Process spawn error:', err);
+            log.error('[MERGE] Process spawn error:', err);
 
             // Send error progress event to the renderer
             const mainWindow = getMainWindow();
@@ -2514,7 +2523,7 @@ export function registerWorktreeHandlers(
           });
         });
       } catch (error) {
-        console.error('[MERGE] Exception in merge handler:', error);
+        log.error('[MERGE] Exception in merge handler:', error);
         return {
           success: false,
           error: error instanceof Error ? error.message : 'Failed to merge worktree'
@@ -2530,30 +2539,30 @@ export function registerWorktreeHandlers(
   ipcMain.handle(
     IPC_CHANNELS.TASK_WORKTREE_MERGE_PREVIEW,
     async (_, taskId: string): Promise<IPCResult<WorktreeMergeResult>> => {
-      console.warn('[IPC] TASK_WORKTREE_MERGE_PREVIEW called with taskId:', taskId);
+      log.warn('[IPC] TASK_WORKTREE_MERGE_PREVIEW called with taskId:', taskId);
       try {
         // Ensure Python environment is ready
         if (!pythonEnvManager.isEnvReady()) {
-          console.warn('[IPC] Python environment not ready, initializing...');
+          log.warn('[IPC] Python environment not ready, initializing...');
           const autoBuildSource = getEffectiveSourcePath();
           if (autoBuildSource) {
             const status = await pythonEnvManager.initialize(autoBuildSource);
             if (!status.ready) {
-              console.error('[IPC] Python environment failed to initialize:', status.error);
+              log.error('[IPC] Python environment failed to initialize:', status.error);
               return { success: false, error: `Python environment not ready: ${status.error || 'Unknown error'}` };
             }
           } else {
-            console.error('[IPC] Auto Claude source not found');
+            log.error('[IPC] Auto Claude source not found');
             return { success: false, error: 'Python environment not ready and Auto Claude source not found' };
           }
         }
 
         const { task, project } = findTaskAndProject(taskId);
         if (!task || !project) {
-          console.error('[IPC] Task not found:', taskId);
+          log.error('[IPC] Task not found:', taskId);
           return { success: false, error: 'Task not found' };
         }
-        console.warn('[IPC] Found task:', task.specId, 'project:', project.name);
+        log.warn('[IPC] Found task:', task.specId, 'project:', project.name);
 
         // Check for uncommitted changes in the main project (only if not a bare repo)
         let hasUncommittedChanges = false;
@@ -2579,15 +2588,15 @@ export function registerWorktreeHandlers(
               hasUncommittedChanges = uncommittedFiles.length > 0;
             }
           } catch (e) {
-            console.error('[IPC] Failed to check git status:', e);
+            log.error('[IPC] Failed to check git status:', e);
           }
         } else {
-          console.warn('[IPC] Project is a bare repository - skipping uncommitted changes check');
+          log.warn('[IPC] Project is a bare repository - skipping uncommitted changes check');
         }
 
         const sourcePath = getEffectiveSourcePath();
         if (!sourcePath) {
-          console.error('[IPC] Auto Claude source not found');
+          log.error('[IPC] Auto Claude source not found');
           return { success: false, error: 'Auto Claude source not found' };
         }
 
@@ -2610,13 +2619,13 @@ export function registerWorktreeHandlers(
 
         if (effectiveBaseBranch) {
           args.push('--base-branch', effectiveBaseBranch);
-          console.warn('[IPC] Using base branch for preview:', effectiveBaseBranch,
+          log.warn('[IPC] Using base branch for preview:', effectiveBaseBranch,
             `(source: ${taskBaseBranch ? 'task metadata' : 'project settings'})`);
         }
 
         // Use configured Python path (venv if ready, otherwise bundled/system)
         const pythonPath = getConfiguredPythonPath();
-        console.warn('[IPC] Running merge preview:', pythonPath, args.join(' '));
+        log.warn('[IPC] Running merge preview:', pythonPath, args.join(' '));
 
         // Get profile environment for consistency
         const previewProfileResult = getBestAvailableProfileEnv();
@@ -2638,22 +2647,22 @@ export function registerWorktreeHandlers(
           previewProcess.stdout.on('data', (data: Buffer) => {
             const chunk = data.toString('utf-8');
             stdout += chunk;
-            console.warn('[IPC] merge-preview stdout:', chunk);
+            log.warn('[IPC] merge-preview stdout:', chunk);
           });
 
           previewProcess.stderr.on('data', (data: Buffer) => {
             const chunk = data.toString('utf-8');
             stderr += chunk;
-            console.warn('[IPC] merge-preview stderr:', chunk);
+            log.warn('[IPC] merge-preview stderr:', chunk);
           });
 
           previewProcess.on('close', (code: number) => {
-            console.warn('[IPC] merge-preview process exited with code:', code);
+            log.warn('[IPC] merge-preview process exited with code:', code);
             if (code === 0) {
               try {
                 // Parse JSON output from Python
                 const result = JSON.parse(stdout.trim());
-                console.warn('[IPC] merge-preview result:', JSON.stringify(result, null, 2));
+                log.warn('[IPC] merge-preview result:', JSON.stringify(result, null, 2));
                 resolve({
                   success: true,
                   data: {
@@ -2680,18 +2689,18 @@ export function registerWorktreeHandlers(
                   }
                 });
               } catch (parseError) {
-                console.error('[IPC] Failed to parse preview result:', parseError);
-                console.error('[IPC] stdout:', stdout);
-                console.error('[IPC] stderr:', stderr);
+                log.error('[IPC] Failed to parse preview result:', parseError);
+                log.error('[IPC] stdout:', stdout);
+                log.error('[IPC] stderr:', stderr);
                 resolve({
                   success: false,
                   error: `Failed to parse preview result: ${stripAnsiCodes(stderr || stdout)}`
                 });
               }
             } else {
-              console.error('[IPC] Preview failed with exit code:', code);
-              console.error('[IPC] stderr:', stderr);
-              console.error('[IPC] stdout:', stdout);
+              log.error('[IPC] Preview failed with exit code:', code);
+              log.error('[IPC] stderr:', stderr);
+              log.error('[IPC] stdout:', stdout);
               resolve({
                 success: false,
                 error: `Preview failed: ${stripAnsiCodes(stderr || stdout)}`
@@ -2700,7 +2709,7 @@ export function registerWorktreeHandlers(
           });
 
           previewProcess.on('error', (err: Error) => {
-            console.error('[IPC] merge-preview spawn error:', err);
+            log.error('[IPC] merge-preview spawn error:', err);
             resolve({
               success: false,
               error: `Failed to run preview: ${err.message}`
@@ -2708,7 +2717,7 @@ export function registerWorktreeHandlers(
           });
         });
       } catch (error) {
-        console.error('[IPC] TASK_WORKTREE_MERGE_PREVIEW error:', error);
+        log.error('[IPC] TASK_WORKTREE_MERGE_PREVIEW error:', error);
         return {
           success: false,
           error: error instanceof Error ? error.message : 'Failed to preview merge'
@@ -2752,12 +2761,13 @@ export function registerWorktreeHandlers(
           worktreePath,
           projectPath: project.path,
           specId: task.specId,
+          commitMessage: 'Auto-save before discard',
           logPrefix: '[TASK_WORKTREE_DISCARD]',
           deleteBranch: true
         });
 
         if (!cleanupResult.success) {
-          console.error('[TASK_WORKTREE_DISCARD] Cleanup failed:', cleanupResult.warnings);
+          log.error('[TASK_WORKTREE_DISCARD] Cleanup failed:', cleanupResult.warnings);
           return {
             success: false,
             error: `Failed to discard worktree: ${cleanupResult.warnings.join('; ')}`
@@ -2766,7 +2776,10 @@ export function registerWorktreeHandlers(
 
         // Log any non-fatal warnings
         if (cleanupResult.warnings.length > 0) {
-          console.warn('[TASK_WORKTREE_DISCARD] Cleanup warnings:', cleanupResult.warnings);
+          log.warn('[TASK_WORKTREE_DISCARD] Cleanup warnings:', cleanupResult.warnings);
+        }
+        if (cleanupResult.autoCommitted) {
+          log.warn('[TASK_WORKTREE_DISCARD] Auto-committed uncommitted work before discard');
         }
 
 
@@ -2785,7 +2798,7 @@ export function registerWorktreeHandlers(
           }
         };
       } catch (error) {
-        console.error('Failed to discard worktree:', error);
+        log.error('Failed to discard worktree:', error);
         return {
           success: false,
           error: error instanceof Error ? error.message : 'Failed to discard worktree'
@@ -2807,11 +2820,11 @@ export function registerWorktreeHandlers(
       try {
         // Validate inputs
         if (!projectId || typeof projectId !== 'string') {
-          console.error('discardOrphanedWorktree: Invalid projectId:', projectId);
+          log.error('discardOrphanedWorktree: Invalid projectId:', projectId);
           return { success: false, error: 'Invalid projectId' };
         }
         if (!specName || typeof specName !== 'string') {
-          console.error('discardOrphanedWorktree: Invalid specName:', specName);
+          log.error('discardOrphanedWorktree: Invalid specName:', specName);
           return { success: false, error: 'Invalid specName' };
         }
 
@@ -2822,7 +2835,7 @@ export function registerWorktreeHandlers(
 
         // Validate project.path
         if (!project.path || typeof project.path !== 'string') {
-          console.error('discardOrphanedWorktree: Project path is invalid:', project.path);
+          log.error('discardOrphanedWorktree: Project path is invalid:', project.path);
           return { success: false, error: 'Project path is invalid' };
         }
 
@@ -2839,11 +2852,13 @@ export function registerWorktreeHandlers(
           };
         }
 
-        // Use cleanupWorktree for robust, cross-platform worktree deletion
+        // Use cleanupWorktree which auto-commits any uncommitted changes before deletion
+        // This preserves work in git history (recoverable via reflog for ~90 days)
         const cleanupResult = await cleanupWorktree({
           worktreePath,
           projectPath: project.path,
           specId: specName,
+          commitMessage: 'Auto-save before orphaned worktree deletion',
           logPrefix: '[ORPHAN_CLEANUP]',
           deleteBranch: true
         });
@@ -2859,11 +2874,13 @@ export function registerWorktreeHandlers(
           success: true,
           data: {
             success: true,
-            message: 'Orphaned worktree deleted successfully'
+            message: cleanupResult.autoCommitted
+              ? 'Orphaned worktree deleted (uncommitted changes were auto-saved)'
+              : 'Orphaned worktree deleted successfully'
           }
         };
       } catch (error) {
-        console.error('Failed to discard orphaned worktree:', error);
+        log.error('Failed to discard orphaned worktree:', error);
         return {
           success: false,
           error: error instanceof Error ? error.message : 'Failed to discard orphaned worktree'
@@ -2882,7 +2899,7 @@ export function registerWorktreeHandlers(
       try {
         // Validate projectId
         if (!projectId || typeof projectId !== 'string') {
-          console.error('listWorktrees: Invalid projectId:', projectId);
+          log.error('listWorktrees: Invalid projectId:', projectId);
           return { success: false, error: 'Invalid projectId' };
         }
 
@@ -2893,7 +2910,7 @@ export function registerWorktreeHandlers(
 
 // Validate project.path
         if (!project.path || typeof project.path !== 'string') {
-          console.error('listWorktrees: Project path is invalid:', project.path);
+          log.error('listWorktrees: Project path is invalid:', project.path);
           return { success: false, error: 'Project path is invalid' };
         }
 
@@ -2976,7 +2993,7 @@ export function registerWorktreeHandlers(
             // FIX: Don't skip worktree if git fails - it may be orphaned/corrupted
             // Include it so it can be managed (deleted if orphaned)
             const hasTask = tasks.some(t => t.specId === entry);
-            console.warn(`[Worktree] Git commands failed for ${entry}, hasTask=${hasTask}:`, gitError);
+            log.warn(`[Worktree] Git commands failed for ${entry}, hasTask=${hasTask}:`, gitError);
             // Note: branch is empty - renderer should handle based on isOrphaned flag
             return {
               specName: entry,
@@ -3018,7 +3035,7 @@ export function registerWorktreeHandlers(
 
         return { success: true, data: { worktrees } };
       } catch (error) {
-        console.error('Failed to list worktrees:', error);
+        log.error('Failed to list worktrees:', error);
         return {
           success: false,
           error: error instanceof Error ? error.message : 'Failed to list worktrees'
@@ -3037,7 +3054,7 @@ export function registerWorktreeHandlers(
         const tools = await detectInstalledTools();
         return { success: true, data: tools };
       } catch (error) {
-        console.error('Failed to detect tools:', error);
+        log.error('Failed to detect tools:', error);
         return {
           success: false,
           error: error instanceof Error ? error.message : 'Failed to detect installed tools'
@@ -3064,7 +3081,7 @@ export function registerWorktreeHandlers(
 
         return { success: true, data: { opened: true } };
       } catch (error) {
-        console.error('Failed to open in IDE:', error);
+        log.error('Failed to open in IDE:', error);
         return {
           success: false,
           error: error instanceof Error ? error.message : 'Failed to open in IDE'
@@ -3091,7 +3108,7 @@ export function registerWorktreeHandlers(
 
         return { success: true, data: { opened: true } };
       } catch (error) {
-        console.error('Failed to open in terminal:', error);
+        log.error('Failed to open in terminal:', error);
         return {
           success: false,
           error: error instanceof Error ? error.message : 'Failed to open in terminal'
@@ -3157,7 +3174,7 @@ export function registerWorktreeHandlers(
             // Non-fatal - worktree plan update is best-effort
             // ENOENT is expected when worktree has no plan file
             if (!isFileNotFound(e)) {
-              console.warn('[CLEAR_STAGED_STATE] Failed to update worktree plan:', e);
+              log.warn('[CLEAR_STAGED_STATE] Failed to update worktree plan:', e);
             }
           }
         }
@@ -3167,7 +3184,7 @@ export function registerWorktreeHandlers(
 
         return { success: true, data: { cleared: true } };
       } catch (error) {
-        console.error('Failed to clear staged state:', error);
+        log.error('Failed to clear staged state:', error);
         return {
           success: false,
           error: error instanceof Error ? error.message : 'Failed to clear staged state'
@@ -3186,7 +3203,7 @@ export function registerWorktreeHandlers(
       const isDebugMode = process.env.DEBUG === 'true' || process.env.NODE_ENV === 'development';
       const debug = (...args: unknown[]) => {
         if (isDebugMode) {
-          console.warn('[CREATE_PR DEBUG]', ...args);
+          log.warn('[CREATE_PR DEBUG]', ...args);
         }
       };
 
@@ -3419,7 +3436,7 @@ export function registerWorktreeHandlers(
           });
         });
       } catch (error) {
-        console.error('[CREATE_PR] Exception in handler:', error);
+        log.error('[CREATE_PR] Exception in handler:', error);
         return {
           success: false,
           error: error instanceof Error ? error.message : 'Failed to create PR'

@@ -40,10 +40,27 @@ if (!fs.existsSync(pytestPath)) {
 
 // Get any additional args passed to the script
 const args = process.argv.slice(2);
-const testArgs = args.length > 0 ? args.join(' ') : '-v';
 
-// Run pytest
-const cmd = `"${pytestPath}" "${testsDir}" ${testArgs}`;
+// Escape each argument for safe shell usage
+function escapeShellArg(arg) {
+  // On Windows, escape double quotes and wrap in double quotes
+  if (isWindows) {
+    return `"${arg.replace(/"/g, '\\"')}"`;
+  }
+  // On Unix, use single quotes and escape any single quotes in the argument
+  return `'${arg.replace(/'/g, "'\\''")}'`;
+}
+
+// Build command with properly escaped arguments
+const defaultArgs = ['-v'];
+const argsToUse = args.length > 0 ? args : defaultArgs;
+const escapedArgs = argsToUse.map(escapeShellArg).join(' ');
+
+// Run pytest with properly escaped paths and arguments
+const cmd = isWindows
+  ? `"${pytestPath}" "${testsDir}" ${escapedArgs}`
+  : `'${pytestPath}' '${testsDir}' ${escapedArgs}`;
+
 console.log(`> ${cmd}\n`);
 
 try {

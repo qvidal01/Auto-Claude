@@ -26,7 +26,8 @@ from task_logger import (
     get_task_logger,
 )
 
-from .criteria import get_qa_signoff_status
+# Import at function level to avoid circular import
+# from .criteria import get_qa_signoff_status
 
 # =============================================================================
 # QA REVIEWER SESSION
@@ -323,6 +324,8 @@ This is attempt {previous_error.get("consecutive_errors", 1) + 1}. If you fail t
         print("\n" + "-" * 70 + "\n")
 
         # Check the QA result from implementation_plan.json
+        from .criteria import get_qa_signoff_status  # noqa: F401
+
         status = get_qa_signoff_status(spec_dir)
         debug(
             "qa_reviewer",

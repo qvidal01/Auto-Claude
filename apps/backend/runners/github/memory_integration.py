@@ -467,6 +467,7 @@ class GitHubMemoryIntegration:
                     },
                 )
             except Exception:
+                # Non-critical error; continue
                 pass
 
     async def get_codebase_patterns(
@@ -509,6 +510,7 @@ class GitHubMemoryIntegration:
                             )
                         )
             except Exception:
+                # Non-critical error; continue
                 pass
 
         # Add local patterns
@@ -567,6 +569,7 @@ class GitHubMemoryIntegration:
                     return "Historical context:\n" + "\n".join(explanations)
 
         except Exception:
+            # Non-critical error; continue
             pass
 
         return None
@@ -577,6 +580,7 @@ class GitHubMemoryIntegration:
             try:
                 await self._graphiti.close()
             except Exception:
+                # Non-critical error; continue
                 pass
             self._graphiti = None
 

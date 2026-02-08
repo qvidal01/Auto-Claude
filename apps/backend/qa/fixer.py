@@ -24,7 +24,7 @@ from task_logger import (
     get_task_logger,
 )
 
-from .criteria import get_qa_signoff_status
+# from .criteria import get_qa_signoff_status  # Moved to function level to avoid circular import
 
 # Configuration
 QA_PROMPTS_DIR = Path(__file__).parent.parent / "prompts"
@@ -74,6 +74,9 @@ async def run_qa_fixer_session(
             - "message": Error message string
             - "exception_type": Exception class name string
     """
+    # Local import to avoid circular import
+    from .criteria import get_qa_signoff_status
+
     # Derive project_dir from spec_dir if not provided
     # spec_dir is typically: /project/.auto-claude/specs/001-name/
     if project_dir is None:

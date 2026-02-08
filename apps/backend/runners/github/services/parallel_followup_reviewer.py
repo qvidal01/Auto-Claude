@@ -587,7 +587,7 @@ The SDK will run invoked agents in parallel automatically.
                 result_text = stream_result["result_text"]
                 structured_output = stream_result["structured_output"]
                 agents_invoked = stream_result["agents_invoked"]
-                msg_count = stream_result["msg_count"]
+                # msg_count = ...  # TODO: unused variable
 
             self._report_progress(
                 "finalizing",

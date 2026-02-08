@@ -93,7 +93,15 @@ function bumpVersion(currentVersion, bumpType) {
   }
 }
 
+// Escape a string for safe use in a shell command (single-quote wrapping)
+function shellescape(str) {
+  // Replace any single quotes with '\'' (end single-quote, escaped quote, start new single-quote)
+  return str.replace(/'/g, "'\\''");
+}
+
 // Execute shell command
+// NOTE: All commands passed to this function are trusted string literals,
+// not user-provided input. This is a build script that runs in a controlled environment.
 function exec(command, options = {}) {
   try {
     return execSync(command, { encoding: 'utf8', stdio: 'pipe', ...options }).trim();
@@ -161,10 +169,14 @@ function checkChangelogEntry(version) {
 
   const content = fs.readFileSync(changelogPath, 'utf8');
 
+  // Sanitize version: only allow semantic version characters (digits, dots, hyphens, plus)
+  // This prevents injection of fake headers via newlines or other special characters
+  const sanitizedVersion = version.replace(/[^\d.\-+a-zA-Z]/g, '');
+
   // Look for "## X.Y.Z" or "## X.Y.Z -" header using string matching
   // This avoids regex injection concerns from user-provided version strings
   const lines = content.split('\n');
-  const versionHeaderPrefix = `## ${version}`;
+  const versionHeaderPrefix = `## ${sanitizedVersion}`;
 
   for (const line of lines) {
     // Check if line starts with "## X.Y.Z" followed by whitespace, dash, or end of line
@@ -212,7 +224,9 @@ function main() {
 
   // 4. Validate release (check for branch/tag conflicts)
   info('Validating release...');
-  exec(`node ${path.join(__dirname, 'validate-release.js')} v${newVersion}`);
+  // Escape version for safe shell usage
+  const versionForValidation = shellescape(newVersion);
+  exec(`node ${path.join(__dirname, 'validate-release.js')} v${versionForValidation}`);
   success('Release validation passed');
 
   // 5. Update all version files
@@ -260,7 +274,9 @@ function main() {
   // 7. Create git commit
   info('Creating git commit...');
   exec('git add apps/frontend/package.json package.json apps/backend/__init__.py');
-  exec(`git commit -m "chore: bump version to ${newVersion}"`);
+  // Escape version for safe shell usage
+  const safeVersion = shellescape(newVersion);
+  exec(`git commit -m 'chore: bump version to ${safeVersion}'`);
   success(`Created commit: "chore: bump version to ${newVersion}"`);
 
   // Note: Tags are NOT created here anymore. GitHub Actions will create the tag

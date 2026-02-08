@@ -56,8 +56,8 @@ class StructureAnalyzer:
         if pkg and "scripts" in pkg:
             self.custom_scripts.npm_scripts = list(pkg["scripts"].keys())
 
-            # Add commands to run these scripts
-            for script in self.custom_scripts.npm_scripts:
+            # Add commands to run these scripts (use _ to indicate intentionally unused loop variable)
+            for _ in self.custom_scripts.npm_scripts:
                 self.script_commands.add("npm")
                 self.script_commands.add("yarn")
                 self.script_commands.add("pnpm")

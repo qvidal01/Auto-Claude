@@ -141,6 +141,7 @@ Output your findings to competitor_analysis.json.
                 )
 
         except json.JSONDecodeError:
+            # Invalid JSON; skip
             pass
 
         return None

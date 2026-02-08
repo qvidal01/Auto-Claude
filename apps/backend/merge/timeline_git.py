@@ -175,6 +175,7 @@ class TimelineGitHelper:
                 )
 
         except Exception:
+            # Non-critical error; continue
             pass
 
         return info
@@ -307,6 +308,7 @@ class TimelineGitHelper:
                     return upstream.split("/", 1)[1]
                 return upstream
         except Exception:
+            # Non-critical error; continue
             pass
 
         for branch in ["main", "master", "develop"]:

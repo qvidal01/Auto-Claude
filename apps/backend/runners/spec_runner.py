@@ -62,6 +62,7 @@ if sys.platform == "win32":
                 _stream.reconfigure(encoding="utf-8", errors="replace")
                 continue
             except (AttributeError, io.UnsupportedOperation, OSError):
+                # File or directory not accessible; skip
                 pass
         # Method 2: Wrap with TextIOWrapper for piped output
         try:
@@ -74,6 +75,7 @@ if sys.platform == "win32":
                 )
                 setattr(sys, _stream_name, _new_stream)
         except (AttributeError, io.UnsupportedOperation, OSError):
+            # File or directory not accessible; skip
             pass
     # Clean up temporary variables
     del _stream_name, _stream

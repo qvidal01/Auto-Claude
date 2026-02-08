@@ -13,7 +13,8 @@ from difflib import SequenceMatcher
 from pathlib import Path
 from typing import Any
 
-from .criteria import load_implementation_plan, save_implementation_plan
+# Import at function level to avoid circular import
+# from .criteria import load_implementation_plan, save_implementation_plan
 
 # Configuration
 RECURRING_ISSUE_THRESHOLD = 3  # Escalate if same issue appears this many times
@@ -32,6 +33,8 @@ def get_iteration_history(spec_dir: Path) -> list[dict[str, Any]]:
     Returns:
         List of iteration records with issues, timestamps, and outcomes.
     """
+    from .criteria import load_implementation_plan  # noqa: F401
+
     plan = load_implementation_plan(spec_dir)
     if not plan:
         return []
@@ -58,6 +61,9 @@ def record_iteration(
     Returns:
         True if recorded successfully
     """
+    # Local import to avoid circular import
+    from .criteria import load_implementation_plan, save_implementation_plan
+
     plan = load_implementation_plan(spec_dir)
     if not plan:
         plan = {}

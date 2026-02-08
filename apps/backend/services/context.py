@@ -141,6 +141,7 @@ class ServiceContextGenerator:
                         if pkg and pkg not in context.dependencies:
                             context.dependencies.append(pkg)
             except OSError:
+                # File or directory not accessible; skip
                 pass
 
         # Node.js
@@ -154,6 +155,7 @@ class ServiceContextGenerator:
                         [d for d in deps if d not in context.dependencies]
                     )
             except (OSError, json.JSONDecodeError, UnicodeDecodeError):
+                # File or directory not accessible; skip
                 pass
 
     def _discover_api_patterns(self, service_path: Path, context: ServiceContext):
@@ -179,6 +181,7 @@ class ServiceContextGenerator:
                 elif "express.Router" in content or "app.get" in content:
                     context.api_patterns.append(f"Express routes in {route_file.name}")
             except (OSError, UnicodeDecodeError):
+                # File or directory not accessible; skip
                 pass
 
     def _discover_common_commands(self, service_path: Path, context: ServiceContext):
@@ -194,6 +197,7 @@ class ServiceContextGenerator:
                         if name in scripts:
                             context.common_commands[name] = f"npm run {name}"
             except (OSError, json.JSONDecodeError, UnicodeDecodeError):
+                # File or directory not accessible; skip
                 pass
 
         # From Makefile
@@ -214,6 +218,7 @@ class ServiceContextGenerator:
                         ]:
                             context.common_commands[target] = f"make {target}"
             except OSError:
+                # File or directory not accessible; skip
                 pass
 
         # Infer from framework
@@ -244,6 +249,7 @@ class ServiceContextGenerator:
                             if var_name and var_name not in context.environment_vars:
                                 context.environment_vars.append(var_name)
                 except OSError:
+                    # File or directory not accessible; skip
                     pass
                 break  # Only use first found
 

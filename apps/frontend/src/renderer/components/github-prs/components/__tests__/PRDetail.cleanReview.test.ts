@@ -199,6 +199,11 @@ describe('PRDetail Clean Review Functionality', () => {
       const hasPostedFindings = false;
       const cleanReviewPosted = false;
 
+      // When findings are selected, button should not show
+      // The condition selectedCount === 0 is false when selectedCount is 1
+      expect(selectedCount === 0).toBe(false);
+
+      // Verify full expression evaluates to false
       const shouldShowButton =
         selectedCount === 0 &&
         reviewResult.success &&
@@ -336,7 +341,10 @@ describe('PRDetail Clean Review Functionality', () => {
       // Post Findings button: selectedCount > 0
       const showPostFindings = selectedCount > 0;
 
-      // Post Clean Review button: selectedCount === 0 && other conditions
+      // Post Clean Review button requires selectedCount === 0, which is false here
+      expect(selectedCount === 0).toBe(false);
+
+      // Verify Post Clean Review is not shown due to selected findings
       const showPostCleanReview =
         selectedCount === 0 &&
         reviewResult.success &&

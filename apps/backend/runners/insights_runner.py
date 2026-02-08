@@ -23,6 +23,7 @@ if sys.platform == "win32":
                 _stream.reconfigure(encoding="utf-8", errors="replace")
                 continue
             except (AttributeError, io.UnsupportedOperation, OSError):
+                # File or directory not accessible; skip
                 pass
         # Method 2: Wrap with TextIOWrapper for piped output
         try:
@@ -35,6 +36,7 @@ if sys.platform == "win32":
                 )
                 setattr(sys, _stream_name, _new_stream)
         except (AttributeError, io.UnsupportedOperation, OSError):
+            # File or directory not accessible; skip
             pass
     # Clean up temporary variables
     del _stream_name, _stream
@@ -100,6 +102,7 @@ def load_project_context(project_dir: str) -> str:
                 f"## Project Structure\n```json\n{json.dumps(summary, indent=2)}\n```"
             )
         except Exception:
+            # Non-critical error; continue
             pass
 
     # Load roadmap if available
@@ -118,6 +121,7 @@ def load_project_context(project_dir: str) -> str:
                 f"## Roadmap Features\n```json\n{json.dumps(feature_summary, indent=2)}\n```"
             )
         except Exception:
+            # Non-critical error; continue
             pass
 
     # Load existing tasks
@@ -131,6 +135,7 @@ def load_project_context(project_dir: str) -> str:
                     "## Existing Tasks/Specs\n- " + "\n- ".join(task_names)
                 )
         except Exception:
+            # Non-critical error; continue
             pass
 
     return (
