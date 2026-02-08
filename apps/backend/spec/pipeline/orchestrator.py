@@ -467,7 +467,7 @@ class SpecOrchestrator:
         requirements_file = self.spec_dir / "requirements.json"
 
         # Load requirements for full context
-        requirements_context = self._load_requirements_context(requirements_file)
+        self._load_requirements_context(requirements_file)
 
         if self.complexity_override:
             # Manual override

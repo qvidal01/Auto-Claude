@@ -282,8 +282,6 @@ class ServiceOrchestrator:
         Returns:
             OrchestrationResult with status
         """
-        result = OrchestrationResult()
-
         if self._compose_file:
             return self._start_docker_compose(timeout)
         else:

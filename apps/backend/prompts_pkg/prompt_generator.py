@@ -217,9 +217,6 @@ def generate_subtask_prompt(
     patterns_from = subtask.get("patterns_from", [])
     verification = subtask.get("verification", {})
 
-    # Get relative spec path
-    relative_spec = get_relative_spec_path(spec_dir, project_dir)
-
     # Build the prompt
     sections = []
 

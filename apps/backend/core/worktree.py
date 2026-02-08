@@ -585,7 +585,7 @@ class WorktreeManager:
                     stats["days_since_last_commit"] = (
                         datetime.now() - last_commit_date
                     ).days
-            except (ValueError, TypeError) as e:
+            except (ValueError, TypeError):
                 # If parsing fails, silently continue without date info
                 pass
 
