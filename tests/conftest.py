@@ -56,10 +56,27 @@ def pytest_configure(config):
     # Configure UTF-8 encoding for stdout/stderr on all platforms
     # This is critical for Windows tests that use Unicode characters
     # Without this, pytest's output capture fails with UnicodeEncodeError on Windows
-    if sys.stdout.encoding.lower() not in ('utf-8', 'utf_8', 'utf8'):
-        sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
-    if sys.stderr.encoding.lower() not in ('utf-8', 'utf_8', 'utf8'):
-        sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
+    # NOTE: We use reconfigure() instead of TextIOWrapper to avoid interfering
+    # with pytest's output capture mechanism, which can cause pytest to crash
+    # with exit code 3 on Windows.
+    try:
+        if hasattr(sys.stdout, 'buffer') and sys.stdout.encoding.lower() not in ('utf-8', 'utf_8', 'utf8'):
+            # Try reconfigure first (works on Python 3.7+ with TTY)
+            if hasattr(sys.stdout, 'reconfigure'):
+                try:
+                    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+                except (OSError, io.UnsupportedOperation):
+                    pass
+        if hasattr(sys.stderr, 'buffer') and sys.stderr.encoding.lower() not in ('utf-8', 'utf_8', 'utf8'):
+            if hasattr(sys.stderr, 'reconfigure'):
+                try:
+                    sys.stderr.reconfigure(encoding='utf-8', errors='replace')
+                except (OSError, io.UnsupportedOperation):
+                    pass
+    except (AttributeError, OSError):
+        # If stream doesn't have buffer or reconfigure fails, skip it
+        # pytest will handle encoding issues on its own
+        pass
 
     # Import the real ui module and its submodules BEFORE test collection
     # This ensures they exist in sys.modules before any test can mock them
