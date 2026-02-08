@@ -344,6 +344,7 @@ class TestToolDetection:
         assert any("homebrew" in p for p in result)
 
     @pytest.mark.skipif(sys.platform == "win32", reason="Test uses Linux-specific paths")
+    @pytest.mark.skipif(sys.platform == "win32", reason="Test uses Linux-specific paths and expects is_windows=False")
     @patch("core.platform.is_windows", return_value=False)
     @patch("core.platform.is_macos", return_value=False)
     @patch("pathlib.Path.home", return_value=Path("/home/user"))
