@@ -517,8 +517,8 @@ export class ChangelogService extends EventEmitter {
     } catch (error) {
       this.debug('Error in AI version suggestion, falling back to patch bump', error);
       // Fallback to patch bump if AI fails
-      // Normalize version and validate parts before bumping
-      const versionStr = currentVersion || '1.0.0';
+      // Note: currentVersion is guaranteed truthy here due to early return above
+      const versionStr: string = currentVersion!;
       const parts = versionStr.split('.').map(Number);
       const [major, minor, patch] =
         parts.length === 3 && !parts.some(Number.isNaN) ? parts : [1, 0, 0];
