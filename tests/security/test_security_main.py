@@ -722,6 +722,8 @@ class TestMainModuleCliExecution:
                 [sys.executable, str(main_path)],
                 capture_output=True,
                 text=True,
+                encoding="utf-8",
+                errors="replace",
                 timeout=5,
             )
             # Should show usage message

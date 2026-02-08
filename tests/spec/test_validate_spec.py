@@ -27,6 +27,8 @@ def _run_validate_spec(spec_dir: str, *args: str) -> subprocess.CompletedProcess
         cmd,
         capture_output=True,
         text=True,
+        encoding="utf-8",
+        errors="replace",
         cwd=str(SCRIPT_PATH.parent),
         env=env,
     )
@@ -43,6 +45,8 @@ class TestMainCli:
             [sys.executable, str(SCRIPT_PATH)],
             capture_output=True,
             text=True,
+            encoding="utf-8",
+            errors="replace",
             cwd=str(SCRIPT_PATH.parent),
             env=env,
         )
