@@ -14,10 +14,10 @@ from typing import Any
 # Config imports don't require graphiti package
 from .config import GraphitiConfig, validate_graphiti_config
 
-# Module-level placeholders (with _ prefix) for CodeQL static analysis.
-_GraphitiMemory: Any = None
-_create_llm_client: Any = None
-_create_embedder: Any = None
+# Module-level placeholders for CodeQL static analysis.
+GraphitiMemory: Any = None
+create_llm_client: Any = None
+create_embedder: Any = None
 
 __all__ = [
     "GraphitiConfig",

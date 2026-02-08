@@ -27,19 +27,19 @@ from .utils import sync_spec_to_source
 # Module-level placeholders for CodeQL static analysis.
 # These define the symbols as existing at module level (satisfying CodeQL),
 # but __getattr__ is called to provide the actual values (Python 3.7+).
-_debug_memory_system_status: Any = None
-_get_graphiti_context: Any = None
-_save_session_memory: Any = None
-_save_session_to_graphiti: Any = None
-_run_autonomous_agent: Any = None
-_run_followup_planner: Any = None
-_post_session_processing: Any = None
-_run_agent_session: Any = None
-_get_latest_commit: Any = None
-_get_commit_count: Any = None
-_load_implementation_plan: Any = None
-_find_subtask_in_plan: Any = None
-_find_phase_for_subtask: Any = None
+debug_memory_system_status: Any = None
+get_graphiti_context: Any = None
+save_session_memory: Any = None
+save_session_to_graphiti: Any = None
+run_autonomous_agent: Any = None
+run_followup_planner: Any = None
+post_session_processing: Any = None
+run_agent_session: Any = None
+get_latest_commit: Any = None
+get_commit_count: Any = None
+load_implementation_plan: Any = None
+find_subtask_in_plan: Any = None
+find_phase_for_subtask: Any = None
 
 __all__ = [
     # Main API

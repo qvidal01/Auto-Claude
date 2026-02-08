@@ -10,11 +10,11 @@ that may not be needed for basic operations.
 
 from typing import Any
 
-# Module-level placeholders (with _ prefix) for CodeQL static analysis.
-# The actual exported names (without _ prefix) trigger __getattr__ for lazy loading.
-_run_autonomous_agent: Any = None
-_run_followup_planner: Any = None
-_WorktreeManager: Any = None
+# Module-level placeholders for CodeQL static analysis.
+# The actual exported names trigger __getattr__ for lazy loading.
+run_autonomous_agent: Any = None
+run_followup_planner: Any = None
+WorktreeManager: Any = None
 
 __all__ = [
     "run_autonomous_agent",
