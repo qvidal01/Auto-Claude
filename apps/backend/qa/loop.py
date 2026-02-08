@@ -76,8 +76,7 @@ async def run_qa_validation_loop(
     Returns:
         True if QA approved, False otherwise
     """
-    # Local imports for functions that aren't needed at module level
-    from .fixer import run_qa_fixer_session
+    # Local import for functions that aren't needed at module level
     from .reviewer import run_qa_agent_session
 
     # Set environment variable for security hooks to find the correct project directory
@@ -608,6 +607,7 @@ from .criteria import (
     get_qa_signoff_status,
     is_qa_approved,
 )
+from .fixer import run_qa_fixer_session
 from .report import (
     create_manual_test_plan,
     escalate_to_human,
