@@ -250,7 +250,9 @@ def test_good_commit_tracking():
             ["git", "rev-parse", "HEAD"],
             cwd=project_dir,
             capture_output=True,
-            text=True
+            text=True,
+            encoding="utf-8",
+            errors="replace"
         )
         commit_hash = result.stdout.strip()
 
@@ -272,7 +274,9 @@ def test_good_commit_tracking():
             ["git", "rev-parse", "HEAD"],
             cwd=project_dir,
             capture_output=True,
-            text=True
+            text=True,
+            encoding="utf-8",
+            errors="replace"
         )
         commit_hash2 = result.stdout.strip()
 

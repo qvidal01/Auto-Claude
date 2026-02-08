@@ -68,6 +68,8 @@ def _check_glab_detection() -> bool:
                 [glab_path, "--version"],
                 capture_output=True,
                 text=True,
+                encoding="utf-8",
+                errors="replace",
                 timeout=5,
             )
             if result.returncode == 0:

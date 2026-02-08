@@ -123,6 +123,8 @@ def temp_git_repo():
                 check=True,
                 capture_output=True,
                 text=True,
+                encoding="utf-8",
+                errors="replace",
             )
             commit_sha = result.stdout.strip()
 
@@ -134,6 +136,8 @@ def temp_git_repo():
                 check=True,
                 capture_output=True,
                 text=True,
+                encoding="utf-8",
+                errors="replace",
             )
             assert status_result.stdout.strip() == "", f"Git repo not clean: {status_result.stdout}"
 

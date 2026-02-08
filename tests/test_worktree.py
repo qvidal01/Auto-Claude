@@ -142,7 +142,7 @@ class TestWorktreeRemoval:
         # Verify branch is deleted
         result = subprocess.run(
             ["git", "branch", "--list", branch_name],
-            cwd=temp_git_repo, capture_output=True, text=True
+            cwd=temp_git_repo, capture_output=True, text=True, encoding="utf-8", errors="replace"
         )
         assert branch_name not in result.stdout
 
@@ -287,7 +287,7 @@ class TestWorktreeCommitAndMerge:
         # Verify branch was deleted
         branch_list_result = subprocess.run(
             ["git", "branch", "--list", branch_name],
-            cwd=temp_git_repo, capture_output=True, text=True
+            cwd=temp_git_repo, capture_output=True, text=True, encoding="utf-8", errors="replace"
         )
         assert branch_name not in branch_list_result.stdout, f"Branch {branch_name} should be deleted"
 
@@ -342,7 +342,7 @@ class TestWorktreeCommitAndMerge:
         # Verify git status shows no unmerged/conflict status codes
         git_status = subprocess.run(
             ["git", "status", "--porcelain"],
-            cwd=temp_git_repo, capture_output=True, text=True
+            cwd=temp_git_repo, capture_output=True, text=True, encoding="utf-8", errors="replace"
         )
         # Should have no output (clean working directory)
         assert git_status.returncode == 0
@@ -399,7 +399,7 @@ class TestWorktreeCommitAndMerge:
         # Verify git status shows no staged/unstaged changes
         git_status = subprocess.run(
             ["git", "status", "--porcelain"],
-            cwd=temp_git_repo, capture_output=True, text=True
+            cwd=temp_git_repo, capture_output=True, text=True, encoding="utf-8", errors="replace"
         )
         assert git_status.returncode == 0
         assert not git_status.stdout.strip(), f"Expected clean status, got: {git_status.stdout}"

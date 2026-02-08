@@ -18,8 +18,38 @@ Usage:
     python auto-claude/planner.py --spec-dir auto-claude/specs/001-feature/
 """
 
+import io
 import json
+import sys
 from pathlib import Path
+
+# Configure safe encoding on Windows to handle Unicode characters in output
+if sys.platform == "win32":
+    for _stream_name in ("stdout", "stderr"):
+        _stream = getattr(sys, _stream_name)
+        # Method 1: Try reconfigure (works for TTY)
+        if hasattr(_stream, "reconfigure"):
+            try:
+                _stream.reconfigure(encoding="utf-8", errors="replace")
+                continue
+            except (AttributeError, io.UnsupportedOperation, OSError):
+                pass
+        # Method 2: Wrap with TextIOWrapper for piped output
+        try:
+            if hasattr(_stream, "buffer"):
+                _new_stream = io.TextIOWrapper(
+                    _stream.buffer,
+                    encoding="utf-8",
+                    errors="replace",
+                    line_buffering=True,
+                )
+                setattr(sys, _stream_name, _new_stream)
+        except (AttributeError, io.UnsupportedOperation, OSError):
+            pass
+    # Clean up temporary variables
+    del _stream_name, _stream
+    if "_new_stream" in dir():
+        del _new_stream
 
 from implementation_plan import ImplementationPlan
 from planner_lib.context import ContextLoader

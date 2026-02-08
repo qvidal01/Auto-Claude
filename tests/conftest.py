@@ -47,8 +47,19 @@ def pytest_configure(config):
     This hook ensures that the real ui module is imported before test collection starts.
     This prevents test_spec_pipeline's mocking from affecting the ui module during
     collection of ui tests.
+
+    Also configures UTF-8 encoding for stdout/stderr to handle Unicode on Windows.
     """
     import importlib
+    import io
+
+    # Configure UTF-8 encoding for stdout/stderr on all platforms
+    # This is critical for Windows tests that use Unicode characters
+    # Without this, pytest's output capture fails with UnicodeEncodeError on Windows
+    if sys.stdout.encoding.lower() not in ('utf-8', 'utf_8', 'utf8'):
+        sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+    if sys.stderr.encoding.lower() not in ('utf-8', 'utf_8', 'utf8'):
+        sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
 
     # Import the real ui module and its submodules BEFORE test collection
     # This ensures they exist in sys.modules before any test can mock them

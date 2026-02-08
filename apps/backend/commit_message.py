@@ -13,12 +13,43 @@ Features:
 from __future__ import annotations
 
 import asyncio
+import io
 import json
 import logging
 import re
 import sys
 from pathlib import Path
 from typing import TYPE_CHECKING
+
+# Configure safe encoding on Windows to handle Unicode characters in output
+# This is needed because this module may be imported in contexts that log
+# Unicode content, and the logging system uses stdout/stderr.
+if sys.platform == "win32":
+    for _stream_name in ("stdout", "stderr"):
+        _stream = getattr(sys, _stream_name)
+        # Method 1: Try reconfigure (works for TTY)
+        if hasattr(_stream, "reconfigure"):
+            try:
+                _stream.reconfigure(encoding="utf-8", errors="replace")
+                continue
+            except (AttributeError, io.UnsupportedOperation, OSError):
+                pass
+        # Method 2: Wrap with TextIOWrapper for piped output
+        try:
+            if hasattr(_stream, "buffer"):
+                _new_stream = io.TextIOWrapper(
+                    _stream.buffer,
+                    encoding="utf-8",
+                    errors="replace",
+                    line_buffering=True,
+                )
+                setattr(sys, _stream_name, _new_stream)
+        except (AttributeError, io.UnsupportedOperation, OSError):
+            pass
+    # Clean up temporary variables
+    del _stream_name, _stream
+    if "_new_stream" in dir():
+        del _new_stream
 
 if TYPE_CHECKING:
     pass

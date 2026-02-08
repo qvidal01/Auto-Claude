@@ -702,6 +702,8 @@ class TestRebaseSpecBranch:
             cwd=temp_git_repo,
             capture_output=True,
             text=True,
+            encoding="utf-8",
+            errors="replace",
         ).stdout.strip()
 
         # Rebase the spec branch
@@ -715,6 +717,8 @@ class TestRebaseSpecBranch:
             cwd=temp_git_repo,
             capture_output=True,
             text=True,
+            encoding="utf-8",
+            errors="replace",
         ).stdout.strip()
 
         # Commits should be different (rebase changed the commit hash)
@@ -726,6 +730,8 @@ class TestRebaseSpecBranch:
             cwd=temp_git_repo,
             capture_output=True,
             text=True,
+            encoding="utf-8",
+            errors="replace",
         ).stdout
         assert "Main commit" in log, "Spec branch should have main commit after rebase"
 
@@ -797,6 +803,8 @@ class TestRebaseSpecBranch:
             cwd=temp_git_repo,
             capture_output=True,
             text=True,
+            encoding="utf-8",
+            errors="replace",
         )
         assert current_branch.stdout.strip() == "main", "Should still be on main branch"
 
@@ -812,6 +820,8 @@ class TestRebaseSpecBranch:
             cwd=temp_git_repo,
             capture_output=True,
             text=True,
+            encoding="utf-8",
+            errors="replace",
         )
         assert status_result.stdout.strip() == "", "Git status should be clean"
 
@@ -983,6 +993,8 @@ class TestRebaseErrorHandling:
             cwd=temp_git_repo,
             capture_output=True,
             text=True,
+            encoding="utf-8",
+            errors="replace",
         )
         commit_hash = commit_result.stdout.strip()
         subprocess.run(

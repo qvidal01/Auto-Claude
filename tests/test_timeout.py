@@ -27,6 +27,8 @@ class TestSubprocessTimeout:
             ["echo", "hello"],
             capture_output=True,
             text=True,
+            encoding="utf-8",
+            errors="replace",
             timeout=5,
         )
 
@@ -578,6 +580,8 @@ class TestTimeoutErrorHandling:
                 ["sleep", "10"],
                 capture_output=True,
                 text=True,
+                encoding="utf-8",
+                errors="replace",
                 timeout=0.1,
             )
             output = result.stdout

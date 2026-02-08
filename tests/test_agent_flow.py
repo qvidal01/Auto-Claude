@@ -83,7 +83,9 @@ def get_latest_commit(project_dir: Path) -> str:
         ["git", "rev-parse", "HEAD"],
         cwd=project_dir,
         capture_output=True,
-        text=True
+        text=True,
+        encoding="utf-8",
+        errors="replace",
     )
     return result.stdout.strip() if result.returncode == 0 else ""
 
