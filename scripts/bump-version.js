@@ -29,7 +29,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { execSync } = require('child_process');
+const { execSync, execFileSync } = require('child_process');
 
 // Colors for terminal output
 const colors = {
@@ -224,9 +224,10 @@ function main() {
 
   // 4. Validate release (check for branch/tag conflicts)
   info('Validating release...');
-  // Escape version for safe shell usage
-  const versionForValidation = shellescape(newVersion);
-  exec(`node ${path.join(__dirname, 'validate-release.js')} v${versionForValidation}`);
+  // Run validation script without spawning a shell to avoid shell interpretation of paths/args
+  execFileSync('node', [path.join(__dirname, 'validate-release.js'), `v${newVersion}`], {
+    stdio: 'inherit',
+  });
   success('Release validation passed');
 
   // 5. Update all version files
