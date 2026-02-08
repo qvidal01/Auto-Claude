@@ -122,7 +122,7 @@ class ServiceContextGenerator:
         for pattern in entry_patterns:
             entry_file = service_path / pattern
             if entry_file.exists():
-                rel_path = str(entry_file.relative_to(service_path))
+                rel_path = entry_file.relative_to(service_path).as_posix()
                 if rel_path not in context.entry_points:
                     context.entry_points.append(rel_path)
 
