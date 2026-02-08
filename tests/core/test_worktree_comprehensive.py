@@ -7,11 +7,10 @@ Tests for:
 """
 
 import asyncio
-import os
 import shutil
 import subprocess
 from pathlib import Path
-from unittest.mock import MagicMock, Mock, call, patch
+from unittest.mock import Mock, patch
 
 import pytest
 
@@ -378,7 +377,6 @@ class TestCreateWorktree:
 
             # When creating worktree, it should detect stale dir and fail to remove it
             # This test scenario is complex - let's simplify by testing the error path directly
-            pass
 
         # Simplified test: Just verify WorktreeError is raised for path-related issues
         # The actual permission error is hard to simulate in tests
@@ -2462,7 +2460,6 @@ class TestCLIOperationsMock:
     """Simple mock-based tests for CLI operations."""
     # Note: Many CLI operations are difficult to mock because they interact with git commands
     # The existing tests in TestCreatePullRequest and TestCreateMergeRequest cover the main paths
-    pass
 
 
 # ==================== Additional Edge Cases ====================

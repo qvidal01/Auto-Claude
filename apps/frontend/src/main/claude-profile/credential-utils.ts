@@ -16,7 +16,7 @@
  */
 
 import { execFileSync } from 'child_process';
-import { createHash } from 'crypto';
+import { createHash, randomBytes } from 'crypto';
 import { existsSync, mkdirSync, readFileSync, renameSync, unlinkSync, writeFileSync } from 'fs';
 import { homedir, userInfo } from 'os';
 import { dirname, join } from 'path';
@@ -2082,7 +2082,8 @@ function updateWindowsFileCredentials(
 
     // Atomic file write: write to temp file, set permissions, then rename.
     // This prevents a race condition where the file briefly exists with default permissions.
-    const tempPath = `${credentialsPath}.${Date.now()}.tmp`;
+    // Use cryptographically random suffix for secure temp file creation
+    const tempPath = `${credentialsPath}.${randomBytes(16).toString('hex')}.tmp`;
     try {
       // Write to temp file
       writeFileSync(tempPath, credentialsJson, { encoding: 'utf-8' });

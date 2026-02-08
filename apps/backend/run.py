@@ -51,8 +51,11 @@ if sys.platform == "win32":
             try:
                 _stream.reconfigure(encoding="utf-8", errors="replace")
                 continue
-            except (AttributeError, io.UnsupportedOperation, OSError):
-                # Event loop not available; use sync fallback
+            except (
+                AttributeError,
+                io.UnsupportedOperation,
+                OSError,
+            ):  # Event loop not available; use sync fallback
                 pass
         # Method 2: Wrap with TextIOWrapper for piped output
         try:
@@ -69,7 +72,7 @@ if sys.platform == "win32":
             io.UnsupportedOperation,
             OSError,
         ):  # Stream doesn't support reconfigure or buffer
-            pass  # no-op: skip stream reconfiguration
+            pass
     # Clean up temporary variables
     del _stream_name, _stream
     if "_new_stream" in dir():

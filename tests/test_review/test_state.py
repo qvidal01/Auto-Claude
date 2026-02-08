@@ -5,8 +5,6 @@ Tests for review.state module.
 import json
 import sys
 from pathlib import Path
-from unittest.mock import MagicMock, patch
-from datetime import datetime
 
 import pytest
 

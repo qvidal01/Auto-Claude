@@ -12,7 +12,6 @@ from merge.semantic_analysis.comparison import (
 )
 from merge.semantic_analysis.models import ExtractedElement
 from merge.types import ChangeType
-import pytest
 
 
 class TestCompareElements:

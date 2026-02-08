@@ -1,12 +1,10 @@
 """Tests for planner_lib.main module."""
 
-import json
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
 
-from implementation_plan import ImplementationPlan
 from planner_lib.context import ContextLoader
 from planner_lib.main import ImplementationPlanner, generate_implementation_plan
 

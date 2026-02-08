@@ -2,8 +2,7 @@
 
 import logging
 from pathlib import Path
-from unittest.mock import MagicMock, Mock, patch
-import pytest
+from unittest.mock import patch
 
 from core.client import (
     _validate_custom_mcp_server,
@@ -1427,7 +1426,6 @@ class TestGetCachedProjectData:
             import sys
 
             # First call starts loading (simulating slow load)
-            import threading
 
             def slow_load(*args, **kwargs):
                 # Simulate slow load that allows another check

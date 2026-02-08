@@ -15,11 +15,9 @@ Can be excluded with: pytest -m "not slow"
 
 import pytest
 import sys
-import time
 import atexit
-from datetime import datetime, timedelta
 from pathlib import Path
-from unittest.mock import MagicMock, patch, AsyncMock
+from unittest.mock import MagicMock, patch
 
 pytestmark = pytest.mark.slow
 
@@ -67,11 +65,7 @@ def _cleanup_mocks():
     # Force import of real ui modules to ensure they're available
     # for subsequent test modules
     try:
-        import ui
-        import ui.icons
-        import ui.progress
-        import ui.capabilities
-        import ui.menu
+        pass
     except ImportError:
         pass  # Module may not exist on all platforms
 

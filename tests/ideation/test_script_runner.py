@@ -2,9 +2,8 @@
 
 from ideation.script_runner import ScriptRunner
 from pathlib import Path
-from unittest.mock import MagicMock, patch, Mock
+from unittest.mock import patch, Mock
 import subprocess
-import pytest
 
 
 def test_ScriptRunner___init__():

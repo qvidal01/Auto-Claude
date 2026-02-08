@@ -3,7 +3,6 @@
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-import pytest
 
 
 class TestClientModuleExports:
@@ -110,7 +109,6 @@ class TestClientModuleImports:
 
     def test_no_circular_imports(self):
         """Test that importing client doesn't cause circular imports."""
-        import importlib
         import sys
 
         # Remove from cache if present
@@ -124,7 +122,6 @@ class TestClientModuleImports:
 
     def test_import_client_module_first(self):
         """Test that client module can be imported before core.client."""
-        import importlib
         import sys
 
         # Remove both from cache
@@ -174,7 +171,6 @@ class TestClientModulePatterns:
 
     def test_direct_reexport_pattern(self):
         """Test that create_client is directly re-exported."""
-        from client import create_client
         import client as client_module
 
         # create_client should be directly defined in the module

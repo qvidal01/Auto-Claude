@@ -1,8 +1,7 @@
 """Tests for azure_openai_llm"""
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
-import pytest
 
 from integrations.graphiti.providers_pkg.llm_providers.azure_openai_llm import (
     create_azure_openai_llm_client,

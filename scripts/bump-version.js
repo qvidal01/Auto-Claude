@@ -123,17 +123,15 @@ function updatePackageJson(newVersion) {
   const frontendPath = path.join(__dirname, '..', 'apps', 'frontend', 'package.json');
   const rootPath = path.join(__dirname, '..', 'package.json');
 
-  // Read and parse package.json directly - handle errors appropriately
+  // Read and parse package.json directly - handle ENOENT if file doesn't exist
   let frontendJson;
   try {
     frontendJson = JSON.parse(fs.readFileSync(frontendPath, 'utf8'));
   } catch (err) {
-    // Handle both ENOENT (file not found) and other read errors
-    const message = err.code === 'ENOENT'
-      ? `package.json not found at ${frontendPath}`
-      : `Failed to read ${frontendPath}: ${err.message}`;
-    error(message);
-    throw new Error(message); // Exit early - cannot proceed without frontendJson
+    if (err.code === 'ENOENT') {
+      error(`package.json not found at ${frontendPath}`);
+    }
+    error(`Failed to read ${frontendPath}: ${err.message}`);
   }
 
   const oldVersion = frontendJson.version;
@@ -146,7 +144,7 @@ function updatePackageJson(newVersion) {
     rootJson.version = newVersion;
     fs.writeFileSync(rootPath, JSON.stringify(rootJson, null, 2) + '\n');
   } catch (err) {
-    // Root package.json is optional - ignore if not found, warn on other errors
+    // Root package.json is optional - ignore if not found
     if (err.code !== 'ENOENT') {
       warning(`Failed to update root package.json: ${err.message}`);
     }
@@ -159,16 +157,16 @@ function updatePackageJson(newVersion) {
 function updateBackendInit(newVersion) {
   const initPath = path.join(__dirname, '..', 'apps', 'backend', '__init__.py');
 
-  // Read file directly - handle errors appropriately
+  // Read file directly - handle ENOENT if file doesn't exist
   let content;
   try {
     content = fs.readFileSync(initPath, 'utf8');
   } catch (err) {
-    // Handle both ENOENT (file not found) and other read errors
-    const message = err.code === 'ENOENT'
-      ? `Backend __init__.py not found at ${initPath}, skipping`
-      : `Failed to read __init__.py: ${err.message}`;
-    warning(message);
+    if (err.code === 'ENOENT') {
+      warning(`Backend __init__.py not found at ${initPath}, skipping`);
+      return false;
+    }
+    warning(`Failed to read __init__.py: ${err.message}`);
     return false;
   }
 
@@ -243,8 +241,14 @@ function main() {
 
   // 4. Validate release (check for branch/tag conflicts)
   info('Validating release...');
-  // Run validation script without spawning a shell to avoid shell interpretation of paths/args
-  execFileSync('node', [path.join(__dirname, 'validate-release.js'), `v${newVersion}`], {
+  // Run validation script without spawning a shell to avoid shell interpretation of paths/args.
+  // newVersion is validated to be a semver string (x.y.z or x.y.z-prerelease) before this point,
+  // ensuring it only contains safe characters (digits, dots, hyphens, alphanumeric).
+  const versionArg = `v${newVersion}`;
+  if (!/^[a-zA-Z0-9.\-+]+$/.test(versionArg)) {
+    error(`Invalid version format for validation: ${versionArg}`);
+  }
+  execFileSync('node', [path.join(__dirname, 'validate-release.js'), versionArg], {
     stdio: 'inherit',
   });
   success('Release validation passed');

@@ -7,9 +7,7 @@ Marked as slow - can be excluded with: pytest -m "not slow"
 """
 
 import json
-from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch, call
-from datetime import datetime, timedelta
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -17,7 +15,6 @@ from spec.pipeline.orchestrator import SpecOrchestrator
 
 pytestmark = pytest.mark.slow  # Mark all tests in this file as slow
 from spec.phases.models import PhaseResult
-from spec.validate_pkg.models import ValidationResult
 
 
 @pytest.fixture

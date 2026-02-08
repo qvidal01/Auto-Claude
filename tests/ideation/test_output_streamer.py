@@ -2,10 +2,8 @@
 
 from ideation.output_streamer import OutputStreamer
 from ideation.types import IdeationPhaseResult
-from pathlib import Path
-from unittest.mock import MagicMock, patch, AsyncMock, Mock
+from unittest.mock import patch, AsyncMock, Mock
 import pytest
-import sys
 
 
 @patch("builtins.print")

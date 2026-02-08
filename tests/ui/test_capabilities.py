@@ -16,15 +16,7 @@ import os
 import sys
 from unittest.mock import MagicMock, Mock, patch, PropertyMock
 
-import pytest
 
-from ui.capabilities import (
-    configure_safe_encoding,
-    enable_windows_ansi_support,
-    supports_color,
-    supports_interactive,
-    supports_unicode,
-)
 
 
 class TestEnableWindowsAnsiSupport:

@@ -1,10 +1,8 @@
 """Tests for ui/progress.py"""
 
-import pytest
 
 from ui.progress import progress_bar
-from ui.icons import Icons
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 import ui.progress
 import ui.capabilities
 import ui.colors

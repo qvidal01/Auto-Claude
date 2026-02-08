@@ -2,7 +2,7 @@
 
 from ideation.generator import IdeationGenerator, IDEATION_TYPE_LABELS, IDEATION_TYPE_PROMPTS
 from pathlib import Path
-from unittest.mock import MagicMock, patch, AsyncMock, Mock
+from unittest.mock import patch, Mock
 import pytest
 
 
@@ -71,7 +71,6 @@ async def test_IdeationGenerator_run_agent_success(mock_create_client, tmp_path)
         # Stop iteration after first message
 
     # Create a proper async context manager mock
-    from unittest.mock import MagicMock
 
     class MockClientContextManager:
         async def __aenter__(self):

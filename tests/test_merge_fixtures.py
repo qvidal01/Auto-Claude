@@ -11,10 +11,8 @@ Contains:
 
 import subprocess
 import sys
-from datetime import datetime
 from pathlib import Path
 from typing import Callable
-from unittest.mock import MagicMock
 
 import pytest
 

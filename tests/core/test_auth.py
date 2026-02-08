@@ -2391,7 +2391,6 @@ class TestTriggerLoginMacOSComprehensive:
     ):
         """Test _trigger_login_macos successful login with token verification (covers 1082-1111)"""
         # Arrange
-        import tempfile
 
         # Mock TemporaryDirectory context manager
         temp_dir_obj = MagicMock()

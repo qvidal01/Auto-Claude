@@ -2,12 +2,11 @@
 
 import json
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
 from spec.phases.planning_phases import PlanningPhaseMixin
-from spec.phases.models import PhaseResult
 from spec.validate_pkg.models import ValidationResult
 
 

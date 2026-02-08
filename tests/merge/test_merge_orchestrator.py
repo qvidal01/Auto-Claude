@@ -13,15 +13,11 @@ from merge.types import (
     ConflictRegion,
     ConflictSeverity,
     MergeDecision,
-    SemanticChange,
-    TaskSnapshot,
     MergeResult,
-    FileAnalysis,
     MergeStrategy,
 )
 from pathlib import Path
-from unittest.mock import MagicMock, patch, mock_open, call
-import pytest
+from unittest.mock import MagicMock, patch
 import tempfile
 
 

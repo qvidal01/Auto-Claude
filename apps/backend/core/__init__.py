@@ -10,40 +10,34 @@ that may not be needed for basic operations.
 
 from typing import Any
 
-# Module-level placeholders for CodeQL static analysis.
-# The actual exported names trigger __getattr__ for lazy loading.
-_run_autonomous_agent: Any | None = None
-_run_followup_planner: Any | None = None
-_WorktreeManager: Any | None = None
-
-# Public names that reference the placeholders above
-run_autonomous_agent = _run_autonomous_agent
-run_followup_planner = _run_followup_planner
-WorktreeManager = _WorktreeManager
+# Module-level placeholders (with _ prefix) for CodeQL static analysis.
+# The actual exported names (without _ prefix) trigger __getattr__ for lazy loading.
+_run_autonomous_agent: Any = None
+_run_followup_planner: Any = None
+_WorktreeManager: Any = None
 
 __all__ = [
     "run_autonomous_agent",
     "run_followup_planner",
     "WorktreeManager",
-    "create_claude_client",
-    "ClaudeClient",
 ]
 
 
 def __getattr__(name: str) -> Any:
     """Lazy imports to avoid circular dependencies and heavy imports."""
-    private_map = {
-        "run_autonomous_agent": "_run_autonomous_agent",
-        "run_followup_planner": "_run_followup_planner",
-        "WorktreeManager": "_WorktreeManager",
-    }
+    if name == "run_autonomous_agent":
+        from .agent import run_autonomous_agent
 
-    if name in private_map:
-        private_name = private_map[name]
-        globals()[private_name] = _do_lazy_import(name)
-        return globals()[private_name]
+        return run_autonomous_agent
+    elif name == "run_followup_planner":
+        from .agent import run_followup_planner
 
-    if name in ("create_claude_client", "ClaudeClient"):
+        return run_followup_planner
+    elif name == "WorktreeManager":
+        from .worktree import WorktreeManager
+
+        return WorktreeManager
+    elif name in ("create_claude_client", "ClaudeClient"):
         from . import client as _client
 
         return getattr(_client, name)

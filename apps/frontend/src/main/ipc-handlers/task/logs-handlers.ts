@@ -27,7 +27,7 @@ export function registerTaskLogsHandlers(getMainWindow: () => BrowserWindow | nu
 
         const project = projectStore.getProject(projectId);
         if (!project) {
-          console.error('[TASK_LOGS_GET] Project not found:', projectId);
+          console.error('[TASK_LOGS_GET] Project not found:', JSON.stringify(projectId));
           return { success: false, error: 'Project not found' };
         }
 
@@ -64,7 +64,7 @@ export function registerTaskLogsHandlers(getMainWindow: () => BrowserWindow | nu
 
         return { success: true, data: logs };
       } catch (error) {
-        console.error('[TASK_LOGS_GET] Failed to get task logs:', error);
+        console.error('[TASK_LOGS_GET] Failed to get task logs:', error instanceof Error ? error.message : String(error));
         return {
           success: false,
           error: error instanceof Error ? error.message : 'Failed to get task logs'
@@ -86,7 +86,7 @@ export function registerTaskLogsHandlers(getMainWindow: () => BrowserWindow | nu
 
         const project = projectStore.getProject(projectId);
         if (!project) {
-          console.error('[TASK_LOGS_WATCH] Project not found:', projectId);
+          console.error('[TASK_LOGS_WATCH] Project not found:', JSON.stringify(projectId));
           return { success: false, error: 'Project not found' };
         }
 
@@ -109,7 +109,7 @@ export function registerTaskLogsHandlers(getMainWindow: () => BrowserWindow | nu
         taskLogService.startWatching(specId, specDir, absoluteProjectPath, specsRelPath);
         return { success: true };
       } catch (error) {
-        console.error('[TASK_LOGS_WATCH] Failed to start watching task logs:', error);
+        console.error('[TASK_LOGS_WATCH] Failed to start watching task logs:', error instanceof Error ? error.message : String(error));
         return {
           success: false,
           error: error instanceof Error ? error.message : 'Failed to start watching'

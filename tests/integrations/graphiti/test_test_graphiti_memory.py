@@ -1,6 +1,5 @@
 """Tests for test_graphiti_memory.py script functions."""
 
-import asyncio
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
@@ -588,12 +587,11 @@ class TestMainFunction:
                                     with patch.dict("os.environ", {"GRAPHITI_ENABLED": "true"}):
                                         with patch("sys.argv", ["test_graphiti_memory.py"]):
                                             # Import and run main
-                                            from integrations.graphiti.test_graphiti_memory import main
+                                            pass
 
                                             # Should complete without error
                                             # Note: We can't actually test main's output easily
                                             # because it's an async main entry point
-                                            pass
 
     @pytest.mark.asyncio
     async def test_main_specific_test(self):

@@ -4,7 +4,7 @@
  * Runs pytest using the correct virtual environment path for Windows/Mac/Linux
  */
 
-const { spawn } = require('child_process');
+const { execFileSync, spawn } = require('child_process');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
@@ -42,33 +42,15 @@ if (!fs.existsSync(pytestPath)) {
 
 // Get any additional args passed to the script (validated to only contain safe characters)
 const args = process.argv.slice(2);
-
-// Escape each argument for safe shell usage
-function escapeShellArg(arg) {
-  // On Windows, escape backslashes and double quotes and wrap in double quotes
-  if (isWindows) {
-    return `"${arg.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
-  }
-  // On Unix, use single quotes and escape any single quotes in the argument
-  return `'${arg.replace(/'/g, "'\\''")}'`;
-}
-
-// Build command with properly escaped arguments
 const defaultArgs = ['-v'];
 const argsToUse = args.length > 0 ? args : defaultArgs;
-const escapedArgs = argsToUse.map(escapeShellArg).join(' ');
 
-// Run pytest with properly escaped paths and arguments
-const cmd = isWindows
-  ? `"${pytestPath}" "${testsDir}" ${escapedArgs}`
-  : `'${pytestPath}' '${testsDir}' ${escapedArgs}`;
-
-console.log(`> ${cmd}\n`);
-
-try {
-  execSync(cmd, { stdio: 'inherit', cwd: rootDir });
-} catch (error) {
-  process.exit(error.status || 1);
+// Validate arguments to only contain safe characters (alphanumeric, dash, underscore, dot, slash)
+for (const arg of argsToUse) {
+  if (!/^[a-zA-Z0-9_\-./=]+$/.test(arg)) {
+    console.error(`Error: Invalid argument '${arg}'. Only alphanumeric, dash, underscore, dot, slash, and equals are allowed.`);
+    process.exit(1);
+  }
 }
 
 console.log(`> ${pytestPath} ${testsDir} ${argsToUse.join(' ')}\n`);

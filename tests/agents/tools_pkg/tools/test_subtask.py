@@ -1,8 +1,7 @@
 """Tests for agents.tools_pkg.tools.subtask module."""
 
 import json
-from pathlib import Path
-from unittest.mock import AsyncMock, patch
+from unittest.mock import patch
 import pytest
 
 from agents.tools_pkg.tools.subtask import create_subtask_tools, _update_subtask_in_plan

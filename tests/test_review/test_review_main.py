@@ -6,7 +6,6 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 import review
-from ui import print_status
 
 
 class TestReviewMainImports:
@@ -234,7 +233,7 @@ class TestReviewMainAsFacade:
 
     def test_facade_reexports_are_correct(self):
         """Test that facade re-exports match review package exports."""
-        from review import ReviewState, display_review_status, run_review_checkpoint
+        from review import ReviewState
         from review.main import ReviewState as MainReviewState
 
         # Should be the same class

@@ -2,8 +2,7 @@
 
 from analysis.analyzers.context.env_detector import EnvironmentDetector
 from pathlib import Path
-from unittest.mock import MagicMock, patch
-import pytest
+from unittest.mock import patch
 
 
 def test_EnvironmentDetector___init__():

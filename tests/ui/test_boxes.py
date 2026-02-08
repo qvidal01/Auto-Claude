@@ -2,7 +2,6 @@
 
 from unittest.mock import patch
 
-import pytest
 
 from ui.boxes import box, divider
 

@@ -1,11 +1,10 @@
 """Tests for analyzer module"""
 
 from analysis.analyzer import main
-from analysis.analyzers import ProjectAnalyzer, ServiceAnalyzer, analyze_project, analyze_service
+from analysis.analyzers import analyze_project, analyze_service
 from pathlib import Path
-from unittest.mock import MagicMock, patch, Mock
+from unittest.mock import patch
 import pytest
-import json
 import tempfile
 import shutil
 

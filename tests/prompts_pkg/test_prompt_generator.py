@@ -3,10 +3,8 @@ Comprehensive tests for prompt_generator module.
 Tests prompt generation, worktree isolation detection, and context building.
 """
 
-import json
 from pathlib import Path
 from unittest.mock import MagicMock, patch
-import pytest
 
 from prompts_pkg.prompt_generator import (
     detect_worktree_isolation,

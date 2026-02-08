@@ -7,9 +7,8 @@ edge cases, and error scenarios.
 
 import json
 import platform
-import sys
 from pathlib import Path
-from unittest.mock import MagicMock, Mock, patch, call
+from unittest.mock import patch
 
 import pytest
 

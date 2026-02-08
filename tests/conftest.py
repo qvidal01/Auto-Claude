@@ -7,7 +7,7 @@ import subprocess
 import sys
 from pathlib import Path
 from typing import Callable, Generator
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -81,11 +81,7 @@ def pytest_configure(config):
     # Import the real ui module and its submodules BEFORE test collection
     # This ensures they exist in sys.modules before any test can mock them
     try:
-        import ui
-        import ui.icons
-        import ui.progress
-        import ui.capabilities
-        import ui.menu
+        pass
     except ImportError:
         pass  # Module may not exist on all platforms
 

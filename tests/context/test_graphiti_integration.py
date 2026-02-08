@@ -1,7 +1,6 @@
 """Tests for graphiti_integration"""
 
 from context.graphiti_integration import fetch_graph_hints, is_graphiti_enabled
-from pathlib import Path
 import pytest
 
 

@@ -301,7 +301,7 @@ async function githubGraphQL<T>(
 
   if (!response.ok) {
     // Log detailed error for debugging, throw generic message for safety
-    console.error(`GitHub GraphQL HTTP error: ${response.status} ${response.statusText}`);
+    console.error('[GitHub PR] GraphQL HTTP error:', JSON.stringify({ status: response.status, statusText: response.statusText }));
     throw new Error("Failed to connect to GitHub API");
   }
 
@@ -310,7 +310,7 @@ async function githubGraphQL<T>(
   // Check for GraphQL-level errors
   if (result.errors && result.errors.length > 0) {
     // Log detailed errors for debugging, throw generic message for safety
-    console.error(`GitHub GraphQL errors: ${result.errors.map(e => e.message).join(", ")}`);
+    console.error('[GitHub PR] GraphQL errors:', JSON.stringify(result.errors.map(e => e.message)));
     throw new Error("GitHub API request failed");
   }
 

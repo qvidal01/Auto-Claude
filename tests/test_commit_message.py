@@ -12,9 +12,7 @@ Tests for commit message generation using Claude AI, including:
 import asyncio
 import json
 import sys
-from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, Mock, patch
-from datetime import datetime
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -313,7 +311,7 @@ class TestBuildPrompt:
 
     def test_build_prompt_category_mapping(self):
         """Test category to commit type mapping."""
-        from commit_message import _build_prompt, CATEGORY_TO_COMMIT_TYPE
+        from commit_message import _build_prompt
 
         test_cases = [
             ("feature", "feat"),

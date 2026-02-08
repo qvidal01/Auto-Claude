@@ -105,7 +105,7 @@ def get_use_local_branch_from_metadata(spec_dir: Path) -> bool:
             with open(metadata_path, encoding="utf-8") as f:
                 metadata = json.load(f)
                 return bool(metadata.get("useLocalBranch", False))
-        except (json.JSONDecodeError, OSError):
+        except Exception:  # no-op
             pass
     return False
 

@@ -17,21 +17,13 @@ from __future__ import annotations
 
 from typing import Any
 
-# Module-level placeholders for CodeQL static analysis.
-_AutoFixProcessor = None  # type: Any
-_BatchProcessor = None  # type: Any
-_PRReviewEngine = None  # type: Any
-_PromptManager = None  # type: Any
-_ResponseParser = None  # type: Any
-_TriageEngine = None  # type: Any
-
-# Public names that reference the placeholders above
-AutoFixProcessor = _AutoFixProcessor
-BatchProcessor = _BatchProcessor
-PRReviewEngine = _PRReviewEngine
-PromptManager = _PromptManager
-ResponseParser = _ResponseParser
-TriageEngine = _TriageEngine
+# Module-level placeholders (with _ prefix) for CodeQL static analysis.
+_AutoFixProcessor: Any = None
+_BatchProcessor: Any = None
+_PRReviewEngine: Any = None
+_PromptManager: Any = None
+_ResponseParser: Any = None
+_TriageEngine: Any = None
 
 __all__ = [
     "PromptManager",
@@ -45,20 +37,30 @@ __all__ = [
 
 def __getattr__(name: str) -> object:
     """Lazy import handler - loads classes on first access."""
-    private_map = {
-        "AutoFixProcessor": "_AutoFixProcessor",
-        "BatchProcessor": "_BatchProcessor",
-        "PRReviewEngine": "_PRReviewEngine",
-        "PromptManager": "_PromptManager",
-        "ResponseParser": "_ResponseParser",
-        "TriageEngine": "_TriageEngine",
-    }
+    if name == "AutoFixProcessor":
+        from .autofix_processor import AutoFixProcessor
 
-    if name in private_map:
-        private_name = private_map[name]
-        globals()[private_name] = _do_lazy_import(name)
-        return globals()[private_name]
+        return AutoFixProcessor
+    elif name == "BatchProcessor":
+        from .batch_processor import BatchProcessor
 
+        return BatchProcessor
+    elif name == "PRReviewEngine":
+        from .pr_review_engine import PRReviewEngine
+
+        return PRReviewEngine
+    elif name == "PromptManager":
+        from .prompt_manager import PromptManager
+
+        return PromptManager
+    elif name == "ResponseParser":
+        from .response_parsers import ResponseParser
+
+        return ResponseParser
+    elif name == "TriageEngine":
+        from .triage_engine import TriageEngine
+
+        return TriageEngine
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 

@@ -7,7 +7,7 @@ boundary conditions, and integration scenarios.
 """
 
 import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 import ui.progress
 import ui.capabilities
 import ui.icons

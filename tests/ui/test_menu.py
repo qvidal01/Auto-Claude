@@ -1,13 +1,12 @@
 """Tests for menu"""
 
-from io import StringIO
-from unittest.mock import MagicMock, patch, call
+from unittest.mock import MagicMock, patch
 import sys
 
 import pytest
 
 from ui.icons import Icons
-from ui.menu import MenuOption, _getch, select_menu, _HAS_TERMIOS, _HAS_MSVCRT
+from ui.menu import MenuOption, select_menu
 import ui.menu as menu_module
 
 
@@ -1100,8 +1099,6 @@ class TestSelectMenuInteractive:
 
     def test_mock_verification(self):
         """Verify that patch works correctly for _getch"""
-        import sys
-        import importlib
         from unittest.mock import patch
 
         # Re-import ui.menu to ensure we have the current module from sys.modules
@@ -1611,7 +1608,6 @@ class TestModuleImportFailure:
         trigger_termios_import_failure()
 
         # Verify the module still works after restoration
-        from ui.menu import _HAS_TERMIOS
         # After restoration, termios should be available on Unix
         # The important part is that we hit the except branch during the test
 
@@ -1625,7 +1621,6 @@ class TestModuleImportFailure:
         trigger_msvcrt_import_failure()
 
         # Verify the module still works after restoration
-        from ui.menu import _HAS_MSVCRT
         # On Unix, msvcrt is naturally False, on Windows it would be True
         # The important part is that we hit the except branch during the test
 

@@ -4,7 +4,6 @@ Comprehensive tests for implementation_plan.subtask module.
 
 from datetime import datetime
 from unittest.mock import patch
-import pytest
 
 from implementation_plan.subtask import Subtask
 from implementation_plan.enums import SubtaskStatus

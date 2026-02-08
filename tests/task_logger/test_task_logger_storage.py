@@ -1,17 +1,15 @@
 """Tests for task_logger/storage.py"""
 
-from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 import json
 
-import pytest
 
 from task_logger.storage import (
     LogStorage,
     load_task_logs,
     get_active_phase,
 )
-from task_logger.models import LogEntry, LogPhase
+from task_logger.models import LogEntry
 
 
 class TestLogStorage:

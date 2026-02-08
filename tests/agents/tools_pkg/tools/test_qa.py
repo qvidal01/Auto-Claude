@@ -1,8 +1,7 @@
 """Tests for agents.tools_pkg.tools.qa module."""
 
 import json
-from pathlib import Path
-from unittest.mock import AsyncMock, patch
+from unittest.mock import patch
 import pytest
 
 from agents.tools_pkg.tools.qa import create_qa_tools, _apply_qa_update

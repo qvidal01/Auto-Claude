@@ -253,8 +253,7 @@ class StackDetector:
                         if "apiVersion:" in content and "kind:" in content:
                             self.stack.infrastructure.append("kubernetes")
                             break
-                except OSError:
-                    # Non-critical failure; continue
+                except OSError:  # Non-critical failure; continue
                     pass
 
         # Helm

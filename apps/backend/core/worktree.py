@@ -429,8 +429,7 @@ class WorktreeManager:
                     if current_path.exists() and resolved_path.exists():
                         if os.path.samefile(resolved_path, current_path):
                             return line[len("branch refs/heads/") :]
-                except OSError:
-                    # Files may not exist or be inaccessible; fall through to case comparison
+                except OSError:  # Files may not exist or be inaccessible; fall through to case comparison
                     pass
                 # Fallback to normalized case comparison
                 if os.path.normcase(str(resolved_path)) == os.path.normcase(
@@ -510,8 +509,7 @@ class WorktreeManager:
                 if resolved_path.exists() and registered_path.exists():
                     if os.path.samefile(resolved_path, registered_path):
                         return True
-            except OSError:
-                # Files may not exist or be inaccessible; fall through to case comparison
+            except OSError:  # Files may not exist or be inaccessible; fall through to case comparison
                 pass
             # Fallback to normalized case comparison for non-existent paths
             if os.path.normcase(str(resolved_path)) == os.path.normcase(
@@ -585,8 +583,10 @@ class WorktreeManager:
                     stats["days_since_last_commit"] = (
                         datetime.now() - last_commit_date
                     ).days
-            except (ValueError, TypeError):
-                # If parsing fails, silently continue without date info
+            except (
+                ValueError,
+                TypeError,
+            ):  # If parsing fails, silently continue without date info
                 pass
 
         # Diff stats
@@ -1796,8 +1796,7 @@ class WorktreeManager:
                 try:
                     data = json.loads(result.stdout)
                     return data.get("web_url")
-                except json.JSONDecodeError:
-                    # If JSON parsing fails, return None
+                except json.JSONDecodeError:  # If JSON parsing fails, return None
                     pass
         except (
             subprocess.TimeoutExpired,

@@ -1,8 +1,7 @@
 """Tests for anthropic_llm"""
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
-import pytest
 
 from integrations.graphiti.providers_pkg.llm_providers.anthropic_llm import (
     create_anthropic_llm_client,

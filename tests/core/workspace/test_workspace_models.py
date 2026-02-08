@@ -15,7 +15,7 @@ Tests cover:
 
 import os
 from pathlib import Path
-from unittest.mock import MagicMock, patch, mock_open
+from unittest.mock import patch
 
 import pytest
 
@@ -569,7 +569,6 @@ class TestSpecNumberLock:
                 if sleep_count[0] == 2 and lock_file.exists():
                     lock_file.unlink()
                 # Don't actually sleep
-                pass
 
             with patch("time.sleep", side_effect=mock_sleep_handler):
                 with patch("time.time") as mock_time:

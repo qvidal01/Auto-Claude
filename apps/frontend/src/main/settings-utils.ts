@@ -38,7 +38,7 @@ export function readSettingsFile(): Record<string, unknown> | undefined {
     const errorCode = (error as NodeJS.ErrnoException)?.code;
     if (errorCode !== 'ENOENT') {
       // Log unexpected errors but don't crash
-      console.error('Settings file read error:', error instanceof Error ? error.message : String(error));
+      console.error('Settings file read error:', error);
     }
     return undefined;
   }
@@ -79,18 +79,11 @@ export async function readSettingsFileAsync(): Promise<Record<string, unknown> |
     return JSON.parse(content);
   } catch (error: unknown) {
     // ENOENT (file not found) or parse error - return undefined so caller uses defaults
-    // Check if error is a Node.js error with code property
-    if (
-      typeof error === 'object' &&
-      error !== null &&
-      'code' in error &&
-      error.code === 'ENOENT'
-    ) {
-      // File not found is expected - return undefined
-      return undefined;
+    const errorCode = (error as NodeJS.ErrnoException)?.code;
+    if (errorCode !== 'ENOENT') {
+      // Log unexpected errors but don't crash
+      console.error('Settings file async read error:', error);
     }
-    // Log unexpected errors but don't crash
-    console.error('Settings file async read error:', error instanceof Error ? error.message : String(error));
     return undefined;
   }
 }

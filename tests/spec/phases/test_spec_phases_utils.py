@@ -1,10 +1,7 @@
 """Tests for spec/phases/utils.py module"""
 
-from pathlib import Path
 from unittest.mock import MagicMock, patch
-from concurrent.futures import TimeoutError
 
-import pytest
 
 from spec.phases.utils import run_script
 

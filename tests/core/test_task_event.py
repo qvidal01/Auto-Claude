@@ -1,9 +1,7 @@
 """Tests for task_event"""
 
 from pathlib import Path
-from unittest.mock import MagicMock, patch
 
-import pytest
 
 from core.task_event import TaskEventContext, TaskEventEmitter, load_task_event_context
 

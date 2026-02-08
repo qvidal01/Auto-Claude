@@ -69,17 +69,8 @@ export class SpecNumberLock {
         const pidStr = readFileSync(this.lockFile, 'utf-8').trim();
         const pid = parseInt(pidStr, 10);
 
-          if (!Number.isNaN(pid) && !this.isProcessRunning(pid)) {
-            // Stale lock - remove it
-            try {
-              unlinkSync(this.lockFile);
-              continue;
-            } catch {
-              // Another process may have removed it
-            }
-          }
-        } catch {
-          // Invalid lock file - try to remove
+        if (!Number.isNaN(pid) && !this.isProcessRunning(pid)) {
+          // Stale lock - remove it
           try {
             unlinkSync(this.lockFile);
             continue;

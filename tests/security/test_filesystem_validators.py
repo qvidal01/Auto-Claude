@@ -1,6 +1,5 @@
 """Tests for filesystem_validators"""
 
-import pytest
 from security.filesystem_validators import (
     validate_chmod_command,
     validate_rm_command,

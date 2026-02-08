@@ -1,12 +1,10 @@
 """Tests for discovery_phases module"""
 
-from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
 from spec.phases.discovery_phases import DiscoveryPhaseMixin
-from spec.phases.models import PhaseResult
 
 
 class FakeDiscoveryExecutor(DiscoveryPhaseMixin):

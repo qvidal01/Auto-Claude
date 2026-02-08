@@ -7,7 +7,6 @@ Comprehensive test coverage for safe console output utilities handling broken pi
 from core.io_utils import is_pipe_broken, reset_pipe_state, safe_print
 from unittest.mock import MagicMock, patch
 import pytest
-import sys
 
 
 # Disable pytest capture for this module due to sys.stdout.close() in safe_print

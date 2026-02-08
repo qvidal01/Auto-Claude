@@ -8,11 +8,9 @@ import pytest
 def _check_graphiti_available() -> bool:
     """Check if graphiti dependencies are available."""
     try:
-        import kuzu
         return True
     except ImportError:
         try:
-            from real_ladybug import ladybug
             return True
         except ImportError:
             return False

@@ -93,8 +93,10 @@ class ContentSanitizer:
     # NOTE: Using bleach library for proper HTML sanitization instead of regex
     # Regex patterns below are for detection/logging purposes only, not for sanitization
     HTML_COMMENT_PATTERN = re.compile(r"<!--[\s\S]*?-->", re.MULTILINE)
-    SCRIPT_TAG_PATTERN = re.compile(r"<script[\s\S]*?</script\s*>", re.IGNORECASE)
-    STYLE_TAG_PATTERN = re.compile(r"<style[\s\S]*?</style\s*>", re.IGNORECASE)
+    # Use [\s\S]*? to match any character including newlines between tags
+    # The pattern [\s\S]*?> allows for any whitespace (including newlines) before the closing >
+    SCRIPT_TAG_PATTERN = re.compile(r"<script[\s\S]*?</script[\s\S]*?>", re.IGNORECASE)
+    STYLE_TAG_PATTERN = re.compile(r"<style[\s\S]*?</style[\s\S]*?>", re.IGNORECASE)
 
     # Patterns that look like prompt injection attempts
     INJECTION_PATTERNS = [

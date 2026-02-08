@@ -22,8 +22,6 @@ ensuring the defensive checks are functional even if they're unreachable in
 normal operation.
 """
 
-import pytest
-from pathlib import PurePosixPath, PureWindowsPath
 
 from security.parser import (
     _cross_platform_basename,

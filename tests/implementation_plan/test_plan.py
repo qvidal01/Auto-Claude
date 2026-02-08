@@ -5,8 +5,7 @@ from implementation_plan.enums import PhaseType, SubtaskStatus, WorkflowType
 from implementation_plan.phase import Phase
 from implementation_plan.subtask import Subtask
 from implementation_plan.verification import Verification, VerificationType
-from pathlib import Path
-from unittest.mock import MagicMock, patch, mock_open
+from unittest.mock import patch
 import pytest
 import json
 

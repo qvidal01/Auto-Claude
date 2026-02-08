@@ -1,8 +1,5 @@
 """Tests for task_logger/main.py"""
 
-from pathlib import Path
-from unittest.mock import patch, MagicMock
-import pytest
 
 # Test that the task_logger module can be imported
 # and that it re-exports all expected APIs

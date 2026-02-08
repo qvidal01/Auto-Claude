@@ -11,10 +11,7 @@ Tests for data models:
   - from_dict()
 """
 
-from datetime import datetime
-from pathlib import Path
 
-import pytest
 
 from project.models import TechnologyStack, CustomScripts, SecurityProfile
 

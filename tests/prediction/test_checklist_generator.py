@@ -2,9 +2,6 @@
 
 from prediction.checklist_generator import ChecklistGenerator
 from prediction.models import PredictedIssue
-from pathlib import Path
-from unittest.mock import MagicMock, patch
-import pytest
 
 
 def test_ChecklistGenerator_generate_checklist():

@@ -569,7 +569,7 @@ export async function openTerminalWithCommand(command: string): Promise<void> {
       const SPAWN_WAIT_MS = 300;
 
       return new Promise((resolve, reject) => {
-        console.warn(`[Claude Code] Spawning: ${executable}`, args);
+        console.warn('[Claude Code] Spawning:', JSON.stringify(executable), JSON.stringify(args));
 
         const child = spawn(executable, args, {
           detached: true,
@@ -586,7 +586,7 @@ export async function openTerminalWithCommand(command: string): Promise<void> {
         }, SPAWN_WAIT_MS);
 
         const onError = (err: Error) => {
-          console.error(`[Claude Code] Spawn error for ${executable}:`, err);
+          console.error('[Claude Code] Spawn error:', JSON.stringify(executable), err.message);
           clearTimeout(timer);
           reject(err);
         };

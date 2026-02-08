@@ -6,7 +6,6 @@ Tests verify all exports are accessible and backward compatibility aliases work.
 """
 
 import sys
-from unittest.mock import MagicMock, patch
 
 import pytest
 

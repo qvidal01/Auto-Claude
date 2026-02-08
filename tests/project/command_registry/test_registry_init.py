@@ -1,6 +1,5 @@
 """Tests for project/command_registry/__init__.py - Command registry exports."""
 
-import pytest
 
 from project.command_registry import (
     BASE_COMMANDS,
@@ -162,7 +161,6 @@ class TestCommandRegistryImports:
 
     def test_no_circular_imports(self):
         """Test that importing command_registry doesn't cause circular imports."""
-        import importlib
         import sys
 
         # Remove from cache if present

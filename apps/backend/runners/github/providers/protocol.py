@@ -180,10 +180,12 @@ class GitProvider(Protocol):
     @property
     def provider_type(self) -> ProviderType:
         """Get the provider type."""
+        pass
 
     @property
     def repo(self) -> str:
         """Get the repository in owner/repo format."""
+        pass
 
     # -------------------------------------------------------------------------
     # Pull Request Operations
@@ -199,6 +201,7 @@ class GitProvider(Protocol):
         Returns:
             PRData with full PR details including diff
         """
+        pass
 
     async def fetch_prs(self, filters: PRFilters | None = None) -> list[PRData]:
         """
@@ -210,6 +213,7 @@ class GitProvider(Protocol):
         Returns:
             List of PRData
         """
+        pass
 
     async def fetch_pr_diff(self, number: int) -> str:
         """
@@ -221,6 +225,7 @@ class GitProvider(Protocol):
         Returns:
             Unified diff string
         """
+        pass
 
     async def post_review(
         self,
@@ -237,6 +242,7 @@ class GitProvider(Protocol):
         Returns:
             Review ID
         """
+        pass
 
     async def merge_pr(
         self,
@@ -255,6 +261,7 @@ class GitProvider(Protocol):
         Returns:
             True if merged successfully
         """
+        pass
 
     async def close_pr(
         self,
@@ -271,6 +278,7 @@ class GitProvider(Protocol):
         Returns:
             True if closed successfully
         """
+        pass
 
     # -------------------------------------------------------------------------
     # Issue Operations
@@ -286,6 +294,7 @@ class GitProvider(Protocol):
         Returns:
             IssueData with full issue details
         """
+        pass
 
     async def fetch_issues(
         self, filters: IssueFilters | None = None
@@ -299,6 +308,7 @@ class GitProvider(Protocol):
         Returns:
             List of IssueData
         """
+        pass
 
     async def create_issue(
         self,
@@ -319,6 +329,7 @@ class GitProvider(Protocol):
         Returns:
             Created IssueData
         """
+        pass
 
     async def close_issue(
         self,
@@ -335,6 +346,7 @@ class GitProvider(Protocol):
         Returns:
             True if closed successfully
         """
+        pass
 
     async def add_comment(
         self,
@@ -351,6 +363,7 @@ class GitProvider(Protocol):
         Returns:
             Comment ID
         """
+        pass
 
     # -------------------------------------------------------------------------
     # Label Operations
@@ -368,6 +381,7 @@ class GitProvider(Protocol):
             issue_or_pr_number: Issue/PR number
             labels: Labels to apply
         """
+        pass
 
     async def remove_labels(
         self,
@@ -381,6 +395,7 @@ class GitProvider(Protocol):
             issue_or_pr_number: Issue/PR number
             labels: Labels to remove
         """
+        pass
 
     async def create_label(
         self,
@@ -392,6 +407,7 @@ class GitProvider(Protocol):
         Args:
             label: Label data
         """
+        pass
 
     async def list_labels(self) -> list[LabelData]:
         """
@@ -400,6 +416,7 @@ class GitProvider(Protocol):
         Returns:
             List of LabelData
         """
+        pass
 
     # -------------------------------------------------------------------------
     # Repository Operations
@@ -412,6 +429,7 @@ class GitProvider(Protocol):
         Returns:
             Repository metadata
         """
+        pass
 
     async def get_default_branch(self) -> str:
         """
@@ -420,6 +438,7 @@ class GitProvider(Protocol):
         Returns:
             Default branch name (e.g., "main", "master")
         """
+        pass
 
     async def check_permissions(self, username: str) -> str:
         """
@@ -431,6 +450,7 @@ class GitProvider(Protocol):
         Returns:
             Permission level (admin, write, read, none)
         """
+        pass
 
     # -------------------------------------------------------------------------
     # API Operations (Low-level)
@@ -451,6 +471,7 @@ class GitProvider(Protocol):
         Returns:
             API response data
         """
+        pass
 
     async def api_post(
         self,
@@ -467,3 +488,4 @@ class GitProvider(Protocol):
         Returns:
             API response data
         """
+        pass

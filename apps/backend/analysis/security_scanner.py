@@ -401,17 +401,14 @@ class SecurityScanner:
                                 else None,
                             )
                         )
-                except json.JSONDecodeError:
-                    # Invalid JSON; skip
+                except json.JSONDecodeError:  # Invalid JSON; skip
                     pass
 
         except FileNotFoundError:
             pass  # pip-audit not available
-        except subprocess.TimeoutExpired:
-            # Non-critical error; continue
+        except subprocess.TimeoutExpired:  # Non-critical error; continue
             pass
-        except Exception:
-            # Non-critical error; continue
+        except Exception:  # Non-critical error; continue
             pass
 
     def _is_python_project(self, project_dir: Path) -> bool:

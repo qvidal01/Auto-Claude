@@ -1,6 +1,5 @@
 """Tests for agents.tools_pkg.permissions module."""
 
-from pathlib import Path
 from unittest.mock import patch
 import pytest
 import os
@@ -10,7 +9,6 @@ from agents.tools_pkg.permissions import (
     get_all_agent_types,
     _get_mcp_tools_for_servers,
 )
-from agents.tools_pkg.models import AGENT_CONFIGS
 
 
 class TestGetAllowedTools:

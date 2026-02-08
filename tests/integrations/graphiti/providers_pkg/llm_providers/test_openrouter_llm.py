@@ -1,8 +1,7 @@
 """Tests for openrouter_llm"""
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
-import pytest
 
 from integrations.graphiti.providers_pkg.llm_providers.openrouter_llm import (
     create_openrouter_llm_client,

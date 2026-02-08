@@ -2,8 +2,6 @@
 
 from analysis.analyzers.route_detector import RouteDetector
 from pathlib import Path
-from unittest.mock import MagicMock, patch
-import pytest
 
 
 def test_RouteDetector___init__():

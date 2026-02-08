@@ -789,8 +789,7 @@ class PRContextGatherer:
                         structure_info.append(
                             f"**Workspaces**: {', '.join(pkg_data['workspaces'])}"
                         )
-            except (json.JSONDecodeError, KeyError):
-                # Invalid JSON; skip
+            except (json.JSONDecodeError, KeyError):  # Invalid JSON; skip
                 pass
 
         # Check for Python project structure
@@ -1098,8 +1097,7 @@ class PRContextGatherer:
             # Try standard JSON parse first (most tsconfigs don't have comments)
             try:
                 return json.loads(content)
-            except json.JSONDecodeError:
-                # Invalid JSON; skip
+            except json.JSONDecodeError:  # Invalid JSON; skip
                 pass
 
             # Fall back to comment stripping (outside strings only)

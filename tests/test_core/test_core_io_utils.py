@@ -10,8 +10,7 @@ Comprehensive tests for safe I/O utilities including:
 """
 
 import logging
-import sys
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import patch
 
 import pytest
 

@@ -1,7 +1,6 @@
 """Tests for agents.__init__ module lazy import functionality."""
 
 import sys
-from unittest.mock import patch, MagicMock
 import pytest
 
 
@@ -326,7 +325,6 @@ class TestModuleInitIntegration:
 
     def test_concurrent_access_thread_safety(self):
         """Test that lazy imports handle concurrent access gracefully."""
-        import agents
         import threading
 
         results = {}

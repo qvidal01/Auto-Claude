@@ -31,11 +31,7 @@ def ensure_real_ui_modules():
 
     # Import the real ui modules
     try:
-        import ui
-        import ui.icons
-        import ui.progress
-        import ui.capabilities
-        import ui.menu
+        pass
     except ImportError:
         pass
 

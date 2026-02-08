@@ -1,15 +1,13 @@
 """Tests for task_logger/logger.py"""
 
-import json
 import tempfile
 from pathlib import Path
-from unittest.mock import MagicMock, patch
-from datetime import datetime, timezone
+from unittest.mock import patch
 
 import pytest
 
 from task_logger.logger import TaskLogger
-from task_logger.models import LogEntry, LogEntryType, LogPhase
+from task_logger.models import LogEntryType, LogPhase
 
 
 @pytest.fixture

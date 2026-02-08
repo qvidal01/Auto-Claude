@@ -15,13 +15,12 @@ Comprehensive tests for the ProjectAnalyzer class including:
 
 import json
 from pathlib import Path
-from unittest.mock import MagicMock, Mock, patch
-from datetime import datetime
+from unittest.mock import Mock, patch
 
 import pytest
 
 from project.analyzer import ProjectAnalyzer
-from project.models import SecurityProfile, TechnologyStack, CustomScripts
+from project.models import SecurityProfile
 from project.structure_analyzer import StructureAnalyzer
 
 

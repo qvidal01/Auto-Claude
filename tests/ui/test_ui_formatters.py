@@ -1,7 +1,5 @@
 """Tests for ui/formatters.py"""
 
-from unittest.mock import patch
-import pytest
 
 from ui.formatters import (
     print_header,

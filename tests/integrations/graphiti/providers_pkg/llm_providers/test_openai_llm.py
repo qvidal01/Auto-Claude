@@ -2,12 +2,10 @@
 
 from unittest.mock import MagicMock, patch
 
-import pytest
 
 from integrations.graphiti.providers_pkg.llm_providers.openai_llm import (
     create_openai_llm_client,
 )
-from integrations.graphiti.providers_pkg.exceptions import ProviderNotInstalled
 
 
 def test_create_openai_llm_client():

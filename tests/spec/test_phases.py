@@ -1,8 +1,7 @@
 """Tests for phases module (spec/phases.py)"""
 
-import pytest
 
-from spec.phases import MAX_RETRIES, PhaseExecutor, PhaseResult
+from spec.phases import MAX_RETRIES
 
 
 class TestPhasesModuleExports:

@@ -44,13 +44,9 @@ from .complexity import (
 )
 from .phases import PhaseExecutor, PhaseResult
 
-# Module-level placeholders for CodeQL static analysis.
-_SpecOrchestrator = None  # type: Any
-_get_specs_dir = None  # type: Any
-
-# Public names that reference the placeholders above
-SpecOrchestrator = _SpecOrchestrator
-get_specs_dir = _get_specs_dir
+# Module-level placeholders (with _ prefix) for CodeQL static analysis.
+_SpecOrchestrator: Any = None
+_get_specs_dir: Any = None
 
 __all__ = [
     # Main orchestrator
@@ -79,16 +75,14 @@ def __getattr__(name: str) -> Any:
     By deferring these imports via __getattr__, the import chain only
     executes when these symbols are actually accessed, breaking the cycle.
     """
-    private_map = {
-        "SpecOrchestrator": "_SpecOrchestrator",
-        "get_specs_dir": "_get_specs_dir",
-    }
+    if name == "SpecOrchestrator":
+        from .pipeline import SpecOrchestrator
 
-    if name in private_map:
-        private_name = private_map[name]
-        globals()[private_name] = _do_lazy_import(name)
-        return globals()[private_name]
+        return SpecOrchestrator
+    elif name == "get_specs_dir":
+        from .pipeline import get_specs_dir
 
+        return get_specs_dir
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 

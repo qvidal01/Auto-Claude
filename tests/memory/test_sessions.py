@@ -4,9 +4,7 @@ Comprehensive test coverage for session insights functions.
 """
 
 import json
-from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
-import pytest
+from unittest.mock import patch
 
 from memory.sessions import (
     save_session_insights,

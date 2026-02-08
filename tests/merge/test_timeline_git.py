@@ -2,8 +2,7 @@
 
 from merge.timeline_git import TimelineGitHelper
 from pathlib import Path
-from unittest.mock import MagicMock, patch
-import pytest
+from unittest.mock import patch
 
 
 @patch("subprocess.run")

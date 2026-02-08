@@ -13,7 +13,6 @@ import sys
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-import pytest
 
 # Add apps/backend directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent / "apps" / "backend"))
@@ -37,7 +36,6 @@ class TestValidatePlatformDependencies:
         message instead of a cryptic pywintypes import error.
         """
         import builtins
-        import platform as platform_module
 
         with patch("sys.platform", "win32"), \
              patch("platform.system", return_value="Windows"), \

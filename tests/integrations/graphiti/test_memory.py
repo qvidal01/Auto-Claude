@@ -1,11 +1,10 @@
 """Comprehensive tests for memory.py module."""
 
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 import pytest
 
 from integrations.graphiti.memory import (
-    GraphitiMemory,
     get_graphiti_memory,
     is_graphiti_enabled,
     test_graphiti_connection,
@@ -179,7 +178,6 @@ class TestTestGraphitiConnection:
         # This test documents the behavior - actual testing requires
         # deep mocking of imports within the function which is complex
         # The function is tested at the integration level in other test files
-        pass
 
     @pytest.mark.asyncio
     async def test_test_graphiti_connection_generic_exception(self):
@@ -187,7 +185,6 @@ class TestTestGraphitiConnection:
         # This test documents the behavior - actual testing requires
         # deep mocking of imports within the function which is complex
         # The function is tested at the integration level in other test files
-        pass
 
 
 class TestTestProviderConfiguration:

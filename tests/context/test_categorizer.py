@@ -2,8 +2,6 @@
 
 from context.categorizer import FileCategorizer
 from context.models import FileMatch
-from pathlib import Path
-import pytest
 
 
 def test_FileCategorizer_categorize_matches():

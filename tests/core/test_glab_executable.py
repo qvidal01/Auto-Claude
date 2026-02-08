@@ -2,10 +2,8 @@
 
 import os
 import subprocess
-from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-import pytest
 
 from core.glab_executable import (
     _find_glab_executable,

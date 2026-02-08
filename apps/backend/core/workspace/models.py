@@ -90,9 +90,7 @@ class MergeLock:
                     os.O_CREAT | os.O_EXCL | os.O_WRONLY,
                     0o600,
                 )
-                # Ensure permissions are correct (override umask)
-                os.fchmod(fd, 0o600)
-                # Write PID directly to the file descriptor
+                # Write PID directly to the file descriptor to preserve permissions
                 os.write(fd, str(os.getpid()).encode("utf-8"))
                 os.close(fd)
 
@@ -182,9 +180,7 @@ class SpecNumberLock:
                     os.O_CREAT | os.O_EXCL | os.O_WRONLY,
                     0o600,
                 )
-                # Ensure permissions are correct (override umask)
-                os.fchmod(fd, 0o600)
-                # Write PID directly to the file descriptor
+                # Write PID directly to the file descriptor to preserve permissions
                 os.write(fd, str(os.getpid()).encode("utf-8"))
                 os.close(fd)
 
@@ -273,8 +269,7 @@ class SpecNumberLock:
             try:
                 num = int(folder.name[:3])
                 max_num = max(max_num, num)
-            except ValueError:
-                # Folder name doesn't start with a number; skip it
+            except ValueError:  # Folder name doesn't start with a number; skip it
                 pass
 
         return max_num

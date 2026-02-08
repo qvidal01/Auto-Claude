@@ -1,12 +1,11 @@
 """Tests for spec_phases module"""
 
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 
 from spec.phases.spec_phases import SpecPhaseMixin
-from spec.phases.models import PhaseResult
 from spec.validate_pkg.models import ValidationResult
 
 

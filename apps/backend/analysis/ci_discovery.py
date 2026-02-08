@@ -307,8 +307,7 @@ class CIDiscovery:
             if isinstance(variables, dict):
                 result.environment_variables.extend(variables.keys())
 
-        except Exception:
-            # Non-critical error; continue
+        except Exception:  # Non-critical error; continue
             pass
 
         return result
@@ -366,8 +365,7 @@ class CIDiscovery:
                     )
                 )
 
-        except Exception:
-            # Non-critical error; continue
+        except Exception:  # Non-critical error; continue
             pass
 
         return result
@@ -406,8 +404,7 @@ class CIDiscovery:
                     )
                 )
 
-        except Exception:
-            # Non-critical error; continue
+        except Exception:  # Non-critical error; continue
             pass
 
         return result

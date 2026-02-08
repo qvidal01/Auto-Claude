@@ -1,7 +1,6 @@
 """Tests for validator module (spec/validator.py)"""
 
 import json
-from pathlib import Path
 
 import pytest
 

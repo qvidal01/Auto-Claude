@@ -1,9 +1,8 @@
 """Tests for phase_executor"""
 
 from ideation.phase_executor import PhaseExecutor
-from ideation.types import IdeationPhaseResult
 from pathlib import Path
-from unittest.mock import MagicMock, patch, AsyncMock, Mock, mock_open
+from unittest.mock import patch, Mock, mock_open
 import pytest
 
 

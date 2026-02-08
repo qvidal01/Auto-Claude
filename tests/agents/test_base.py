@@ -1,6 +1,5 @@
 """Tests for agents.base module constants and exports."""
 
-import pytest
 
 from agents.base import (
     AUTO_CONTINUE_DELAY_SECONDS,

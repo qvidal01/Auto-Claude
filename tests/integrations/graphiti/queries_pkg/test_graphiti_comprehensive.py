@@ -1,6 +1,5 @@
 """Comprehensive tests for graphiti.py (GraphitiMemory) module."""
 
-import hashlib
 import shutil
 import tempfile
 from pathlib import Path
