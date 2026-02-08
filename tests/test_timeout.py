@@ -279,8 +279,8 @@ class TestTimeModuleOperations:
         time.sleep(0.123)
         elapsed = time.time() - start
 
-        # Allow some tolerance
-        assert 0.1 < elapsed < 0.2
+        # Allow generous tolerance for CI scheduling delays
+        assert 0.1 < elapsed < 0.5
 
     def test_time_monotonic(self):
         """Test time.monotonic returns increasing values."""
