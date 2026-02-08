@@ -331,13 +331,7 @@ class PtyDaemon {
 
       return id;
     } catch (error) {
-      const safeMsg = error instanceof Error ? error.message : String(error);
-      // Sanitize error message to prevent log injection
-      const sanitized = safeMsg
-        // biome-ignore lint/suspicious/noControlCharactersInRegex: Intentionally matching control chars for sanitization
-        .replace(/[\x00-\x1F\x7F]/g, ' ')
-        .slice(0, 200);
-      console.error('[PTY Daemon] Failed to create PTY:', sanitized);
+      console.error('[PTY Daemon] Failed to create PTY:', error instanceof Error ? error.message : String(error));
       throw error;
     }
   }
@@ -547,12 +541,7 @@ if (require.main === module) {
     new PtyDaemon();
     console.error('[PTY Daemon] Running - PID:', process.pid);
   } catch (error) {
-    const safeMsg = error instanceof Error ? error.message : String(error);
-    const sanitized = safeMsg
-      // biome-ignore lint/suspicious/noControlCharactersInRegex: Intentionally matching control chars for sanitization
-      .replace(/[\x00-\x1F\x7F]/g, ' ')
-      .slice(0, 200);
-    console.error('[PTY Daemon] Fatal error:', sanitized);
+    console.error('[PTY Daemon] Fatal error:', error instanceof Error ? error.message : String(error));
     process.exit(1);
   }
 }
