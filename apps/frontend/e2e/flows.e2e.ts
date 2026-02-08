@@ -9,11 +9,12 @@
  * To run: npx playwright test --config=e2e/playwright.config.ts
  */
 import { test, expect, _electron as electron, ElectronApplication, Page } from '@playwright/test';
-import { mkdirSync, rmSync, existsSync, writeFileSync, readFileSync } from 'fs';
+import { mkdirSync, rmSync, existsSync, writeFileSync, readFileSync, mkdtempSync } from 'fs';
+import { tmpdir } from 'os';
 import path from 'path';
 
-// Test data directory
-const TEST_DATA_DIR = '/tmp/auto-claude-ui-e2e';
+// Test data directory - use mkdtemp for secure temp directory creation
+const TEST_DATA_DIR = mkdtempSync(path.join(tmpdir(), 'auto-claude-ui-e2e-'));
 const TEST_PROJECT_DIR = path.join(TEST_DATA_DIR, 'test-project');
 
 // Setup test environment

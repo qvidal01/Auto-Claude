@@ -56,8 +56,9 @@ beforeEach(() => {
   localStorageMock.clear();
 
   // Use a unique subdirectory per test to avoid race conditions in parallel tests
-  const testId = `test-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-  const _testDir = path.join(TEST_DATA_DIR, testId);
+  // Note: We generate a unique test ID but don't use it directly since tests
+  // create their own subdirectories as needed
+  `test-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
   try {
     if (existsSync(TEST_DATA_DIR)) {
@@ -124,6 +125,24 @@ console.error = (...args: unknown[]) => {
   // Allow certain error messages through for debugging
   const message = args[0]?.toString() || '';
   if (message.includes('[TEST]')) {
-    originalConsoleError(...args);
+    // Sanitize arguments before logging to prevent log injection
+    const sanitizedArgs = args.map((arg) => {
+      if (typeof arg === 'string') {
+        // Remove control characters that could be used for log injection
+        return arg.replace(/[\r\n\t]/g, ' ').slice(0, 500);
+      }
+      if (arg === null || arg === undefined) {
+        return arg;
+      }
+      if (typeof arg === 'object') {
+        try {
+          return JSON.stringify(arg);
+        } catch {
+          return '[Object]';
+        }
+      }
+      return arg;
+    });
+    originalConsoleError(...sanitizedArgs);
   }
 };

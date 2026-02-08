@@ -277,7 +277,11 @@ async function main() {
 // Run main() only when this file is executed directly (not when imported for testing)
 if (require.main === module) {
   main().catch((err) => {
-    console.error(`[package] Error: ${err.message}`);
+    // Sanitize error message to prevent log injection
+    const safeMessage = String(err.message || 'Unknown error')
+      .replace(/[\r\n\t]/g, ' ')
+      .slice(0, 200);
+    console.error(`[package] Error: ${safeMessage}`);
     process.exitCode = 1;
   });
 }

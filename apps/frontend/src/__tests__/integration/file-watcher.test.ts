@@ -3,12 +3,13 @@
  * Tests FileWatcher triggers on plan changes
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { mkdirSync, writeFileSync, rmSync, existsSync } from 'fs';
+import { mkdirSync, writeFileSync, rmSync, existsSync, mkdtempSync } from 'fs';
+import { tmpdir } from 'os';
 import path from 'path';
 import { EventEmitter } from 'events';
 
-// Test directories
-const TEST_DIR = '/tmp/file-watcher-test';
+// Test directories - use mkdtemp for secure temp directory creation
+const TEST_DIR = mkdtempSync(path.join(tmpdir(), 'file-watcher-test-'));
 const TEST_SPEC_DIR = path.join(TEST_DIR, 'test-spec');
 
 // Mock chokidar watcher

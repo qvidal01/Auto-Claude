@@ -256,9 +256,28 @@ export async function githubFetch(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<unknown> {
+  // Validate endpoint: either relative path or trusted GitHub URL
   const url = endpoint.startsWith('http')
     ? endpoint
     : `https://api.github.com${endpoint}`;
+
+  // Security check: ensure URL points to github.com or api.github.com
+  if (url.startsWith('http')) {
+    const allowedHosts = ['github.com', 'api.github.com', 'gist.github.com'];
+    let urlHost: string;
+    try {
+      urlHost = new URL(url).host;
+    } catch {
+      throw new Error(`Invalid GitHub URL: ${url}`);
+    }
+    // Check if the host ends with one of the allowed hosts (supports subdomains)
+    const isAllowed = allowedHosts.some(allowed =>
+      urlHost === allowed || urlHost.endsWith(`.${allowed}`)
+    );
+    if (!isAllowed) {
+      throw new Error(`Unauthorized GitHub host: ${urlHost}`);
+    }
+  }
 
   const response = await fetch(url, {
     ...options,

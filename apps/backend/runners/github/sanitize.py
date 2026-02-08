@@ -75,9 +75,11 @@ class ContentSanitizer:
     # Patterns for dangerous content
     HTML_COMMENT_PATTERN = re.compile(r"<!--[\s\S]*?-->", re.MULTILINE)
     # Use [\s\S]*? to match any character including newlines between tags
-    # The pattern [\s\S]*?> allows for any whitespace (including newlines) before the closing >
-    SCRIPT_TAG_PATTERN = re.compile(r"<script[\s\S]*?</script[\s\S]*?>", re.IGNORECASE)
-    STYLE_TAG_PATTERN = re.compile(r"<style[\s\S]*?</style[\s\S]*?>", re.IGNORECASE)
+    # The pattern [\s\S]*? non-greedily matches any characters (including newlines)
+    SCRIPT_TAG_PATTERN = re.compile(
+        r"<script\b[^>]*>[\s\S]*?</script\s*>", re.IGNORECASE
+    )
+    STYLE_TAG_PATTERN = re.compile(r"<style\b[^>]*>[\s\S]*?</style\s*>", re.IGNORECASE)
 
     # Patterns that look like prompt injection attempts
     INJECTION_PATTERNS = [

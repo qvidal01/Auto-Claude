@@ -440,7 +440,19 @@ class SecurityScanner:
         """Redact a secret for safe logging."""
         if len(text) <= 8:
             return "*" * len(text)
+        # Show only first 4 and last 4 characters, redact the middle
         return text[:4] + "*" * (len(text) - 8) + text[-4:]
+
+    def _redact_log_message(self, message: str) -> str:
+        """Redact potentially sensitive information from log messages."""
+        # Remove common secret patterns from log messages
+        import re
+
+        # Redact things that look like API keys, tokens, passwords
+        redacted = re.sub(r"([a-zA-Z0-9_-]{32,})", "[REDACTED]", message)
+        # Redact things that look like base64
+        redacted = re.sub(r"[A-Za-z0-9+/]{64,}={0,2}", "[REDACTED]", redacted)
+        return redacted[:500]  # Also limit length
 
     def _save_results(self, spec_dir: Path, result: SecurityScanResult) -> None:
         """Save scan results to spec directory."""

@@ -1098,7 +1098,11 @@ async function downloadAllPlatforms() {
     try {
       await downloadPython(platform, arch);
     } catch (error) {
-      console.error(`[download-python] Failed for ${platform}-${arch}: ${error.message}`);
+      // Sanitize error message to prevent log injection
+      const safeMessage = String(error.message || 'Unknown error')
+        .replace(/[\r\n\t]/g, ' ')
+        .slice(0, 200);
+      console.error(`[download-python] Failed for ${platform}-${arch}: ${safeMessage}`);
       throw error;
     }
   }
@@ -1177,7 +1181,11 @@ Examples:
     }
     console.log('[download-python] Done!');
   } catch (error) {
-    console.error(`[download-python] Error: ${error.message}`);
+    // Sanitize error message to prevent log injection
+    const safeMessage = String(error.message || 'Unknown error')
+      .replace(/[\r\n\t]/g, ' ')
+      .slice(0, 200);
+    console.error(`[download-python] Error: ${safeMessage}`);
     process.exit(1);
   }
 }
