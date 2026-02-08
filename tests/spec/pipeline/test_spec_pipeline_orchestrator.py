@@ -8,7 +8,7 @@ They are marked as slow and can be excluded with: pytest -m "not slow"
 
 import json
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch, call
+from unittest.mock import AsyncMock, MagicMock, patch
 from datetime import datetime, timedelta
 
 import pytest

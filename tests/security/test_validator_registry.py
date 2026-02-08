@@ -4,12 +4,9 @@ Comprehensive tests for validator_registry.py
 Tests the central registry that maps command names to their validation functions.
 """
 
-import pytest
-from pathlib import Path
-from unittest.mock import MagicMock, patch, call
 
 from security.validator_registry import VALIDATORS, get_validator
-from security.validation_models import ValidationResult, ValidatorFunction
+from security.validation_models import ValidationResult
 
 
 class TestValidatorsDict:

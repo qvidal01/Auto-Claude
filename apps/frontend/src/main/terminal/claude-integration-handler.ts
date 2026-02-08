@@ -952,10 +952,11 @@ function executeProfileCommand(options: ExecuteProfileCommandOptions): boolean {
   });
 
   if (token) {
-    const nonce = crypto.randomBytes(8).toString('hex');
+    // Use cryptographically random nonce for secure temp file creation
+    const nonce = crypto.randomBytes(16).toString('hex');
     const tempFile = path.join(
       os.tmpdir(),
-      `.claude-token-${Date.now()}-${nonce}${getTempFileExtension()}`
+      `.claude-token-${nonce}${getTempFileExtension()}`
     );
     debugLog(`${logPrefix} Writing token to temp file:`, tempFile);
     fs.writeFileSync(tempFile, generateTokenTempFileContent(token), { mode: 0o600 });
@@ -1030,10 +1031,11 @@ async function executeProfileCommandAsync(options: ExecuteProfileCommandOptions)
   });
 
   if (token) {
-    const nonce = crypto.randomBytes(8).toString('hex');
+    // Use cryptographically random nonce for secure temp file creation
+    const nonce = crypto.randomBytes(16).toString('hex');
     const tempFile = path.join(
       os.tmpdir(),
-      `.claude-token-${Date.now()}-${nonce}${getTempFileExtension()}`
+      `.claude-token-${nonce}${getTempFileExtension()}`
     );
     debugLog(`${logPrefix} Writing token to temp file:`, tempFile);
     await fsPromises.writeFile(tempFile, generateTokenTempFileContent(token), { mode: 0o600 });

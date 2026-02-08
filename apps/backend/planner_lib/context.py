@@ -104,8 +104,7 @@ class ContextLoader:
                 )
                 if declared_type in _WORKFLOW_TYPE_MAPPING:
                     return _WORKFLOW_TYPE_MAPPING[declared_type]
-            except (json.JSONDecodeError, KeyError):
-                # Invalid JSON; skip
+            except (json.JSONDecodeError, KeyError):  # Invalid JSON; skip
                 pass
 
         # 2. Check complexity_assessment.json (AI's assessment)
@@ -119,8 +118,7 @@ class ContextLoader:
                 )
                 if declared_type in _WORKFLOW_TYPE_MAPPING:
                     return _WORKFLOW_TYPE_MAPPING[declared_type]
-            except (json.JSONDecodeError, KeyError):
-                # Invalid JSON; skip
+            except (json.JSONDecodeError, KeyError):  # Invalid JSON; skip
                 pass
 
         # 3. & 4. Fall back to spec content detection

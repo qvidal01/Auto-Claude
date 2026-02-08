@@ -200,8 +200,7 @@ class ServiceOrchestrator:
                         health_check_url=health_url,
                     )
                 )
-        except Exception:
-            # Non-critical error; continue
+        except Exception:  # Non-critical error; continue
             pass
 
     def _discover_monorepo_services(self) -> None:
@@ -379,8 +378,7 @@ class ServiceOrchestrator:
                     capture_output=True,
                     timeout=60,
                 )
-        except Exception:
-            # Non-critical error; continue
+        except Exception:  # Non-critical error; continue
             pass
 
     def _stop_local_services(self) -> None:
@@ -392,8 +390,7 @@ class ServiceOrchestrator:
             except Exception:
                 try:
                     proc.kill()
-                except Exception:
-                    # Non-critical error; continue
+                except Exception:  # Non-critical error; continue
                     pass
         self._processes.clear()
 
@@ -408,8 +405,7 @@ class ServiceOrchestrator:
             )
             if proc.returncode == 0:
                 return ["docker", "compose", "-f", str(self._compose_file)]
-        except Exception:
-            # Non-critical error; continue
+        except Exception:  # Non-critical error; continue
             pass
 
         # Try docker-compose v1
@@ -421,8 +417,7 @@ class ServiceOrchestrator:
             )
             if proc.returncode == 0:
                 return ["docker-compose", "-f", str(self._compose_file)]
-        except Exception:
-            # Non-critical error; continue
+        except Exception:  # Non-critical error; continue
             pass
 
         return None

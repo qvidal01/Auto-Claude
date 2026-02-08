@@ -2,8 +2,7 @@
 
 from analysis.analyzers.context.monitoring_detector import MonitoringDetector
 from pathlib import Path
-from unittest.mock import MagicMock, patch
-import pytest
+from unittest.mock import patch
 
 
 def test_MonitoringDetector___init__():

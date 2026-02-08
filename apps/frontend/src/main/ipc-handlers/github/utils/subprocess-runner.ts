@@ -26,6 +26,30 @@ import { isWindows, isMacOS } from '../../../platform';
 const execAsync = promisify(exec);
 
 /**
+ * Sanitize string data for safe logging
+ *
+ * Removes control characters (especially newlines and carriage returns)
+ * that could be used for log injection attacks. This prevents external data
+ * (from subprocesses, APIs, files, etc.) from injecting fake log entries.
+ *
+ * @param data - The string to sanitize
+ * @param maxLength - Maximum length to prevent log flooding (default 1000)
+ * @returns Sanitized string safe for logging
+ */
+function sanitizeForLog(data: string, maxLength = 1000): string {
+  if (!data) return '';
+
+  // Remove control characters that could enable log injection
+  // Keep tabs for formatting, remove everything else
+  const sanitized = data
+    .replace(/[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F]/g, '')  // Remove control chars except tab
+    .replace(/[\r\n]+/g, '⏎ ')  // Replace newlines with visible symbol
+    .substring(0, maxLength);  // Limit length
+
+  return sanitized;
+}
+
+/**
  * Create a fallback environment for Python subprocesses when no env is provided.
  * This is used for backwards compatibility when callers don't use getRunnerEnv().
  *
@@ -393,8 +417,8 @@ export function runPythonSubprocess<T = unknown>(
       if (process.env.NODE_ENV === 'development') {
         console.log('[DEBUG] Process exited with code:', exitCode, '(raw:', code, ')');
         console.log('[DEBUG] Raw stdout length:', stdout.length);
-        console.log('[DEBUG] Raw stdout (first 1000 chars):', stdout.substring(0, 1000));
-        console.log('[DEBUG] Raw stderr (first 500 chars):', stderr.substring(0, 500));
+        console.log('[DEBUG] Raw stdout (first 1000 chars):', sanitizeForLog(stdout.substring(0, 1000)));
+        console.log('[DEBUG] Raw stderr (first 500 chars):', sanitizeForLog(stderr.substring(0, 500)));
       }
 
       // Note: Auth failure detection now happens in real-time during stdout/stderr processing
@@ -712,12 +736,12 @@ export function parseJSONFromOutput<T>(stdout: string): T {
 
     try {
       // Debug: log the exact string we're trying to parse
-      console.log('[DEBUG] Attempting to parse JSON:', jsonStr.substring(0, 200) + '...');
+      console.log('[DEBUG] Attempting to parse JSON:', sanitizeForLog(jsonStr.substring(0, 200)) + '...');
       return JSON.parse(jsonStr);
     } catch (parseError) {
       // Provide a more helpful error message with details
       console.error('[DEBUG] JSON parse failed:', parseError);
-      console.error('[DEBUG] JSON string (first 500 chars):', jsonStr.substring(0, 500));
+      console.error('[DEBUG] JSON string (first 500 chars):', sanitizeForLog(jsonStr.substring(0, 500)));
       throw new Error('Failed to parse JSON response from backend. The analysis completed but the response format was invalid.');
     }
   }

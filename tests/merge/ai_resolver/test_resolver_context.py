@@ -2,9 +2,6 @@
 
 from merge.ai_resolver.context import ConflictContext
 from merge.types import ChangeType, SemanticChange
-from pathlib import Path
-from unittest.mock import MagicMock, patch
-import pytest
 
 
 def test_ConflictContext_to_prompt_context():

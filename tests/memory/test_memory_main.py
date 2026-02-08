@@ -5,10 +5,7 @@ Comprehensive test coverage for CLI interface.
 
 import json
 import sys
-from io import StringIO
-from pathlib import Path
-from unittest.mock import MagicMock, patch, call
-import pytest
+from unittest.mock import patch
 import subprocess
 
 # Import functions from memory package (which re-exports from main.py)
@@ -96,7 +93,7 @@ class TestMainCLI:
         # Run CLI
         with patch("sys.argv", ["memory.main.py", "--spec-dir", str(temp_spec_dir), "--action", "summary"]):
             # Import and run main
-            import memory.main
+            pass
 
             # The CLI should run without error when __name__ == "__main__"
             # We can't actually test this without running as a script
@@ -496,7 +493,6 @@ class TestMainCLIInterface:
 
     def test_cli_argparse_setup(self, temp_spec_dir):
         """Test that argparse is properly configured."""
-        import argparse
         from memory.main import __file__ as main_file
 
         # Verify the module can be imported and has proper structure

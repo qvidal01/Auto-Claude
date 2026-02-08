@@ -10,8 +10,6 @@ from merge.conflict_analysis import (
 )
 from merge.compatibility_rules import CompatibilityRule, index_rules
 from merge.types import ChangeType, SemanticChange, FileAnalysis, ConflictSeverity, MergeStrategy
-from datetime import datetime
-import pytest
 
 
 class TestDetectConflicts:

@@ -4,10 +4,8 @@ Tests prompt loading, branch validation, recovery context, and QA prompt generat
 """
 
 import json
-import os
 from pathlib import Path
-from unittest.mock import MagicMock, patch, Mock
-from unittest.mock import AsyncMock
+from unittest.mock import patch, Mock
 import pytest
 
 from prompts_pkg.prompts import (

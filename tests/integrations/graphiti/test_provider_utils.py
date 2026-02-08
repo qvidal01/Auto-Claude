@@ -5,8 +5,7 @@ including is_graphiti_enabled() and get_graph_hints().
 """
 
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, Mock, patch
-import tempfile
+from unittest.mock import AsyncMock, MagicMock, patch
 import sys
 
 import pytest
@@ -981,7 +980,6 @@ class TestGetGraphHintsMemoryConfiguration:
     async def test_uses_project_group_mode(self):
         """Test get_graph_hints creates memory with PROJECT group mode."""
         from integrations.graphiti.providers_pkg.utils import get_graph_hints
-        from integrations.graphiti.providers_pkg.utils import is_graphiti_enabled
 
         mock_memory = MagicMock()
         mock_memory.get_relevant_context = AsyncMock(return_value=[])

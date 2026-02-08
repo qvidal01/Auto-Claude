@@ -2,15 +2,13 @@
 
 from analysis.ci_discovery import (
     CIDiscovery,
-    CIConfig,
-    CIWorkflow,
     discover_ci,
     get_ci_system,
     get_ci_test_commands,
     main,
 )
 from pathlib import Path
-from unittest.mock import MagicMock, patch, Mock
+from unittest.mock import patch
 import pytest
 import tempfile
 import shutil

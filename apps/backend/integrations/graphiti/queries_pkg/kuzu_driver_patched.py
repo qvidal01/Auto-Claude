@@ -117,8 +117,7 @@ def create_patched_kuzu_driver(db: str = ":memory:", max_concurrent_queries: int
                                     logger.debug(
                                         f"Dropped existing FTS index: {index_name}"
                                     )
-                                except Exception:
-                                    # Index might not exist, that's fine
+                                except Exception:  # Index might not exist, that's fine
                                     pass
 
                         # Create the FTS index

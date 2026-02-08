@@ -6,7 +6,6 @@ Tests for FileCategorizer class including all categorization logic,
 edge cases, and various file type handling.
 """
 
-import pytest
 
 from context.categorizer import FileCategorizer
 from context.models import FileMatch

@@ -40,8 +40,11 @@ class ContextBuilder:
             try:
                 with open(index_file, encoding="utf-8") as f:
                     return json.load(f)
-            except (OSError, json.JSONDecodeError, UnicodeDecodeError):
-                # Corrupted or legacy-encoded file, regenerate
+            except (
+                OSError,
+                json.JSONDecodeError,
+                UnicodeDecodeError,
+            ):  # Corrupted or legacy-encoded file, regenerate
                 pass
 
         # Try to create one

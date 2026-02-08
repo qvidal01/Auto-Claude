@@ -12,12 +12,9 @@ Tests for ReviewState approval and rejection methods:
 
 import sys
 from pathlib import Path
-from unittest.mock import MagicMock, patch
 
-import pytest
 
 from review import ReviewState, REVIEW_STATE_FILE
-from tests.review_fixtures import approved_state, pending_state, review_spec_dir
 
 
 class TestReviewStateApproval:
@@ -41,7 +38,6 @@ class TestReviewStateApproval:
         # Get the review.state module from sys.modules
         review_state_module = sys.modules.get('review.state')
         if review_state_module is None:
-            import review.state
             review_state_module = sys.modules['review.state']
 
         # Reload review.state to get a fresh import

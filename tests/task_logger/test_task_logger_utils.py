@@ -1,8 +1,6 @@
 """Tests for task_logger/utils.py"""
 
 from pathlib import Path
-from unittest.mock import patch, MagicMock
-import pytest
 
 from task_logger.utils import (
     get_task_logger,
@@ -10,7 +8,7 @@ from task_logger.utils import (
     update_task_logger_path,
 )
 from task_logger.logger import TaskLogger
-from task_logger.models import LogEntry, LogEntryType, LogPhase
+from task_logger.models import LogPhase
 
 
 class TestGetTaskLogger:

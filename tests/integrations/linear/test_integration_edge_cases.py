@@ -5,17 +5,13 @@ Tests edge cases, boundary conditions, and less-traveled code paths.
 """
 
 import json
-import os
 from pathlib import Path
-from unittest.mock import MagicMock, patch, PropertyMock
-import tempfile
+from unittest.mock import MagicMock, patch
 
-import pytest
 
 from integrations.linear.integration import (
     LinearManager,
     get_linear_manager,
-    is_linear_enabled,
     prepare_coder_linear_instructions,
     prepare_planner_linear_instructions,
 )

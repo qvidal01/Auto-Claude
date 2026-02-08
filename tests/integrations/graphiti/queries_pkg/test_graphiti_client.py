@@ -11,10 +11,8 @@ Tests cover:
 """
 
 import asyncio
-import sys
-from datetime import datetime, timezone
-from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, Mock, patch
+from datetime import datetime
+from unittest.mock import AsyncMock, MagicMock, patch
 import builtins
 
 import pytest

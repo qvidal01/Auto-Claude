@@ -3,7 +3,7 @@
 from ideation.project_index_phase import ProjectIndexPhase
 from ideation.script_runner import ScriptRunner
 from pathlib import Path
-from unittest.mock import MagicMock, patch, AsyncMock, Mock
+from unittest.mock import patch
 import pytest
 
 

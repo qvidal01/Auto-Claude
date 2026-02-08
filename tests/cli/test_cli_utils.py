@@ -8,10 +8,8 @@ print_banner, get_project_dir, and find_specs_dir functions.
 import os
 import sys
 from pathlib import Path
-from unittest.mock import MagicMock, Mock, patch
-from importlib import reload
+from unittest.mock import MagicMock, patch
 
-import pytest
 
 
 # =============================================================================
@@ -59,7 +57,6 @@ class TestImportDotenv:
         """Test that import_dotenv provides helpful error message."""
         # This is tested implicitly by the SystemExit test above
         # The error message should include installation instructions
-        pass
 
 
 # =============================================================================
@@ -119,7 +116,6 @@ class TestSetupEnvironment:
 
         # This tests the fallback behavior when primary .env doesn't exist
         # but dev .env does
-        pass
 
     def test_setup_environment_no_env_file(self, tmp_path):
         """Test setup_environment works when no .env file exists."""

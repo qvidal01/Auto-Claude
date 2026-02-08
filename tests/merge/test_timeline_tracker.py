@@ -3,7 +3,7 @@
 import sys
 from datetime import datetime
 from pathlib import Path
-from unittest.mock import MagicMock, patch, mock_open
+from unittest.mock import MagicMock, patch
 import pytest
 import tempfile
 
@@ -12,7 +12,6 @@ from merge.timeline_models import (
     BranchPoint,
     FileTimeline,
     MainBranchEvent,
-    MergeContext,
     TaskFileView,
     TaskIntent,
     WorktreeState,

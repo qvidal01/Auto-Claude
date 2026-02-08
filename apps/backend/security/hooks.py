@@ -116,9 +116,9 @@ async def bash_security_hook(
     # Check each command against the allowlist
     for cmd in commands:
         # Check if command is allowed
-        is_allowed, reason = is_command_allowed(cmd, profile)
+        allowlist_allowed, reason = is_command_allowed(cmd, profile)
 
-        if not is_allowed:
+        if not allowlist_allowed:
             return {
                 "hookSpecificOutput": {
                     "hookEventName": "PreToolUse",
@@ -134,8 +134,8 @@ async def bash_security_hook(
                 cmd_segment = command
 
             validator = VALIDATORS[cmd]
-            allowed, reason = validator(cmd_segment)
-            if not allowed:
+            validator_allowed, reason = validator(cmd_segment)
+            if not validator_allowed:
                 return {
                     "hookSpecificOutput": {
                         "hookEventName": "PreToolUse",

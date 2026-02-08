@@ -7,12 +7,9 @@ and all search functionality paths.
 """
 
 from pathlib import Path
-from unittest.mock import patch, MagicMock
-import pytest
+from unittest.mock import patch
 
 from context.search import CodeSearcher
-from context.models import FileMatch
-from context.constants import SKIP_DIRS, CODE_EXTENSIONS
 
 
 class TestCodeSearcherInit:

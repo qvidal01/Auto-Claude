@@ -1,10 +1,7 @@
 """Comprehensive tests for file_merger module"""
 
 from datetime import datetime
-from pathlib import Path
-from unittest.mock import MagicMock, Mock, patch
 
-import pytest
 
 from merge.file_merger import (
     apply_ai_merge,

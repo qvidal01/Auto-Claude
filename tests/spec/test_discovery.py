@@ -5,7 +5,6 @@ Can be excluded with: pytest -m "not slow"
 """
 
 import json
-import shutil
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -92,7 +91,6 @@ class TestRunDiscoveryScript:
         """Test handling missing analyzer script"""
         # Create a temporary directory structure where we know the script won't exist
         import tempfile
-        import shutil
 
         with tempfile.TemporaryDirectory() as temp_dir:
             project_dir = Path(temp_dir) / "project"

@@ -8,6 +8,7 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
+import * as crypto from 'crypto';
 import { getAppPath, isImmutableEnvironment, getMemoriesDir } from './config-paths';
 
 /**
@@ -59,8 +60,9 @@ export function getWritablePath(originalPath: string, filename: string): string 
 
   try {
     if (fs.existsSync(dir)) {
-      // Try to write a test file
-      const testFile = path.join(dir, `.write-test-${Date.now()}`);
+      // Try to write a test file using a cryptographically random name
+      const randomSuffix = crypto.randomBytes(16).toString('hex');
+      const testFile = path.join(dir, `.write-test-${randomSuffix}`);
       fs.writeFileSync(testFile, '', 'utf-8');
       // Cleanup test file - ignore errors (e.g., file locked on Windows)
       try { fs.unlinkSync(testFile); } catch { /* ignore cleanup failure */ }

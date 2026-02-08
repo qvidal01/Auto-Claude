@@ -215,8 +215,7 @@ def run_review_checkpoint(
                 dt = datetime.fromisoformat(state.approved_at)
                 formatted = dt.strftime("%Y-%m-%d %H:%M")
                 content.append(f"{muted('Approved at:')} {formatted}")
-            except ValueError:
-                # Invalid date format; skip displaying approval time
+            except ValueError:  # Invalid date format; skip displaying approval time
                 pass
         print()
         print(box(content, width=60, style="light"))

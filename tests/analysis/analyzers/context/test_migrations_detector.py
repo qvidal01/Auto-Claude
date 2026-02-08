@@ -2,8 +2,7 @@
 
 from analysis.analyzers.context.migrations_detector import MigrationsDetector
 from pathlib import Path
-from unittest.mock import MagicMock, patch
-import pytest
+from unittest.mock import patch
 
 
 def test_MigrationsDetector___init__():

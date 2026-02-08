@@ -7,7 +7,7 @@ error handling, and all functionality paths.
 """
 
 import pytest
-from unittest.mock import patch, MagicMock, AsyncMock
+from unittest.mock import patch, AsyncMock
 
 
 class TestGraphitiAvailability:

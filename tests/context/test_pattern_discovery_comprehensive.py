@@ -7,8 +7,7 @@ error handling, edge cases, and all functionality paths.
 """
 
 from pathlib import Path
-from unittest.mock import patch, MagicMock
-import pytest
+from unittest.mock import patch
 
 from context.pattern_discovery import PatternDiscoverer
 from context.models import FileMatch

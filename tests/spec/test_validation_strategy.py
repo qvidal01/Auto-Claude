@@ -1,14 +1,12 @@
 """Tests for validation_strategy module"""
 
-from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
 from spec.validation_strategy import (
     ValidationStrategy,
     ValidationStrategyBuilder,
-    ValidationStep,
     build_validation_strategy,
     detect_project_type,
     get_strategy_as_dict,

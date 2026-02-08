@@ -9,10 +9,7 @@ Can be excluded with: pytest -m "not slow"
 """
 
 import json
-from datetime import datetime, timedelta
-from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch, call, mock_open
-from typing import Any
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 

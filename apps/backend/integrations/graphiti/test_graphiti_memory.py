@@ -62,7 +62,7 @@ def apply_ladybug_monkeypatch():
 
         sys.modules["kuzu"] = real_ladybug
         return True
-    except ImportError:
+    except Exception:  # Test cleanup, ignore errors
         pass
 
     # Try native kuzu as fallback

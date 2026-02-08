@@ -1,9 +1,7 @@
 """Tests for scan_secrets"""
 
-import pytest
 import subprocess
-from pathlib import Path
-from unittest.mock import MagicMock, patch, mock_open
+from unittest.mock import MagicMock, patch
 from security.scan_secrets import (
     load_secretsignore,
     should_skip_file,

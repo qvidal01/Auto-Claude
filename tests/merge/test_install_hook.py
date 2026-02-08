@@ -1,12 +1,10 @@
 """Comprehensive tests for merge/install_hook.py"""
 
-import argparse
-import shutil
 import stat
 import sys
 import tempfile
 from pathlib import Path
-from unittest.mock import MagicMock, patch, mock_open
+from unittest.mock import patch
 import pytest
 
 from merge.install_hook import (

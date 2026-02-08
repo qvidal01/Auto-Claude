@@ -38,7 +38,7 @@ export function registerAppUpdateHandlers(): void {
         const result = await checkForUpdates();
         return { success: true, data: result };
       } catch (error) {
-        console.error('[app-update-handlers] Check for updates failed:', error);
+        console.error('[app-update-handlers] Check for updates failed:', error instanceof Error ? error.message : String(error));
         return {
           success: false,
           error: error instanceof Error ? error.message : 'Failed to check for updates'
@@ -58,7 +58,7 @@ export function registerAppUpdateHandlers(): void {
         await downloadUpdate();
         return { success: true };
       } catch (error) {
-        console.error('[app-update-handlers] Download update failed:', error);
+        console.error('[app-update-handlers] Download update failed:', error instanceof Error ? error.message : String(error));
         return {
           success: false,
           error: error instanceof Error ? error.message : 'Failed to download update'
@@ -78,7 +78,7 @@ export function registerAppUpdateHandlers(): void {
         await downloadStableVersion();
         return { success: true };
       } catch (error) {
-        console.error('[app-update-handlers] Download stable version failed:', error);
+        console.error('[app-update-handlers] Download stable version failed:', error instanceof Error ? error.message : String(error));
         return {
           success: false,
           error: error instanceof Error ? error.message : 'Failed to download stable version'
@@ -102,7 +102,7 @@ export function registerAppUpdateHandlers(): void {
         quitAndInstall();
         return { success: true };
       } catch (error) {
-        console.error('[app-update-handlers] Install update failed:', error);
+        console.error('[app-update-handlers] Install update failed:', error instanceof Error ? error.message : String(error));
         return {
           success: false,
           error: error instanceof Error ? error.message : 'Failed to install update'
@@ -122,7 +122,7 @@ export function registerAppUpdateHandlers(): void {
         const version = getCurrentVersion();
         return version;
       } catch (error) {
-        console.error('[app-update-handlers] Get version failed:', error);
+        console.error('[app-update-handlers] Get version failed:', error instanceof Error ? error.message : String(error));
         throw error;
       }
     }
@@ -142,7 +142,7 @@ export function registerAppUpdateHandlers(): void {
         const downloadedInfo = getDownloadedUpdateInfo();
         return { success: true, data: downloadedInfo };
       } catch (error) {
-        console.error('[app-update-handlers] Get downloaded update info failed:', error);
+        console.error('[app-update-handlers] Get downloaded update info failed:', error instanceof Error ? error.message : String(error));
         return {
           success: false,
           error: error instanceof Error ? error.message : 'Failed to get downloaded update info'

@@ -1,6 +1,5 @@
 """Tests for memory/__init__.py - Session memory system exports."""
 
-import pytest
 from pathlib import Path
 
 from memory import (
@@ -149,7 +148,6 @@ class TestMemoryModuleImports:
 
     def test_no_circular_imports(self):
         """Test that importing memory doesn't cause circular imports."""
-        import importlib
         import sys
 
         # Remove from cache if present

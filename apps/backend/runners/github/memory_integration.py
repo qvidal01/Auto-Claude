@@ -323,8 +323,7 @@ class GitHubMemoryIntegration:
                             )
                         )
 
-            except Exception:
-                # Graphiti failed, fall through to local
+            except Exception:  # Graphiti failed, fall through to local
                 pass
 
         # Add local insights
@@ -411,8 +410,7 @@ class GitHubMemoryIntegration:
                             "severity": severity,
                         },
                     )
-            except Exception:
-                # Graphiti failed, local storage is backup
+            except Exception:  # Graphiti failed, local storage is backup
                 pass
 
     async def store_review_outcome(
@@ -466,8 +464,7 @@ class GitHubMemoryIntegration:
                         "notes": notes,
                     },
                 )
-            except Exception:
-                # Non-critical error; continue
+            except Exception:  # Non-critical error; continue
                 pass
 
     async def get_codebase_patterns(
@@ -509,8 +506,7 @@ class GitHubMemoryIntegration:
                                 source="graphiti",
                             )
                         )
-            except Exception:
-                # Non-critical error; continue
+            except Exception:  # Non-critical error; continue
                 pass
 
         # Add local patterns
@@ -568,8 +564,7 @@ class GitHubMemoryIntegration:
                 if explanations:
                     return "Historical context:\n" + "\n".join(explanations)
 
-        except Exception:
-            # Non-critical error; continue
+        except Exception:  # Non-critical error; continue
             pass
 
         return None
@@ -579,8 +574,7 @@ class GitHubMemoryIntegration:
         if self._graphiti:
             try:
                 await self._graphiti.close()
-            except Exception:
-                # Non-critical error; continue
+            except Exception:  # Non-critical error; continue
                 pass
             self._graphiti = None
 

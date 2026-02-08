@@ -7,7 +7,7 @@ import pytest
 from integrations.graphiti.providers_pkg.embedder_providers.openai_embedder import (
     create_openai_embedder,
 )
-from integrations.graphiti.providers_pkg.exceptions import ProviderNotInstalled, ProviderError
+from integrations.graphiti.providers_pkg.exceptions import ProviderNotInstalled
 
 
 def test_create_openai_embedder():

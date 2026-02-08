@@ -35,7 +35,11 @@ if sys.platform == "win32":
             try:
                 _stream.reconfigure(encoding="utf-8", errors="replace")
                 continue
-            except (AttributeError, io.UnsupportedOperation, OSError):
+            except (
+                AttributeError,
+                io.UnsupportedOperation,
+                OSError,
+            ):  # Stream doesn't support reconfigure
                 pass
         # Method 2: Wrap with TextIOWrapper for piped output
         try:
@@ -47,7 +51,11 @@ if sys.platform == "win32":
                     line_buffering=True,
                 )
                 setattr(sys, _stream_name, _new_stream)
-        except (AttributeError, io.UnsupportedOperation, OSError):
+        except (
+            AttributeError,
+            io.UnsupportedOperation,
+            OSError,
+        ):  # Stream doesn't support wrapper
             pass
     # Clean up temporary variables
     del _stream_name, _stream
@@ -66,7 +74,11 @@ def apply_monkeypatch():
 
         sys.modules["kuzu"] = real_ladybug
         return "ladybug"
-    except ImportError:
+    except (
+        OSError,
+        json.JSONDecodeError,
+        UnicodeDecodeError,
+    ):  # Corrupted file, will regenerate
         pass
 
     # Try native kuzu as fallback
@@ -260,12 +272,12 @@ def cmd_search(args):
     """Search memories by keyword."""
     if not apply_monkeypatch():
         output_error("Neither kuzu nor LadybugDB is installed")
-        return
+        return None
 
     conn, error = get_db_connection(args.db_path, args.database)
     if not conn:
         output_error(error or "Failed to connect to database")
-        return
+        return None
 
     try:
         limit = args.limit or 20
@@ -321,6 +333,7 @@ def cmd_search(args):
             True,
             data={"memories": memories, "count": len(memories), "query": args.query},
         )
+        return None
 
     except Exception as e:
         if "Episodic" in str(e) and (
@@ -329,6 +342,7 @@ def cmd_search(args):
             output_json(True, data={"memories": [], "count": 0, "query": args.query})
         else:
             output_error(f"Search failed: {e}")
+        return None
 
 
 def cmd_semantic_search(args):
@@ -573,8 +587,7 @@ def cmd_add_episode(args):
                 parsed = json.loads(content)
                 # Re-serialize to ensure consistent formatting
                 content = json.dumps(parsed)
-            except json.JSONDecodeError:
-                # If not valid JSON, use as-is
+            except json.JSONDecodeError:  # If not valid JSON, use as-is
                 pass
 
         # Generate unique ID
@@ -689,7 +702,11 @@ def extract_session_number(name: str) -> int | None:
     if match:
         try:
             return int(match.group(1))
-        except ValueError:
+        except (
+            OSError,
+            json.JSONDecodeError,
+            UnicodeDecodeError,
+        ):  # Corrupted file, will regenerate
             pass
     return None
 

@@ -1,10 +1,7 @@
 """Tests for debug module"""
 
 import asyncio
-import os
-import re
 from pathlib import Path
-from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -12,7 +9,6 @@ from core.debug import (
     Colors,
     _format_value,
     _get_debug_enabled,
-    _get_debug_level,
     _get_log_file,
     debug,
     debug_async_timer,

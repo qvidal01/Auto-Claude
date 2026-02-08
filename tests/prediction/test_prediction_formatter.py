@@ -1,6 +1,5 @@
 """Tests for prediction.formatter module."""
 
-import pytest
 
 from prediction.formatter import ChecklistFormatter
 from prediction.models import PreImplementationChecklist, PredictedIssue

@@ -3,10 +3,8 @@ Tests for review.reviewer module.
 """
 
 import json
-import sys
 from pathlib import Path
 from unittest.mock import MagicMock, patch
-from datetime import datetime
 
 import pytest
 
@@ -330,7 +328,6 @@ class TestRunReviewCheckpoint:
     @pytest.fixture
     def mock_open_file_in_editor(self, monkeypatch):
         """Fixture to mock open_file_in_editor function."""
-        import review.reviewer
 
         def mock_open_func(path):
             return True

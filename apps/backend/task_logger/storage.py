@@ -34,7 +34,11 @@ class LogStorage:
             try:
                 with open(self.log_file, encoding="utf-8") as f:
                     return json.load(f)
-            except (OSError, json.JSONDecodeError, UnicodeDecodeError):
+            except (
+                OSError,
+                json.JSONDecodeError,
+                UnicodeDecodeError,
+            ):  # File not found or corrupted
                 pass
 
         return {

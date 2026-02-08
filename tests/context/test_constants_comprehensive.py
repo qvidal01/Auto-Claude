@@ -6,7 +6,6 @@ Tests for constants including SKIP_DIRS, CODE_EXTENSIONS,
 and validation of their values.
 """
 
-import pytest
 from context.constants import SKIP_DIRS, CODE_EXTENSIONS
 
 

@@ -4,10 +4,8 @@ Tests for phase_event facade module (root level re-export).
 
 import json
 import os
-from io import StringIO
 from unittest.mock import patch
 
-import pytest
 
 # The root phase_event module re-exports from core.phase_event
 # We need to test that the re-exports work correctly

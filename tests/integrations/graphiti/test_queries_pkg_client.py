@@ -6,10 +6,7 @@ database connection, and lifecycle management.
 """
 
 import sys
-from datetime import datetime, timezone
-from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
-import tempfile
 
 import pytest
 

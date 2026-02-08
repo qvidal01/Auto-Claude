@@ -4,13 +4,10 @@ Comprehensive tests for Graphiti config module.
 Additional tests to improve coverage for GraphitiConfig and GraphitiState.
 """
 
-import json
 import os
 from pathlib import Path
-from datetime import datetime
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
-import pytest
 
 from integrations.graphiti.config import (
     GraphitiConfig,

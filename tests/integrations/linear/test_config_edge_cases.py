@@ -8,12 +8,8 @@ that may not be covered in the main test files.
 import json
 import os
 from pathlib import Path
-from datetime import datetime
-from unittest.mock import MagicMock, patch
-import tempfile
-import shutil
+from unittest.mock import patch
 
-import pytest
 
 from integrations.linear.config import (
     LABELS,

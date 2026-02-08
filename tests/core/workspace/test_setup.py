@@ -12,11 +12,8 @@ Comprehensive test coverage for workspace setup functionality including:
 
 import json
 import os
-import shutil
-import subprocess
 import sys
-from pathlib import Path
-from unittest.mock import MagicMock, patch, call
+from unittest.mock import MagicMock, patch
 import pytest
 
 from core.workspace.setup import (
@@ -24,7 +21,6 @@ from core.workspace.setup import (
     copy_env_files_to_worktree,
     symlink_node_modules_to_worktree,
     copy_spec_to_worktree,
-    setup_workspace,
     ensure_timeline_hook_installed,
     initialize_timeline_tracking,
     _ensure_timeline_hook_installed,

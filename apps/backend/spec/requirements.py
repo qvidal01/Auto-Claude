@@ -52,7 +52,7 @@ def open_editor_for_input(field_name: str) -> str:
         # Clean up temp file
         try:
             os.unlink(temp_path)
-        except OSError:
+        except Exception:  # no-op
             pass
 
 

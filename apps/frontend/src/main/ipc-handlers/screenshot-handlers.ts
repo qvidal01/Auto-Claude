@@ -52,7 +52,7 @@ export function registerScreenshotHandlers(): void {
         }))
       };
     } catch (error) {
-      console.error('Failed to get screenshot sources:', error);
+      console.error('Failed to get screenshot sources:', error instanceof Error ? error.message : String(error));
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Failed to get screenshot sources'
@@ -99,7 +99,7 @@ export function registerScreenshotHandlers(): void {
         data: dataUrl
       };
     } catch (error) {
-      console.error('Failed to capture screenshot:', error);
+      console.error('Failed to capture screenshot:', error instanceof Error ? error.message : String(error));
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Failed to capture screenshot'

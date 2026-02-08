@@ -15,12 +15,12 @@ Tests for the ProjectAnalyzer class and utility functions:
 import json
 from datetime import datetime
 from pathlib import Path
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
 from project.analyzer import ProjectAnalyzer
-from project.models import SecurityProfile, TechnologyStack, CustomScripts
+from project.models import SecurityProfile, TechnologyStack
 
 
 # =============================================================================

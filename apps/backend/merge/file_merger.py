@@ -206,15 +206,15 @@ def find_import_end(lines: list[str], file_path: str) -> int:
     Returns:
         Index where imports end (insert position for new imports)
     """
-    ext = Path(file_path).suffix.lower()
+    file_ext = Path(file_path).suffix.lower()
     last_import = 0
 
     for i, line in enumerate(lines):
         stripped = line.strip()
-        if ext == ".py":
+        if file_ext == ".py":
             if stripped.startswith(("import ", "from ")):
                 last_import = i + 1
-        elif ext in {".js", ".jsx", ".ts", ".tsx"}:
+        elif file_ext in {".js", ".jsx", ".ts", ".tsx"}:
             if stripped.startswith("import "):
                 last_import = i + 1
 

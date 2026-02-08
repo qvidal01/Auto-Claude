@@ -92,11 +92,10 @@ export function registerCreateRelease(): void {
       }
 
       try {
-        // Build and execute release command
+        // Build and execute release command using execFileSync for safer argument passing
         const args = buildReleaseArgs(version, releaseNotes, options);
-        const command = `gh ${args.map(a => `"${a.replace(/"/g, '\\"')}"`).join(' ')}`;
-
-        const output = execSync(command, {
+        // Use execFileSync with separate arguments array to avoid shell injection
+        const output = execFileSync('gh', args, {
           cwd: project.path,
           encoding: 'utf-8',
           stdio: 'pipe'

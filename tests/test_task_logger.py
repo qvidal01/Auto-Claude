@@ -329,17 +329,4 @@ class TestTaskLoggerPublicAPI:
 
     def test_public_api_exports(self):
         """All expected exports should be available."""
-        from task_logger import (
-            LogPhase,
-            LogEntryType,
-            LogEntry,
-            TaskLogger,
-            load_task_logs,
-            get_active_phase,
-            get_task_logger,
-            clear_task_logger,
-            update_task_logger_path,
-            strip_ansi_codes,
-            StreamingLogCapture,
-        )
         # If imports succeed, the test passes

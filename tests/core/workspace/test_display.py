@@ -8,8 +8,7 @@ Comprehensive test coverage for workspace display functionality including:
 - Backward compatibility aliases
 """
 
-from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 import pytest
 
 from core.workspace.display import (

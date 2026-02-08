@@ -10,7 +10,6 @@ Comprehensive tests for platform dependency validation including:
 """
 
 import sys
-from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -42,7 +41,6 @@ class TestValidatePlatformDependencies:
     def test_validate_pywin32_installed(self, mock_is_windows, mock_is_linux):
         """Test validate passes when pywin32 is installed on Windows."""
         # Create a real module-like object for pywintypes
-        import importlib
         import types
 
         # Create a mock pywintypes module
@@ -64,7 +62,6 @@ class TestValidatePlatformDependencies:
     @patch("pathlib.Path.exists", return_value=False)
     def test_validate_pywin32_missing_exits(self, mock_exists, mock_is_linux, mock_is_windows):
         """Test validate exits when pywin32 is missing on Windows."""
-        import types
 
         original_import = __builtins__["__import__"]
 
@@ -92,7 +89,6 @@ class TestValidatePlatformDependencies:
     @patch("pathlib.Path.exists", return_value=False)
     def test_validate_secretstorage_warns_only(self, mock_exists, mock_is_windows, mock_is_linux, capsys):
         """Test validate warns but continues when secretstorage is missing on Linux."""
-        import types
 
         original_import = __builtins__["__import__"]
 
@@ -314,7 +310,6 @@ class TestDependencyValidatorIntegration:
     @patch("pathlib.Path.exists", return_value=False)
     def test_linux_continues_without_secretstorage(self, mock_exists, mock_is_windows, mock_is_linux, capsys):
         """Test Linux continues execution without secretstorage."""
-        import types
 
         original_import = __builtins__["__import__"]
 
@@ -336,7 +331,6 @@ class TestDependencyValidatorIntegration:
     def test_venv_detection_in_error_messages(self, mock_exists, capsys):
         """Test that venv paths are correctly detected in error messages."""
         with patch("core.dependency_validator.is_windows", return_value=True):
-            import types
             original_import = __builtins__["__import__"]
             def mock_import(name, *args, **kwargs):
                 if name == "pywintypes":
@@ -355,7 +349,6 @@ class TestDependencyValidatorIntegration:
     @patch("core.dependency_validator.is_windows", return_value=True)
     def test_system_python_detection(self, mock_is_windows, mock_exists, capsys):
         """Test error messages for system Python without venv."""
-        import types
         original_import = __builtins__["__import__"]
         def mock_import(name, *args, **kwargs):
             if name == "pywintypes":
@@ -385,7 +378,6 @@ class TestPlatformSpecificBehavior:
         """Test Windows check takes precedence over Linux."""
         # This is an edge case - both returning True shouldn't happen
         # but Windows should take precedence if it does
-        import types
         original_import = __builtins__["__import__"]
         def mock_import(name, *args, **kwargs):
             if name == "pywintypes":

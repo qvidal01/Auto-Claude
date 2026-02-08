@@ -291,6 +291,5 @@ class StatusManager:
         if self.status_file.exists():
             try:
                 self.status_file.unlink()
-            except OSError:
-                # Non-critical error; continue
+            except OSError:  # Non-critical error; continue
                 pass

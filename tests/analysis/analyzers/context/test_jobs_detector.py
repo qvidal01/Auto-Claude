@@ -2,8 +2,7 @@
 
 from analysis.analyzers.context.jobs_detector import JobsDetector
 from pathlib import Path
-from unittest.mock import MagicMock, patch
-import pytest
+from unittest.mock import patch
 
 
 def test_JobsDetector___init__():

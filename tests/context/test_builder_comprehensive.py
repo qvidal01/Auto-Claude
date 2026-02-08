@@ -8,8 +8,7 @@ and all context building functionality paths.
 
 import asyncio
 import json
-from pathlib import Path
-from unittest.mock import patch, MagicMock, AsyncMock
+from unittest.mock import patch, AsyncMock
 import pytest
 
 from context.builder import ContextBuilder

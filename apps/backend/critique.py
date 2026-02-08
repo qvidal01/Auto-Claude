@@ -1,3 +1,3 @@
 """Backward compatibility shim - import from spec.critique instead."""
 
-from spec.critique import *  # noqa: F403
+from spec.critique import *  # noqa: F401, F403

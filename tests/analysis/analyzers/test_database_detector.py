@@ -2,8 +2,6 @@
 
 from analysis.analyzers.database_detector import DatabaseDetector
 from pathlib import Path
-from unittest.mock import MagicMock, patch
-import pytest
 
 
 def test_DatabaseDetector___init__():

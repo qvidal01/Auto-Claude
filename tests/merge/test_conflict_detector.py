@@ -1,9 +1,6 @@
 """Comprehensive tests for conflict_detector module"""
 
-from datetime import datetime
-from unittest.mock import MagicMock, patch
 
-import pytest
 
 from merge.compatibility_rules import CompatibilityRule
 from merge.conflict_detector import ConflictDetector, analyze_compatibility

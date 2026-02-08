@@ -46,6 +46,49 @@ function getGitLabRunnerPath(backendPath: string): string {
 const { debug: debugLog } = createContextLogger('GitLab MR');
 
 /**
+ * Sanitize content for inclusion in HTTP requests to GitLab
+ *
+ * This prevents potential injection attacks by sanitizing user-controlled
+ * content that will be sent to GitLab's API. File paths and code snippets
+ * from local files are escaped to prevent them from being interpreted as
+ * markdown or HTML that could leak local path information.
+ */
+function sanitizeForHttp(content: string): string {
+  if (!content) return '';
+
+  // Remove any absolute file paths that might leak local directory structure
+  const sanitized = content
+    // Remove Windows drive letters and paths
+    .replace(/[A-Z]:\\[^\\]*\\([^\\]+\\.?[a-zA-Z0-9]*)/gi, '<local-path>/$1')
+    // Remove Unix home paths
+    .replace(/\/(?:home|Users)\/[^/]+\//g, '<local-path>/')
+    // Remove other absolute Unix paths (but keep relative paths intact)
+    .replace(/\/(?:opt|usr|var|tmp|etc)(?:\/[^/\s]+)*\/([^/\s]+\.[a-zA-Z0-9]+)/g, '<local-path>/$1')
+    // Remove any remaining control characters
+    .replace(/[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F]/g, '');
+
+  return sanitized;
+}
+
+/**
+ * Sanitize a file path for safe display in GitLab comments
+ * Preserves the filename and relative structure but removes user-specific paths
+ */
+function sanitizeFilePath(filePath: string): string {
+  if (!filePath) return '<unknown-file>';
+
+  // Extract just the filename and a few parent directories for context
+  const parts = filePath.split(/[/\\]/);
+  if (parts.length <= 2) {
+    return filePath;
+  }
+
+  // Keep only the last 2-3 components of the path
+  const depth = Math.min(3, parts.length);
+  return parts.slice(-depth).join('/');
+}
+
+/**
  * Registry of running MR review processes
  * Key format: `${projectId}:${mrIid}`
  */
@@ -438,7 +481,8 @@ export function registerMRReviewHandlers(
           debugLog('Posting findings', { total: result.findings.length, selected: findings.length });
 
           // Build note body
-          let body = `## Auto Claude MR Review\n\n${result.summary}\n\n`;
+          // Sanitize summary to prevent path injection
+          let body = `## Auto Claude MR Review\n\n${sanitizeForHttp(result.summary)}\n\n`;
 
           if (findings.length > 0) {
             const countText = selectedSet
@@ -449,11 +493,14 @@ export function registerMRReviewHandlers(
             for (const f of findings) {
               const emoji = { critical: '🔴', high: '🟠', medium: '🟡', low: '🔵' }[f.severity] || '⚪';
               body += `#### ${emoji} [${f.severity.toUpperCase()}] ${f.title}\n`;
-              body += `📁 \`${f.file}:${f.line}\`\n\n`;
-              body += `${f.description}\n\n`;
+              // Sanitize file path to prevent leaking local directory structure
+              const sanitizedFile = sanitizeFilePath(f.file);
+              body += `📁 \`${sanitizedFile}:${f.line}\`\n\n`;
+              body += `${sanitizeForHttp(f.description)}\n\n`;
               const suggestedFix = f.suggestedFix?.trim();
               if (suggestedFix) {
-                body += `**Suggested fix:**\n\`\`\`\n${suggestedFix}\n\`\`\`\n\n`;
+                // Sanitize suggested fix content to prevent path injection
+                body += `**Suggested fix:**\n\`\`\`\n${sanitizeForHttp(suggestedFix)}\n\`\`\`\n\n`;
               }
             }
           } else {

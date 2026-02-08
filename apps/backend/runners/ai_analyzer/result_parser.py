@@ -33,7 +33,7 @@ class ResultParser:
         # Try direct parse
         try:
             return json.loads(response)
-        except json.JSONDecodeError:
+        except (AttributeError, io.UnsupportedOperation, OSError):  # Stream doesn't support reconfigure
             pass
 
         # Try extracting from markdown code block
@@ -43,7 +43,7 @@ class ResultParser:
             if end > start:
                 try:
                     return json.loads(response[start:end].strip())
-                except json.JSONDecodeError:
+                except (AttributeError, io.UnsupportedOperation, OSError):  # Stream doesn't support wrapper
                     pass
 
         # Try finding JSON object
@@ -52,7 +52,7 @@ class ResultParser:
         if start_idx >= 0 and end_idx > start_idx:
             try:
                 return json.loads(response[start_idx : end_idx + 1])
-            except json.JSONDecodeError:
+            except Exception:  # no-op
                 pass
 
         # Return default with raw response snippet

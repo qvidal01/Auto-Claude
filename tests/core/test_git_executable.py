@@ -5,7 +5,6 @@ import subprocess
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-import pytest
 
 from core.git_executable import (
     GIT_ENV_VARS_TO_CLEAR,

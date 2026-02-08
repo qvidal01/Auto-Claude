@@ -8,12 +8,9 @@ memory database from the Electron main process.
 
 import json
 import os
-import sys
-import tempfile
 from pathlib import Path
 from unittest.mock import MagicMock, Mock, patch
 
-import pytest
 
 # Import the module to test
 SCRIPT_PATH = Path(__file__).parent.parent / "apps" / "backend" / "query_memory.py"

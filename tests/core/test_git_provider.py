@@ -3,7 +3,6 @@
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-import pytest
 
 from core.git_provider import _classify_hostname, detect_git_provider
 

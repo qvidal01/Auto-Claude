@@ -465,14 +465,14 @@ export function registerSettingsHandlers(
       try {
         const parsedUrl = new URL(url);
         if (!['http:', 'https:'].includes(parsedUrl.protocol)) {
-          console.warn(`[SHELL_OPEN_EXTERNAL] Blocked URL with unsafe protocol: ${parsedUrl.protocol}`);
+          console.warn('[SHELL_OPEN_EXTERNAL] Blocked URL with unsafe protocol:', JSON.stringify(parsedUrl.protocol));
           throw new Error(`Unsafe URL protocol: ${parsedUrl.protocol}`);
         }
         await shell.openExternal(url);
       } catch (error) {
         if (error instanceof TypeError) {
           // Invalid URL format
-          console.warn(`[SHELL_OPEN_EXTERNAL] Invalid URL format: ${url}`);
+          console.warn('[SHELL_OPEN_EXTERNAL] Invalid URL format:', JSON.stringify(url));
           throw new Error('Invalid URL format');
         }
         throw error;
@@ -676,7 +676,7 @@ export function registerSettingsHandlers(
         };
       } catch (error) {
         // Log the error for debugging in production
-        console.error('[AUTOBUILD_SOURCE_ENV_GET] Error:', error);
+        console.error('[AUTOBUILD_SOURCE_ENV_GET] Error:', error instanceof Error ? error.message : String(error));
         return {
           success: false,
           error: error instanceof Error ? error.message : 'Failed to get source env'
@@ -799,7 +799,7 @@ export function registerSettingsHandlers(
         };
       } catch (error) {
         // Log the error for debugging in production
-        console.error('[AUTOBUILD_SOURCE_ENV_CHECK_TOKEN] Error:', error);
+        console.error('[AUTOBUILD_SOURCE_ENV_CHECK_TOKEN] Error:', error instanceof Error ? error.message : String(error));
         return {
           success: false,
           error: error instanceof Error ? error.message : 'Failed to check source token'
@@ -859,7 +859,7 @@ export function registerSettingsHandlers(
           data: { success: true }
         };
       } catch (error) {
-        console.error('[SPELLCHECK_SET_LANGUAGES] Error:', error);
+        console.error('[SPELLCHECK_SET_LANGUAGES] Error:', error instanceof Error ? error.message : String(error));
         return {
           success: false,
           error: error instanceof Error ? error.message : 'Failed to set spell check languages'

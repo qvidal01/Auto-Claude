@@ -2,7 +2,6 @@
 
 from context.search import CodeSearcher
 from pathlib import Path
-import pytest
 
 
 def test_CodeSearcher___init__():

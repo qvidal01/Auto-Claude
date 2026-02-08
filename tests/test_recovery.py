@@ -15,12 +15,11 @@ import sys
 import tempfile
 import shutil
 from pathlib import Path
-from datetime import datetime
 
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from recovery import RecoveryManager, FailureType, RecoveryAction
+from recovery import RecoveryManager, FailureType
 
 
 def setup_test_environment():

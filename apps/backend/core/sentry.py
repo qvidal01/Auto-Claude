@@ -248,7 +248,7 @@ def init_sentry(
             parsed = float(env_rate)
             if 0 <= parsed <= 1:
                 traces_sample_rate = parsed
-    except (ValueError, TypeError):
+    except Exception:  # Sentry not configured or unavailable
         pass
 
     # Configure logging integration to capture errors and warnings

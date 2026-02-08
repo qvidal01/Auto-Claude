@@ -4,13 +4,10 @@ Tests for phase_event
 Comprehensive test coverage for execution phase event emission protocol.
 """
 
-import importlib
 import json
 import os
 from core.phase_event import ExecutionPhase, emit_phase, PHASE_MARKER_PREFIX
-from unittest.mock import MagicMock, patch
-import pytest
-import sys
+from unittest.mock import patch
 
 
 class TestEmitPhaseBasic:

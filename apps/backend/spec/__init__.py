@@ -26,10 +26,11 @@ Usage:
 
 Note:
     SpecOrchestrator and get_specs_dir are lazy-imported to avoid circular
-    dependencies between spec.pipeline and core.client. The import chain:
-    spec.pipeline.agent_runner imports core.client, which imports
-    agents.tools_pkg, which imports from spec.validate_pkg, causing a cycle
-    when spec/__init__.py imports SpecOrchestrator at module level.
+    dependencies between spec.pipeline and core.client.
+
+    Module-level placeholders (with _ prefix) are defined for CodeQL static
+    analysis. The actual exported names (without _ prefix) trigger __getattr__
+    for lazy loading.
 """
 
 from typing import Any
@@ -42,6 +43,10 @@ from .complexity import (
     save_assessment,
 )
 from .phases import PhaseExecutor, PhaseResult
+
+# Module-level placeholders (with _ prefix) for CodeQL static analysis.
+_SpecOrchestrator: Any = None
+_get_specs_dir: Any = None
 
 __all__ = [
     # Main orchestrator
@@ -69,13 +74,13 @@ def __getattr__(name: str) -> Any:
 
     By deferring these imports via __getattr__, the import chain only
     executes when these symbols are actually accessed, breaking the cycle.
-
-    Imported objects are cached in globals() to avoid repeated imports.
     """
-    if name in ("SpecOrchestrator", "get_specs_dir"):
-        from .pipeline import SpecOrchestrator, get_specs_dir
+    if name == "SpecOrchestrator":
+        from .pipeline import SpecOrchestrator
 
-        # Cache in globals so subsequent accesses bypass __getattr__
-        globals().update(SpecOrchestrator=SpecOrchestrator, get_specs_dir=get_specs_dir)
-        return globals()[name]
+        return SpecOrchestrator
+    elif name == "get_specs_dir":
+        from .pipeline import get_specs_dir
+
+        return get_specs_dir
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

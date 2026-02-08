@@ -10,11 +10,10 @@ from analysis.security_scanner import (
     main,
 )
 from pathlib import Path
-from unittest.mock import MagicMock, patch, Mock
+from unittest.mock import patch, Mock
 import pytest
 import tempfile
 import shutil
-import json
 
 
 @pytest.fixture
@@ -264,7 +263,6 @@ class TestCheckBanditAvailable:
     @patch("subprocess.run")
     def test_bandit_not_found(self, mock_run):
         """Test when bandit is not found."""
-        import subprocess
         mock_run.side_effect = FileNotFoundError("bandit not found")
         scanner = SecurityScanner()
         result = scanner._check_bandit_available()

@@ -320,7 +320,7 @@ export function registerTaskCRUDHandlers(agentManager: AgentManager): void {
           console.warn(`[TASK_DELETE] Deleted spec directory: ${specDir}`);
         } catch (error) {
           const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-          console.error(`[TASK_DELETE] Error deleting spec directory ${specDir}:`, error);
+          console.error(`[TASK_DELETE] Error deleting spec directory ${specDir}:`, error instanceof Error ? error.message : String(error));
           hasErrors = true;
           errors.push(`${specDir}: ${errorMsg}`);
           // Continue with other locations even if one fails

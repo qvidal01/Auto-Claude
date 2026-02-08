@@ -12,9 +12,6 @@ Tests cover:
 - Edge cases and error handling
 """
 
-import builtins
-import sys
-from pathlib import Path
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest

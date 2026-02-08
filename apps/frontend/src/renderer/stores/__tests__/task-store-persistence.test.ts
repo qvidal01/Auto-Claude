@@ -35,7 +35,6 @@ describe('task-store-persistence', () => {
   let loadTasks: typeof import('../task-store').loadTasks;
   let createTask: typeof import('../task-store').createTask;
 
-
   beforeEach(async () => {
     vi.clearAllMocks();
     vi.resetModules();

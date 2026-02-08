@@ -16,7 +16,6 @@ Covers:
 import sys
 from pathlib import Path
 
-import pytest
 
 # Add auto-claude directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent / "apps" / "backend"))
@@ -101,11 +100,7 @@ class TestPythonAnalysis:
         """Analyzer detects Python classes."""
         analysis = semantic_analyzer.analyze_file("test.py", SAMPLE_PYTHON_MODULE)
 
-        # Should detect the Greeter class
-        class_additions = [
-            c for c in analysis.changes
-            if c.change_type == ChangeType.ADD_CLASS
-        ]
+        # Should detect the Greeter class or its methods
         # Depending on implementation, might detect class or its methods
         assert len(analysis.changes) > 0
 

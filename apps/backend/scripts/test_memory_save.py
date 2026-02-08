@@ -43,7 +43,7 @@ async def test_memory_imports():
 
     # Test memory_manager imports
     try:
-        from agents.memory_manager import (
+        from agents.memory_manager import (  # noqa: F401
             debug_memory_system_status,
             get_graphiti_context,
             save_session_memory,
@@ -56,7 +56,7 @@ async def test_memory_imports():
 
     # Test graphiti_helpers imports
     try:
-        from memory.graphiti_helpers import (
+        from memory.graphiti_helpers import (  # noqa: F401
             get_graphiti_memory,
             is_graphiti_memory_enabled,
             save_to_graphiti_async,
@@ -69,7 +69,7 @@ async def test_memory_imports():
 
     # Test graphiti_config imports
     try:
-        from graphiti_config import (
+        from graphiti_config import (  # noqa: F401
             get_graphiti_status,
             is_graphiti_enabled,
         )
@@ -81,12 +81,12 @@ async def test_memory_imports():
 
     # Test sentry imports
     try:
-        from core.sentry import (
+        from core.sentry import (  # noqa: F401
             capture_exception,
             capture_message,
             init_sentry,
         )
-        from core.sentry import (
+        from core.sentry import (  # noqa: F401
             is_enabled as sentry_is_enabled,
         )
 
@@ -97,10 +97,10 @@ async def test_memory_imports():
 
     # Test graphiti queries_pkg imports
     try:
-        from integrations.graphiti.queries_pkg.client import GraphitiClient
-        from integrations.graphiti.queries_pkg.graphiti import GraphitiMemory
-        from integrations.graphiti.queries_pkg.queries import GraphitiQueries
-        from integrations.graphiti.queries_pkg.search import GraphitiSearch
+        from integrations.graphiti.queries_pkg.client import GraphitiClient  # noqa: F401
+        from integrations.graphiti.queries_pkg.graphiti import GraphitiMemory  # noqa: F401
+        from integrations.graphiti.queries_pkg.queries import GraphitiQueries  # noqa: F401
+        from integrations.graphiti.queries_pkg.search import GraphitiSearch  # noqa: F401
 
         print("[OK] integrations.graphiti.queries_pkg imports successful")
     except ImportError as e:
@@ -280,8 +280,7 @@ async def test_memory_save_flow():
                         context="verification_script",
                     )
                     print("[INFO] Exception captured to Sentry")
-            except Exception:
-                # Sentry capture failed; non-critical for test completion
+            except Exception:  # Sentry capture failed; non-critical for test completion
                 pass
 
             return False

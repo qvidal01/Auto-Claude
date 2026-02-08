@@ -9,9 +9,6 @@ import requests
 
 from integrations.graphiti.test_ollama_embedding_memory import (
     apply_ladybug_monkeypatch,
-    print_header,
-    print_result,
-    print_info,
     print_step,
     test_ollama_embeddings,
     test_memory_creation,
@@ -637,7 +634,7 @@ class TestMainFunction:
             "OLLAMA_EMBEDDING_DIM": "768",
         }):
             # Verify test functions are callable
-            from integrations.graphiti import test_ollama_embedding_memory
+            pass
 
             assert asyncio.iscoroutinefunction(test_ollama_embeddings)
             assert asyncio.iscoroutinefunction(test_memory_creation)

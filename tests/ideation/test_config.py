@@ -2,8 +2,7 @@
 
 from ideation.config import IdeationConfigManager
 from pathlib import Path
-from unittest.mock import MagicMock, patch, Mock
-import pytest
+from unittest.mock import patch
 
 
 @patch("ideation.config.init_auto_claude_dir")

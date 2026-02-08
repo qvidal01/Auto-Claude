@@ -1,9 +1,7 @@
 """Tests for planner_lib.models module."""
 
 import json
-from pathlib import Path
 
-import pytest
 
 from planner_lib.models import PlannerContext
 from implementation_plan import WorkflowType

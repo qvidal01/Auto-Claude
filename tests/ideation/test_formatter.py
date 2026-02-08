@@ -2,9 +2,8 @@
 
 from ideation.formatter import IdeationFormatter
 from pathlib import Path
-from unittest.mock import patch, mock_open, MagicMock
+from unittest.mock import patch, mock_open
 import json
-import pytest
 
 
 def test_IdeationFormatter___init__():

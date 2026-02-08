@@ -5,7 +5,6 @@ Comprehensive tests for auto_merger.context module
 from datetime import datetime
 from merge.auto_merger.context import MergeContext
 from merge.types import ChangeType, ConflictRegion, ConflictSeverity, SemanticChange, TaskSnapshot
-import pytest
 
 
 class TestMergeContext:

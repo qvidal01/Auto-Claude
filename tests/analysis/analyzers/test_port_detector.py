@@ -2,8 +2,6 @@
 
 from analysis.analyzers.port_detector import PortDetector
 from pathlib import Path
-from unittest.mock import MagicMock, patch
-import pytest
 
 
 def test_PortDetector___init__():

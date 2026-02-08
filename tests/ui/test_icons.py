@@ -1,13 +1,12 @@
 """Tests for icons"""
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
-import pytest
 
 
 def test_icon_unicode():
     """Test icon returns unicode when supported"""
-    from ui.icons import Icons, icon
+    from ui.icons import icon
 
 
     # Arrange
@@ -23,7 +22,7 @@ def test_icon_unicode():
 
 def test_icon_ascii_fallback():
     """Test icon returns ASCII fallback when unicode not supported"""
-    from ui.icons import Icons, icon
+    from ui.icons import icon
 
 
     # Arrange
@@ -207,7 +206,7 @@ def test_icon_pointer_ascii():
 
 def test_icons_class_has_all_attributes():
     """Test Icons class has all expected attributes"""
-    from ui.icons import Icons, icon
+    from ui.icons import Icons
 
 
     # Arrange & Act
@@ -255,7 +254,7 @@ def test_icons_class_has_all_attributes():
 
 def test_icon_all_icons_are_tuples():
     """Test all Icons attributes are tuples"""
-    from ui.icons import Icons, icon
+    from ui.icons import Icons
 
 
     # Arrange & Act

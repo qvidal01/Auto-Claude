@@ -199,7 +199,6 @@ export class LogService {
 
     return files.map(file => {
       const filePath = path.join(logsDir, file);
-      const stats = statSync(filePath);
       const sessionId = file.replace('session-', '').replace('.log', '');
 
       // Parse session ID back to date
@@ -212,16 +211,24 @@ export class LogService {
 
       const startedAt = new Date(dateStr);
 
-      // Count lines (approximate)
-      const content = readFileSync(filePath, 'utf-8');
-      const lineCount = content.split('\n').length;
+      // Read file content and get stats - handle errors gracefully if file was deleted
+      let lineCount = 0;
+      let sizeBytes = 0;
+      try {
+        const content = readFileSync(filePath, 'utf-8');
+        lineCount = content.split('\n').length;
+        const stats = statSync(filePath);
+        sizeBytes = stats.size;
+      } catch {
+        // File was deleted between directory listing and read - use defaults
+      }
 
       return {
         sessionId,
         startedAt,
         logFile: filePath,
         lineCount,
-        sizeBytes: stats.size
+        sizeBytes
       };
     });
   }

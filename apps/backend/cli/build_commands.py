@@ -469,8 +469,7 @@ def _handle_build_interrupt(
         status_manager = StatusManager(project_dir)
         status_manager.set_inactive()
         sys.exit(0)
-    except EOFError:
-        # stdin closed
+    except EOFError:  # stdin closed
         pass
 
     # Resume instructions (shown when user provided instructions or chose file/type/paste)

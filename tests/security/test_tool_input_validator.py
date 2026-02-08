@@ -1,6 +1,5 @@
 """Tests for tool_input_validator"""
 
-import pytest
 from unittest.mock import MagicMock
 
 from security.tool_input_validator import (

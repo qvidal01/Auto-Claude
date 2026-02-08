@@ -11,7 +11,7 @@ This module tests various timeout-related scenarios including:
 import asyncio
 import subprocess
 import time
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
 
 import pytest
@@ -349,7 +349,7 @@ class TestThreadPoolExecutorTimeout:
 
     def test_concurrent_future_wait_timeout(self):
         """Test concurrent.futures wait() with timeout."""
-        from concurrent.futures import wait, FIRST_COMPLETED
+        from concurrent.futures import wait
 
         def slow_task():
             time.sleep(10)

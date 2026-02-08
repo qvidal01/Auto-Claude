@@ -8,7 +8,7 @@
  * To run: npx playwright test terminal-copy-paste.e2e.ts --config=e2e/playwright.config.ts
  */
 import { test, expect, _electron as electron, ElectronApplication, Page } from '@playwright/test';
-import { mkdirSync, rmSync, existsSync } from 'fs';
+import { rmSync, existsSync, mkdtempSync } from 'fs';
 import path from 'path';
 import * as os from 'os';
 
@@ -22,8 +22,8 @@ declare global {
   }
 }
 
-// Test data directory
-const TEST_DATA_DIR = path.join(os.tmpdir(), 'auto-claude-terminal-e2e');
+// Test data directory - created securely with mkdtempSync to prevent TOCTOU attacks
+const TEST_DATA_DIR = mkdtempSync(path.join(os.tmpdir(), 'auto-claude-terminal-e2e-'));
 
 // Determine platform for platform-specific tests
 const platform = process.platform;
@@ -31,12 +31,9 @@ const isMac = platform === 'darwin';
 const isWindows = platform === 'win32';
 const isLinux = platform === 'linux';
 
-// Setup test environment
+// Setup test environment (no-op since TEST_DATA_DIR is created with mkdtempSync)
 function setupTestEnvironment(): void {
-  if (existsSync(TEST_DATA_DIR)) {
-    rmSync(TEST_DATA_DIR, { recursive: true, force: true });
-  }
-  mkdirSync(TEST_DATA_DIR, { recursive: true });
+  // Directory is already created by mkdtempSync at module load time
 }
 
 // Cleanup test environment

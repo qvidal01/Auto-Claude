@@ -1,13 +1,10 @@
 """Tests for services/orchestrator.py"""
 
 from pathlib import Path
-from unittest.mock import MagicMock, patch, mock_open, Mock
+from unittest.mock import MagicMock, patch
 import subprocess
-import shutil
 import socket
-import time
 
-import pytest
 
 from services.orchestrator import (
     ServiceConfig,

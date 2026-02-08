@@ -12,7 +12,6 @@ Tests for utility functions:
 
 from pathlib import Path
 
-import pytest
 
 from review import (
     ReviewChoice,
@@ -22,7 +21,6 @@ from review import (
     get_review_status_summary,
     truncate_text,
 )
-from tests.review_fixtures import review_spec_dir, complete_spec_dir
 
 
 # =============================================================================

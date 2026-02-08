@@ -4,9 +4,6 @@ Tests project capability detection, index loading, and MCP tool selection.
 """
 
 import json
-from pathlib import Path
-from unittest.mock import MagicMock, patch
-import pytest
 
 from prompts_pkg.project_context import (
     detect_project_capabilities,

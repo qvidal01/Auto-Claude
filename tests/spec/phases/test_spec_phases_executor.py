@@ -3,14 +3,11 @@ Tests for spec.phases.executor module
 Comprehensive tests for PhaseExecutor class.
 """
 
-from pathlib import Path
 from unittest.mock import MagicMock, AsyncMock, patch
 
 import pytest
 
 from spec.phases.executor import PhaseExecutor
-from spec.phases.models import PhaseResult
-from spec.validate_pkg.models import ValidationResult
 
 
 class FakePhaseExecutor(PhaseExecutor):

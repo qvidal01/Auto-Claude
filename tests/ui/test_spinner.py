@@ -1,8 +1,7 @@
 """Tests for spinner"""
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
-import pytest
 
 from ui.spinner import Spinner
 

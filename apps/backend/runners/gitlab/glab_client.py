@@ -155,8 +155,10 @@ class GitLabClient:
                                 now = datetime.now(timezone.utc)
                                 delta = (retry_date - now).total_seconds()
                                 wait_time = max(1, int(delta))  # At least 1 second
-                            except (ValueError, TypeError):
-                                # Parsing failed, keep exponential backoff default
+                            except (
+                                ValueError,
+                                TypeError,
+                            ):  # Parsing failed, keep exponential backoff default
                                 pass
 
                     if attempt < max_retries - 1:

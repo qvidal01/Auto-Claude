@@ -13,7 +13,7 @@ Tests for ProjectAnalyzer class covering:
 import json
 import pytest
 from pathlib import Path
-from unittest.mock import patch, MagicMock, AsyncMock
+from unittest.mock import patch, AsyncMock
 
 
 class TestProjectAnalyzerInit:

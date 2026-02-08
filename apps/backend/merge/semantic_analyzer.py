@@ -11,7 +11,6 @@ rather than line-level diffs.
 
 from __future__ import annotations
 
-import logging
 from pathlib import Path
 
 from .types import FileAnalysis
@@ -35,7 +34,6 @@ except ImportError:
         pass
 
 
-logger = logging.getLogger(__name__)
 MODULE = "merge.semantic_analyzer"
 
 # Import regex-based analyzer

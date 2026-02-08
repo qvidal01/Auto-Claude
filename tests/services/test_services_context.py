@@ -5,8 +5,7 @@ Tests for services/context.py - Service Context Generator
 import json
 import sys
 from pathlib import Path
-from unittest.mock import MagicMock, Mock, patch
-import argparse
+from unittest.mock import MagicMock, patch
 
 import pytest
 

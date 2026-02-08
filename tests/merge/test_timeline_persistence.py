@@ -1,10 +1,8 @@
 """Tests for timeline_persistence"""
 
 from merge.timeline_persistence import TimelinePersistence
-from merge.timeline_models import FileTimeline, MainBranchEvent
+from merge.timeline_models import FileTimeline
 from pathlib import Path
-from datetime import datetime
-import pytest
 import tempfile
 
 

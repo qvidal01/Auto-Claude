@@ -369,7 +369,6 @@ def test_verdict_generation_logic():
 
     critical = [f for f in findings if f.severity == ReviewSeverity.CRITICAL]
     high = [f for f in findings if f.severity == ReviewSeverity.HIGH]
-    security_critical = [f for f in critical if f.category == ReviewCategory.SECURITY]
 
     blockers = []
     if not blockers and high:
@@ -456,8 +455,7 @@ def test_json_parsing_robustness():
             json_match = re.search(r"```json\s*(\[.*?\])\s*```", text, re.DOTALL)
             if json_match:
                 return json.loads(json_match.group(1))
-        except (json.JSONDecodeError, ValueError):
-            # Invalid JSON; skip
+        except (json.JSONDecodeError, ValueError):  # Invalid JSON; skip
             pass
         return []
 

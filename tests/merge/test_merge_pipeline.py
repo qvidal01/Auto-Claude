@@ -1,9 +1,8 @@
 """Comprehensive tests for merge_pipeline module"""
 
 from datetime import datetime
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock, patch
 
-import pytest
 
 from merge.auto_merger import AutoMerger
 from merge.conflict_detector import ConflictDetector
@@ -11,12 +10,8 @@ from merge.conflict_resolver import ConflictResolver
 from merge.merge_pipeline import MergePipeline
 from merge.types import (
     ChangeType,
-    ConflictRegion,
-    ConflictSeverity,
     FileAnalysis,
     MergeDecision,
-    MergeResult,
-    MergeStrategy,
     SemanticChange,
     TaskSnapshot,
 )

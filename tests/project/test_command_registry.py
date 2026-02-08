@@ -15,7 +15,6 @@ Tests for command registry constants and structure:
 - VERSION_MANAGER_COMMANDS - Version management tools
 """
 
-import pytest
 
 from project.command_registry import (
     BASE_COMMANDS,

@@ -241,12 +241,11 @@ class PurgeStrategy:
             result.deleted_count += 1
             result.freed_bytes += file_size
 
-        except (OSError, json.JSONDecodeError, KeyError):
+        except Exception as e:
             # Skip files that can't be read or parsed
             # Don't add to errors as this is expected for non-matching files
-            pass
-        except Exception as e:
-            result.errors.append(f"Unexpected error deleting {file_path}: {e}")
+            if "Unexpected error" not in str(e):
+                result.errors.append(f"Unexpected error deleting {file_path}: {e}")
 
     def _try_delete_file_simple(
         self,

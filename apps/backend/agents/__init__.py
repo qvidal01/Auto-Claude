@@ -12,11 +12,34 @@ This module provides:
 - Utility functions for git and plan management
 
 Uses lazy imports to avoid circular dependencies.
+
+Note: Module-level placeholders are defined to satisfy CodeQL static analysis.
+These trigger the actual import on first access through __getattr__.
 """
 
-# Explicit import required by CodeQL static analysis
-# (CodeQL doesn't recognize __getattr__ dynamic exports)
+from __future__ import annotations
+
+from typing import Any
+
+from .base import AUTO_CONTINUE_DELAY_SECONDS, HUMAN_INTERVENTION_FILE
 from .utils import sync_spec_to_source
+
+# Module-level placeholders for CodeQL static analysis.
+# These define the symbols as existing at module level (satisfying CodeQL),
+# but __getattr__ is called to provide the actual values (Python 3.7+).
+_debug_memory_system_status: Any = None
+_get_graphiti_context: Any = None
+_save_session_memory: Any = None
+_save_session_to_graphiti: Any = None
+_run_autonomous_agent: Any = None
+_run_followup_planner: Any = None
+_post_session_processing: Any = None
+_run_agent_session: Any = None
+_get_latest_commit: Any = None
+_get_commit_count: Any = None
+_load_implementation_plan: Any = None
+_find_subtask_in_plan: Any = None
+_find_phase_for_subtask: Any = None
 
 __all__ = [
     # Main API
@@ -43,54 +66,70 @@ __all__ = [
 ]
 
 
-def __getattr__(name):
-    """Lazy imports to avoid circular dependencies."""
+def __getattr__(name: str) -> Any:
+    """Lazy imports to avoid circular dependencies.
+
+    Python 3.7+ calls this for attributes that exist but are set to None
+    when accessed via 'from module import name' syntax.
+    """
     if name in ("AUTO_CONTINUE_DELAY_SECONDS", "HUMAN_INTERVENTION_FILE"):
-        from .base import AUTO_CONTINUE_DELAY_SECONDS, HUMAN_INTERVENTION_FILE
+        from .base import AUTO_CONTINUE_DELAY_SECONDS, HUMAN_INTERVENTION_FILE  # noqa: F401
 
         return locals()[name]
     elif name == "run_autonomous_agent":
         from .coder import run_autonomous_agent
 
         return run_autonomous_agent
-    elif name in (
-        "debug_memory_system_status",
-        "get_graphiti_context",
-        "save_session_memory",
-        "save_session_to_graphiti",
-    ):
-        from .memory_manager import (
-            debug_memory_system_status,
-            get_graphiti_context,
-            save_session_memory,
-            save_session_to_graphiti,
-        )
+    elif name == "debug_memory_system_status":
+        from .memory_manager import debug_memory_system_status
 
-        return locals()[name]
+        return debug_memory_system_status
+    elif name == "get_graphiti_context":
+        from .memory_manager import get_graphiti_context
+
+        return get_graphiti_context
+    elif name == "save_session_memory":
+        from .memory_manager import save_session_memory
+
+        return save_session_memory
+    elif name == "save_session_to_graphiti":
+        from .memory_manager import save_session_to_graphiti
+
+        return save_session_to_graphiti
     elif name == "run_followup_planner":
         from .planner import run_followup_planner
 
         return run_followup_planner
-    elif name in ("post_session_processing", "run_agent_session"):
-        from .session import post_session_processing, run_agent_session
+    elif name == "post_session_processing":
+        from .session import post_session_processing
 
-        return locals()[name]
-    elif name in (
-        "find_phase_for_subtask",
-        "find_subtask_in_plan",
-        "get_commit_count",
-        "get_latest_commit",
-        "load_implementation_plan",
-        "sync_spec_to_source",
-    ):
-        from .utils import (
-            find_phase_for_subtask,
-            find_subtask_in_plan,
-            get_commit_count,
-            get_latest_commit,
-            load_implementation_plan,
-            sync_spec_to_source,
-        )
+        return post_session_processing
+    elif name == "run_agent_session":
+        from .session import run_agent_session
 
-        return locals()[name]
+        return run_agent_session
+    elif name == "get_latest_commit":
+        from .utils import get_latest_commit
+
+        return get_latest_commit
+    elif name == "get_commit_count":
+        from .utils import get_commit_count
+
+        return get_commit_count
+    elif name == "load_implementation_plan":
+        from .utils import load_implementation_plan
+
+        return load_implementation_plan
+    elif name == "find_subtask_in_plan":
+        from .utils import find_subtask_in_plan
+
+        return find_subtask_in_plan
+    elif name == "find_phase_for_subtask":
+        from .utils import find_phase_for_subtask
+
+        return find_phase_for_subtask
+    elif name == "sync_spec_to_source":
+        from .utils import sync_spec_to_source
+
+        return sync_spec_to_source
     raise AttributeError(f"module 'agents' has no attribute '{name}'")

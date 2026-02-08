@@ -5,10 +5,7 @@ Tests covering complex interaction scenarios and edge cases
 that complement the existing unit tests.
 """
 
-import asyncio
-from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch, call
-from datetime import datetime
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 

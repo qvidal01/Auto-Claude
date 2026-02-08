@@ -5,8 +5,7 @@ Comprehensive test coverage for all functions and edge cases.
 
 import asyncio
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch, PropertyMock
-from typing import Any
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 

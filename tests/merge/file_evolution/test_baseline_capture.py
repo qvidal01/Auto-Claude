@@ -4,7 +4,6 @@ from merge.file_evolution.baseline_capture import BaselineCapture
 from merge.file_evolution.storage import EvolutionStorage
 from pathlib import Path
 from unittest.mock import MagicMock, patch
-import pytest
 
 
 def test_BaselineCapture___init__():

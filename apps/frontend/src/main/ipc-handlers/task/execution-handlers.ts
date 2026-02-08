@@ -52,7 +52,7 @@ function safeReadFileSync(filePath: string): string | null {
   } catch (error) {
     // ENOENT (file not found) is expected, other errors should be logged
     if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
-      console.error(`[safeReadFileSync] Error reading ${filePath}:`, error);
+      console.error(`[safeReadFileSync] Error reading ${filePath}:`, error instanceof Error ? error.message : String(error));
     }
     return null;
   }
@@ -91,7 +91,7 @@ async function ensureProfileManagerInitialized(): Promise<
     const profileManager = await initializeClaudeProfileManager();
     return { success: true, profileManager };
   } catch (error) {
-    console.error('[ensureProfileManagerInitialized] Failed to initialize:', error);
+    console.error('[ensureProfileManagerInitialized] Failed to initialize:', error instanceof Error ? error.message : String(error));
     // Include actual error details for debugging while providing actionable guidance
     const errorMessage = error instanceof Error ? error.message : String(error);
     return {
@@ -379,7 +379,7 @@ export function registerTaskExecutionHandlers(
             'utf-8'
           );
         } catch (error) {
-          console.error('[TASK_REVIEW] Failed to write QA report:', error);
+          console.error('[TASK_REVIEW] Failed to write QA report:', error instanceof Error ? error.message : String(error));
           return { success: false, error: 'Failed to write QA report file' };
         }
 
@@ -500,7 +500,7 @@ export function registerTaskExecutionHandlers(
             'utf-8'
           );
         } catch (error) {
-          console.error('[TASK_REVIEW] Failed to write QA fix request:', error);
+          console.error('[TASK_REVIEW] Failed to write QA fix request:', error instanceof Error ? error.message : String(error));
           return { success: false, error: 'Failed to write QA fix request file' };
         }
 

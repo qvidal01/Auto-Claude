@@ -30,15 +30,16 @@ export function getSettingsPath(): string {
 export function readSettingsFile(): Record<string, unknown> | undefined {
   const settingsPath = getSettingsPath();
 
-  if (!existsSync(settingsPath)) {
-    return undefined;
-  }
-
   try {
     const content = readFileSync(settingsPath, 'utf-8');
     return JSON.parse(content);
-  } catch {
-    // Return undefined on parse error - caller will use defaults
+  } catch (error: unknown) {
+    // ENOENT (file not found) or parse error - return undefined so caller uses defaults
+    const errorCode = (error as NodeJS.ErrnoException)?.code;
+    if (errorCode !== 'ENOENT') {
+      // Log unexpected errors but don't crash
+      console.error('Settings file read error:', error);
+    }
     return undefined;
   }
 }
@@ -74,16 +75,15 @@ export async function readSettingsFileAsync(): Promise<Record<string, unknown> |
   const settingsPath = getSettingsPath();
 
   try {
-    await fsPromises.access(settingsPath);
-  } catch {
-    return undefined;
-  }
-
-  try {
     const content = await fsPromises.readFile(settingsPath, 'utf-8');
     return JSON.parse(content);
-  } catch {
-    // Return undefined on parse error - caller will use defaults
+  } catch (error: unknown) {
+    // ENOENT (file not found) or parse error - return undefined so caller uses defaults
+    const errorCode = (error as NodeJS.ErrnoException)?.code;
+    if (errorCode !== 'ENOENT') {
+      // Log unexpected errors but don't crash
+      console.error('Settings file async read error:', error);
+    }
     return undefined;
   }
 }

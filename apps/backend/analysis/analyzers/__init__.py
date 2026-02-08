@@ -14,7 +14,6 @@ Main exports:
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
 
 from .project_analyzer_module import ProjectAnalyzer
 from .service_analyzer import ServiceAnalyzer

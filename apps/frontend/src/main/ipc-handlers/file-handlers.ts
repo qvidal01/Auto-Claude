@@ -1,6 +1,6 @@
 import { ipcMain } from 'electron';
-import { readdirSync, statSync } from 'fs';
-import { readFile } from 'fs/promises';
+import { readdirSync } from 'fs';
+import { readFile, stat } from 'fs/promises';
 import path from 'path';
 import { IPC_CHANNELS } from '../../shared/constants';
 import type { IPCResult, FileNode } from '../../shared/types';
@@ -104,14 +104,17 @@ export function registerFileHandlers(): void {
         }
         const safePath = validation.path;
 
-        // Check file size before reading
-        const stats = statSync(safePath);
+        // Check file size and read file atomically (stat + read in same try block)
+        // If file is deleted between stat and read, the operation will fail gracefully
+        const [stats, content] = await Promise.all([
+          stat(safePath),
+          readFile(safePath, 'utf-8')
+        ]);
+
         if (stats.size > MAX_FILE_SIZE) {
           return { success: false, error: 'File too large (max 1MB)' };
         }
 
-        // Use async file read to avoid blocking
-        const content = await readFile(safePath, 'utf-8');
         return { success: true, data: content };
       } catch (error) {
         return {

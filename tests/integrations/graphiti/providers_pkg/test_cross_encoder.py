@@ -1,8 +1,7 @@
 """Tests for cross_encoder"""
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
-import pytest
 
 from integrations.graphiti.providers_pkg.cross_encoder import create_cross_encoder
 

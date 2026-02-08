@@ -123,21 +123,31 @@ function updatePackageJson(newVersion) {
   const frontendPath = path.join(__dirname, '..', 'apps', 'frontend', 'package.json');
   const rootPath = path.join(__dirname, '..', 'package.json');
 
-  if (!fs.existsSync(frontendPath)) {
-    error(`package.json not found at ${frontendPath}`);
+  // Read and parse package.json directly - handle ENOENT if file doesn't exist
+  let frontendJson;
+  try {
+    frontendJson = JSON.parse(fs.readFileSync(frontendPath, 'utf8'));
+  } catch (err) {
+    if (err.code === 'ENOENT') {
+      error(`package.json not found at ${frontendPath}`);
+    }
+    error(`Failed to read ${frontendPath}: ${err.message}`);
   }
 
-  // Update frontend package.json
-  const frontendJson = JSON.parse(fs.readFileSync(frontendPath, 'utf8'));
   const oldVersion = frontendJson.version;
   frontendJson.version = newVersion;
   fs.writeFileSync(frontendPath, JSON.stringify(frontendJson, null, 2) + '\n');
 
   // Update root package.json if it exists
-  if (fs.existsSync(rootPath)) {
+  try {
     const rootJson = JSON.parse(fs.readFileSync(rootPath, 'utf8'));
     rootJson.version = newVersion;
     fs.writeFileSync(rootPath, JSON.stringify(rootJson, null, 2) + '\n');
+  } catch (err) {
+    // Root package.json is optional - ignore if not found
+    if (err.code !== 'ENOENT') {
+      warning(`Failed to update root package.json: ${err.message}`);
+    }
   }
 
   return { oldVersion, packagePath: frontendPath };
@@ -147,12 +157,19 @@ function updatePackageJson(newVersion) {
 function updateBackendInit(newVersion) {
   const initPath = path.join(__dirname, '..', 'apps', 'backend', '__init__.py');
 
-  if (!fs.existsSync(initPath)) {
-    warning(`Backend __init__.py not found at ${initPath}, skipping`);
+  // Read file directly - handle ENOENT if file doesn't exist
+  let content;
+  try {
+    content = fs.readFileSync(initPath, 'utf8');
+  } catch (err) {
+    if (err.code === 'ENOENT') {
+      warning(`Backend __init__.py not found at ${initPath}, skipping`);
+      return false;
+    }
+    warning(`Failed to read __init__.py: ${err.message}`);
     return false;
   }
 
-  let content = fs.readFileSync(initPath, 'utf8');
   content = content.replace(/__version__\s*=\s*"[^"]*"/, `__version__ = "${newVersion}"`);
   fs.writeFileSync(initPath, content);
   return true;
@@ -224,8 +241,14 @@ function main() {
 
   // 4. Validate release (check for branch/tag conflicts)
   info('Validating release...');
-  // Run validation script without spawning a shell to avoid shell interpretation of paths/args
-  execFileSync('node', [path.join(__dirname, 'validate-release.js'), `v${newVersion}`], {
+  // Run validation script without spawning a shell to avoid shell interpretation of paths/args.
+  // newVersion is validated to be a semver string (x.y.z or x.y.z-prerelease) before this point,
+  // ensuring it only contains safe characters (digits, dots, hyphens, alphanumeric).
+  const versionArg = `v${newVersion}`;
+  if (!/^[a-zA-Z0-9.\-+]+$/.test(versionArg)) {
+    error(`Invalid version format for validation: ${versionArg}`);
+  }
+  execFileSync('node', [path.join(__dirname, 'validate-release.js'), versionArg], {
     stdio: 'inherit',
   });
   success('Release validation passed');

@@ -1,9 +1,7 @@
 """Tests for input_handlers"""
 
-from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
-import pytest
 
 from cli.input_handlers import (
     collect_user_input_interactive,

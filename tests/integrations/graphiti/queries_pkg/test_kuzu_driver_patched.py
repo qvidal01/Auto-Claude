@@ -5,14 +5,11 @@ when graphiti_core is not available in the environment.
 """
 
 import pytest
-from unittest.mock import MagicMock, AsyncMock, patch
-import sys
 
 
 def _has_db():
     """Check if graphiti_core.driver.kuzu_driver can be imported (requires kuzu or real_ladybug)."""
     try:
-        from graphiti_core.driver.kuzu_driver import KuzuDriver
         return True
     except ImportError:
         return False
@@ -20,7 +17,7 @@ def _has_db():
 
 # Try importing graphiti_core - if not available, skip all tests
 try:
-    import graphiti_core
+    pass
 except ImportError:
     pytest.skip("graphiti_core not available", allow_module_level=True)
 

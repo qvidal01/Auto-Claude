@@ -76,7 +76,11 @@ def get_base_branch_from_metadata(spec_dir: Path) -> str | None:
                 base_branch = metadata.get("baseBranch")
                 # Validate the branch name before returning
                 return _validate_branch_name(base_branch)
-        except (json.JSONDecodeError, OSError):
+        except (
+            OSError,
+            json.JSONDecodeError,
+            UnicodeDecodeError,
+        ):  # File not found or corrupted, use defaults
             pass
     return None
 
@@ -101,7 +105,7 @@ def get_use_local_branch_from_metadata(spec_dir: Path) -> bool:
             with open(metadata_path, encoding="utf-8") as f:
                 metadata = json.load(f)
                 return bool(metadata.get("useLocalBranch", False))
-        except (json.JSONDecodeError, OSError):
+        except Exception:  # no-op
             pass
     return False
 
@@ -148,8 +152,9 @@ def _detect_base_branch(spec_dir: Path, project_dir: Path) -> str:
             )
             if result.returncode == 0:
                 return env_branch
-        except subprocess.TimeoutExpired:
-            # Treat timeout as branch verification failure
+        except (
+            subprocess.TimeoutExpired
+        ):  # Treat timeout as branch verification failure
             pass
 
     # 3. Auto-detect main/master/develop
@@ -494,8 +499,7 @@ def get_qa_reviewer_prompt(spec_dir: Path, project_dir: Path) -> str:
         try:
             section = _load_prompt_file(tool_file)
             mcp_sections.append(section)
-        except FileNotFoundError:
-            # Skip missing files gracefully
+        except FileNotFoundError:  # Skip missing files gracefully
             pass
 
     # Inject spec context at the beginning
