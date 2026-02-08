@@ -45,9 +45,9 @@ const args = process.argv.slice(2);
 
 // Escape each argument for safe shell usage
 function escapeShellArg(arg) {
-  // On Windows, escape double quotes and wrap in double quotes
+  // On Windows, escape backslashes and double quotes and wrap in double quotes
   if (isWindows) {
-    return `"${arg.replace(/"/g, '\\"')}"`;
+    return `"${arg.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
   }
   // On Unix, use single quotes and escape any single quotes in the argument
   return `'${arg.replace(/'/g, "'\\''")}'`;
