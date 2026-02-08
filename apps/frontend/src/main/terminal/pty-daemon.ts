@@ -170,7 +170,8 @@ class PtyDaemon {
     });
 
     socket.on('error', (err) => {
-      console.error('[PTY Daemon] Socket error:', err);
+      const safeMsg = err instanceof Error ? err.message : String(err);
+      console.error('[PTY Daemon] Socket error:', safeMsg);
     });
   }
 
@@ -240,7 +241,9 @@ class PtyDaemon {
       }
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
-      console.error('[PTY Daemon] Error handling message:', errorMsg);
+      // Sanitize error message for logging to prevent log injection
+      const safeErrorMsg = errorMsg.replace(/[\x00-\x1F\x7F]/g, '').slice(0, 200);
+      console.error('[PTY Daemon] Error handling message:', safeErrorMsg);
       this.sendError(socket, errorMsg, msg.requestId);
     }
   }

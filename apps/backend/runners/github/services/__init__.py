@@ -17,13 +17,13 @@ from __future__ import annotations
 
 from typing import Any
 
-# Module-level placeholders (with _ prefix) for CodeQL static analysis.
-_AutoFixProcessor: Any = None
-_BatchProcessor: Any = None
-_PRReviewEngine: Any = None
-_PromptManager: Any = None
-_ResponseParser: Any = None
-_TriageEngine: Any = None
+# Module-level placeholders for CodeQL static analysis.
+AutoFixProcessor: Any = None
+BatchProcessor: Any = None
+PRReviewEngine: Any = None
+PromptManager: Any = None
+ResponseParser: Any = None
+TriageEngine: Any = None
 
 __all__ = [
     "PromptManager",
