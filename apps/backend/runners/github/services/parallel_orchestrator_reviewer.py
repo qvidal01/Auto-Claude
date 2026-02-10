@@ -1805,6 +1805,7 @@ For EACH finding above:
                         break
 
             except Exception as e:  # lgtm[py/unreachable-statement] - except is part of retry loop structure
+                # codeql[py/unreachable-statement] suppress - except is part of retry loop structure
                 error_str = str(e).lower()
                 is_retryable = (
                     "400" in error_str
