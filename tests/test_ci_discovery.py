@@ -628,7 +628,7 @@ class TestEdgeCases:
 
     def test_nonexistent_directory(self, discovery):
         """Test handling of non-existent directory."""
-        fake_dir = Path("/nonexistent/path")
+        fake_dir = Path("/tmp/test-nonexistent-ci-discovery-123456")
 
         # Should not raise
         result = discovery.discover(fake_dir)
