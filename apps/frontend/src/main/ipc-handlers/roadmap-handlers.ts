@@ -197,6 +197,7 @@ export function registerRoadmapHandlers(
             userStories: feature.user_stories || [],
             linkedSpecId: feature.linked_spec_id,
             taskOutcome: feature.task_outcome,
+            previousStatus: feature.previous_status,
             competitorInsightIds: (feature.competitor_insight_ids as string[]) || undefined,
           })),
           status: rawRoadmap.status || "draft",
@@ -409,6 +410,7 @@ export function registerRoadmapHandlers(
             user_stories: feature.userStories || [],
             linked_spec_id: feature.linkedSpecId,
             task_outcome: feature.taskOutcome,
+            previous_status: feature.previousStatus,
             competitor_insight_ids: feature.competitorInsightIds,
           }));
 

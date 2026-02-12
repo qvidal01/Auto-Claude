@@ -124,6 +124,7 @@ export interface RoadmapFeature {
   userStories: string[];
   linkedSpecId?: string;
   taskOutcome?: TaskOutcome;
+  previousStatus?: RoadmapFeatureStatus;
   competitorInsightIds?: string[];
   // External integration fields
   source?: FeatureSource;
