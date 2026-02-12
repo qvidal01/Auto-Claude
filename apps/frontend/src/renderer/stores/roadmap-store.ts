@@ -5,6 +5,7 @@ import type {
   RoadmapFeature,
   RoadmapFeatureStatus,
   RoadmapGenerationStatus,
+  TaskOutcome,
   FeatureSource
 } from '../../shared/types';
 
@@ -59,7 +60,7 @@ interface RoadmapState {
   setGenerationStatus: (status: RoadmapGenerationStatus) => void;
   setCurrentProjectId: (projectId: string | null) => void;
   updateFeatureStatus: (featureId: string, status: RoadmapFeatureStatus) => void;
-  markFeatureDoneBySpecId: (specId: string, taskOutcome?: 'completed' | 'deleted' | 'archived') => void;
+  markFeatureDoneBySpecId: (specId: string, taskOutcome?: TaskOutcome) => void;
   updateFeatureLinkedSpec: (featureId: string, specId: string) => void;
   deleteFeature: (featureId: string) => void;
   clearRoadmap: () => void;
@@ -129,7 +130,7 @@ export const useRoadmapStore = create<RoadmapState>((set) => ({
     }),
 
   // Mark feature as done when its linked task completes
-  markFeatureDoneBySpecId: (specId: string, taskOutcome: 'completed' | 'deleted' | 'archived' = 'completed') =>
+  markFeatureDoneBySpecId: (specId: string, taskOutcome: TaskOutcome = 'completed') =>
     set((state) => {
       if (!state.roadmap) return state;
 

@@ -9,8 +9,8 @@ import {
   TooltipContent,
   TooltipTrigger
 } from './ui/tooltip';
-import { Play, ExternalLink, TrendingUp, Layers, ThumbsUp, CheckCircle2, Archive } from 'lucide-react';
-import { useTranslation } from 'react-i18next';
+import { Play, ExternalLink, TrendingUp, Layers, ThumbsUp } from 'lucide-react';
+import { TaskOutcomeBadge, getTaskOutcomeColorClass } from './roadmap/TaskOutcomeBadge';
 import {
   ROADMAP_PRIORITY_COLORS,
   ROADMAP_PRIORITY_LABELS,
@@ -34,7 +34,6 @@ export function SortableFeatureCard({
   onConvertToSpec,
   onGoToTask
 }: SortableFeatureCardProps) {
-  const { t } = useTranslation('common');
   const {
     attributes,
     listeners,
@@ -125,14 +124,9 @@ export function SortableFeatureCard({
             {feature.taskOutcome ? (
               <Badge
                 variant="outline"
-                className="text-[10px] px-1.5 py-0 text-success border-success/50"
+                className={`text-[10px] px-1.5 py-0 ${getTaskOutcomeColorClass(feature.taskOutcome)}`}
               >
-                {feature.taskOutcome === 'archived' ? (
-                  <Archive className="h-2.5 w-2.5 mr-0.5" />
-                ) : (
-                  <CheckCircle2 className="h-2.5 w-2.5 mr-0.5" />
-                )}
-                {feature.taskOutcome === 'completed' ? t('roadmap.taskCompleted') : feature.taskOutcome === 'archived' ? t('roadmap.taskArchived') : t('roadmap.taskDeleted')}
+                <TaskOutcomeBadge outcome={feature.taskOutcome} size="sm" />
               </Badge>
             ) : feature.linkedSpecId ? (
               <Button

@@ -8,6 +8,7 @@
 import { existsSync } from 'fs';
 import { readFileWithRetry, writeFileWithRetry } from './atomic-file';
 import { withFileLock } from './file-lock';
+import type { TaskOutcome } from '../../shared/types/roadmap';
 
 /**
  * Update roadmap features on disk when linked tasks change state.
@@ -24,7 +25,7 @@ import { withFileLock } from './file-lock';
 export async function updateRoadmapFeatureOutcome(
   roadmapFile: string,
   specIds: string[],
-  taskOutcome: 'completed' | 'deleted' | 'archived',
+  taskOutcome: TaskOutcome,
   logPrefix = '[Roadmap]'
 ): Promise<void> {
   if (!existsSync(roadmapFile)) return;

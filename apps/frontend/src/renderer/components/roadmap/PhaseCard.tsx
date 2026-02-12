@@ -1,4 +1,5 @@
-import { Archive, CheckCircle2, Circle, ExternalLink, Play, Trash2, TrendingUp } from 'lucide-react';
+import { CheckCircle2, Circle, ExternalLink, Play, TrendingUp } from 'lucide-react';
+import { TaskOutcomeBadge } from './TaskOutcomeBadge';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import { Card } from '../ui/card';
@@ -105,13 +106,9 @@ export function PhaseCard({
                 )}
               </div>
               {feature.taskOutcome ? (
-                feature.taskOutcome === 'archived' ? (
-                  <Archive className="h-4 w-4 text-success flex-shrink-0" />
-                ) : feature.taskOutcome === 'deleted' ? (
-                  <Trash2 className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                ) : (
-                  <CheckCircle2 className="h-4 w-4 text-success flex-shrink-0" />
-                )
+                <span className="flex-shrink-0">
+                  <TaskOutcomeBadge outcome={feature.taskOutcome} size="lg" showLabel={false} />
+                </span>
               ) : feature.status === 'done' ? (
                 <CheckCircle2 className="h-4 w-4 text-success flex-shrink-0" />
               ) : feature.linkedSpecId ? (
