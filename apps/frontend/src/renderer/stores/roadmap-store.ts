@@ -136,7 +136,7 @@ export const useRoadmapStore = create<RoadmapState>((set) => ({
 
       const updatedFeatures = state.roadmap.features.map((feature) =>
         feature.linkedSpecId === specId
-          ? { ...feature, status: 'done' as RoadmapFeatureStatus, taskOutcome }
+          ? { ...feature, status: 'done' as RoadmapFeatureStatus, taskOutcome, previousStatus: feature.status !== 'done' ? feature.status : feature.previousStatus }
           : feature
       );
 
@@ -280,6 +280,10 @@ async function reconcileLinkedFeatures(projectId: string, roadmap: Roadmap): Pro
   // Fetch current tasks for the project
   const tasksResult = await window.electronAPI.getTasks(projectId);
   if (!tasksResult.success || !tasksResult.data) return;
+
+  // Guard against empty task list (e.g., specs directory temporarily inaccessible)
+  // to avoid falsely marking all linked features as 'deleted'
+  if (tasksResult.data.length === 0 && featuresNeedingReconciliation.length > 0) return;
 
   const taskMap = new Map(tasksResult.data.map((t) => [t.specId || t.id, t]));
   let hasChanges = false;

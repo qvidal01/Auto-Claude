@@ -108,7 +108,7 @@ npm run install:all              # Install all dependencies from root
 # Or separately:
 cd apps/backend && uv venv && uv pip install -r requirements.txt
 cd apps/frontend && npm install
-``
+```
 
 ### Testing
 
