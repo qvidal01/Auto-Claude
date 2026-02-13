@@ -26,6 +26,7 @@ import { getOAuthModeClearVars } from './env-utils';
 import { getAugmentedEnv } from '../env-utils';
 import { getToolInfo, getClaudeCliPathForSdk } from '../cli-tool-manager';
 import { killProcessGracefully, isWindows } from '../platform';
+import { debugLog } from '../../shared/utils/debug-logger';
 
 /**
  * Type for supported CLI tools
@@ -178,6 +179,23 @@ export class AgentProcessManager {
     // Get best available Claude profile environment (automatically handles rate limits)
     const profileResult = getBestAvailableProfileEnv();
     const profileEnv = profileResult.env;
+
+    debugLog('[AgentProcess:setupEnv] Profile result:', {
+      profileId: profileResult.profileId,
+      hasOAuthToken: !!profileEnv.CLAUDE_CODE_OAUTH_TOKEN,
+      hasApiKey: !!profileEnv.ANTHROPIC_API_KEY,
+      hasConfigDir: !!profileEnv.CLAUDE_CONFIG_DIR,
+      configDir: profileEnv.CLAUDE_CONFIG_DIR || '(not set)',
+      oauthTokenPrefix: profileEnv.CLAUDE_CODE_OAUTH_TOKEN?.substring(0, 8) || '(not set)',
+      apiKeyPrefix: profileEnv.ANTHROPIC_API_KEY?.substring(0, 8) || '(not set)',
+    });
+
+    debugLog('[AgentProcess:setupEnv] extraEnv auth keys:', {
+      hasOAuthToken: !!extraEnv.CLAUDE_CODE_OAUTH_TOKEN,
+      hasApiKey: !!extraEnv.ANTHROPIC_API_KEY,
+      hasConfigDir: !!extraEnv.CLAUDE_CONFIG_DIR,
+    });
+
     // Use getAugmentedEnv() to ensure common tool paths (dotnet, homebrew, etc.)
     // are available even when app is launched from Finder/Dock
     const augmentedEnv = getAugmentedEnv();
@@ -205,7 +223,7 @@ export class AgentProcessManager {
     const ghCliEnv = this.detectAndSetCliPath('gh');
     const glabCliEnv = this.detectAndSetCliPath('glab');
 
-    return {
+    const mergedEnv = {
       ...augmentedEnv,
       ...gitBashEnv,
       ...claudeCliEnv,
@@ -217,6 +235,17 @@ export class AgentProcessManager {
       PYTHONIOENCODING: 'utf-8',
       PYTHONUTF8: '1'
     } as NodeJS.ProcessEnv;
+
+    debugLog('[AgentProcess:setupEnv] Final merged env auth state:', {
+      hasOAuthToken: !!mergedEnv.CLAUDE_CODE_OAUTH_TOKEN,
+      hasApiKey: !!mergedEnv.ANTHROPIC_API_KEY,
+      hasConfigDir: !!mergedEnv.CLAUDE_CONFIG_DIR,
+      configDir: mergedEnv.CLAUDE_CONFIG_DIR || '(not set)',
+      oauthTokenPrefix: mergedEnv.CLAUDE_CODE_OAUTH_TOKEN?.substring(0, 8) || '(not set)',
+      apiKeyPrefix: mergedEnv.ANTHROPIC_API_KEY?.substring(0, 8) || '(not set)',
+    });
+
+    return mergedEnv;
   }
 
   private handleProcessFailure(
@@ -614,6 +643,21 @@ export class AgentProcessManager {
 
     // Get OAuth mode clearing vars (clears stale ANTHROPIC_* vars when in OAuth mode)
     const oauthModeClearVars = getOAuthModeClearVars(apiProfileEnv);
+
+    debugLog('[AgentProcess:spawnProcess] Environment merge chain for task:', taskId, {
+      baseEnv: {
+        hasOAuthToken: !!env.CLAUDE_CODE_OAUTH_TOKEN,
+        hasApiKey: !!env.ANTHROPIC_API_KEY,
+        hasConfigDir: !!env.CLAUDE_CONFIG_DIR,
+        configDir: env.CLAUDE_CONFIG_DIR || '(not set)',
+      },
+      oauthModeClearVars: Object.keys(oauthModeClearVars),
+      apiProfileEnv: {
+        hasApiKey: !!apiProfileEnv.ANTHROPIC_API_KEY,
+        hasBaseUrl: !!apiProfileEnv.ANTHROPIC_BASE_URL,
+        apiKeyPrefix: apiProfileEnv.ANTHROPIC_API_KEY?.substring(0, 8) || '(not set)',
+      },
+    });
 
     // Parse Python commandto handle space-separated commands like "py -3"
     const [pythonCommand, pythonBaseArgs] = parsePythonCommand(this.getPythonPath());
