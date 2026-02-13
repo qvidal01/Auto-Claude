@@ -12,6 +12,13 @@
     "terminalTitle": "Auth: {{profileName}}",
     "maxTerminalsReached": "Impossible d'ouvrir le terminal d'auth: nombre maximum de terminaux atteint. Fermez un terminal d'abord."
   },
+  "swap": {
+    "inProgress": "Changement de profil...",
+    "resumingSession": "Reprise de la session Claude...",
+    "sessionResumed": "Session reprise sous le nouveau profil",
+    "resumeFailed": "Impossible de reprendre la session. Vous pouvez demarrer une nouvelle session.",
+    "noSession": "Profil change. Aucune session active a reprendre."
+  },
   "worktree": {
     "create": "Worktree",
     "createNew": "Nouveau Worktree",

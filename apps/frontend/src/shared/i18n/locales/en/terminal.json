@@ -12,6 +12,13 @@
     "terminalTitle": "Auth: {{profileName}}",
     "maxTerminalsReached": "Cannot open auth terminal: maximum terminals reached. Close a terminal first."
   },
+  "swap": {
+    "inProgress": "Switching profile...",
+    "resumingSession": "Resuming Claude session...",
+    "sessionResumed": "Session resumed under new profile",
+    "resumeFailed": "Could not resume session. You can start a new session.",
+    "noSession": "Profile switched. No active session to resume."
+  },
   "worktree": {
     "create": "Worktree",
     "createNew": "New Worktree",
