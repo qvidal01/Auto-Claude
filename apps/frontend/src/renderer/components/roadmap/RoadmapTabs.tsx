@@ -23,6 +23,7 @@ export function RoadmapTabs({
   onFeatureSelect,
   onConvertToSpec,
   onGoToTask,
+  onArchive,
   onSave,
 }: RoadmapTabsProps) {
   return (
@@ -42,6 +43,7 @@ export function RoadmapTabs({
           onFeatureClick={onFeatureSelect}
           onConvertToSpec={onConvertToSpec}
           onGoToTask={onGoToTask}
+          onArchive={onArchive}
           onSave={onSave}
         />
       </TabsContent>
@@ -58,6 +60,7 @@ export function RoadmapTabs({
               onFeatureSelect={onFeatureSelect}
               onConvertToSpec={onConvertToSpec}
               onGoToTask={onGoToTask}
+              onArchive={onArchive}
             />
           ))}
         </div>
@@ -73,6 +76,7 @@ export function RoadmapTabs({
               onClick={() => onFeatureSelect(feature)}
               onConvertToSpec={onConvertToSpec}
               onGoToTask={onGoToTask}
+              onArchive={onArchive}
               hasCompetitorInsight={hasCompetitorInsight(feature)}
             />
           ))}
