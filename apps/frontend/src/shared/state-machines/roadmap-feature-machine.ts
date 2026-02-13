@@ -56,6 +56,18 @@ export const roadmapFeatureMachine = createMachine(
             target: 'done',
             actions: 'savePreviousPlanned'
           },
+          TASK_COMPLETED: {
+            target: 'done',
+            actions: ['savePreviousPlanned', 'setTaskOutcomeCompleted']
+          },
+          TASK_DELETED: {
+            target: 'done',
+            actions: ['savePreviousPlanned', 'setTaskOutcomeDeleted']
+          },
+          TASK_ARCHIVED: {
+            target: 'done',
+            actions: ['savePreviousPlanned', 'setTaskOutcomeArchived']
+          },
           MOVE_TO_REVIEW: 'under_review'
         }
       },
@@ -108,6 +120,21 @@ export const roadmapFeatureMachine = createMachine(
               actions: 'clearDoneContext'
             }
           ],
+          MARK_DONE: {
+            target: 'done'
+          },
+          TASK_COMPLETED: {
+            target: 'done',
+            actions: 'setTaskOutcomeCompleted'
+          },
+          TASK_DELETED: {
+            target: 'done',
+            actions: 'setTaskOutcomeDeleted'
+          },
+          TASK_ARCHIVED: {
+            target: 'done',
+            actions: 'setTaskOutcomeArchived'
+          },
           MOVE_TO_REVIEW: {
             target: 'under_review',
             actions: 'clearDoneContext'

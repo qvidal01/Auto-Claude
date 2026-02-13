@@ -43,14 +43,35 @@ function getOrCreateGenerationActor(): Actor<typeof roadmapGenerationMachine> {
  */
 function getOrCreateFeatureActor(
   featureId: string,
-  initialState?: RoadmapFeatureStatus
+  initialState?: RoadmapFeatureStatus,
+  initialContext?: Partial<{ linkedSpecId: string; taskOutcome: string; previousStatus: string }>
 ): Actor<typeof roadmapFeatureMachine> {
   let actor = featureActors.get(featureId);
+  // Invalidate cached actor if its state or context doesn't match the expected values
+  if (actor && initialState) {
+    const snapshot = actor.getSnapshot();
+    const currentValue = String(snapshot.value);
+    const ctx = snapshot.context;
+    const contextMismatch = initialContext && (
+      ctx.taskOutcome !== (initialContext.taskOutcome ?? undefined) ||
+      ctx.previousStatus !== (initialContext.previousStatus ?? undefined) ||
+      ctx.linkedSpecId !== (initialContext.linkedSpecId ?? undefined)
+    );
+    if (currentValue !== initialState || contextMismatch) {
+      actor.stop();
+      featureActors.delete(featureId);
+      actor = undefined;
+    }
+  }
   if (!actor) {
     if (initialState) {
       const resolvedSnapshot = roadmapFeatureMachine.resolveState({
         value: initialState,
-        context: { linkedSpecId: undefined, taskOutcome: undefined, previousStatus: undefined }
+        context: {
+          linkedSpecId: initialContext?.linkedSpecId ?? undefined,
+          taskOutcome: initialContext?.taskOutcome ?? undefined,
+          previousStatus: initialContext?.previousStatus ?? undefined
+        }
       });
       actor = createActor(roadmapFeatureMachine, { snapshot: resolvedSnapshot });
     } else {
@@ -230,7 +251,11 @@ export const useRoadmapStore = create<RoadmapState>((set) => ({
       const feature = state.roadmap.features.find((f) => f.id === featureId);
       if (!feature) return state;
 
-      const actor = getOrCreateFeatureActor(featureId, feature.status);
+      const actor = getOrCreateFeatureActor(featureId, feature.status, {
+        linkedSpecId: feature.linkedSpecId,
+        taskOutcome: feature.taskOutcome,
+        previousStatus: feature.previousStatus
+      });
       actor.send(eventMap[status]);
 
       const snapshot = actor.getSnapshot();
@@ -274,7 +299,11 @@ export const useRoadmapStore = create<RoadmapState>((set) => ({
       const updatedFeatures = state.roadmap.features.map((feature) => {
         if (feature.linkedSpecId !== specId) return feature;
 
-        const actor = getOrCreateFeatureActor(feature.id, feature.status);
+        const actor = getOrCreateFeatureActor(feature.id, feature.status, {
+          linkedSpecId: feature.linkedSpecId,
+          taskOutcome: feature.taskOutcome,
+          previousStatus: feature.previousStatus
+        });
         actor.send(event);
 
         const snapshot = actor.getSnapshot();
@@ -305,7 +334,11 @@ export const useRoadmapStore = create<RoadmapState>((set) => ({
       const feature = state.roadmap.features.find((f) => f.id === featureId);
       if (!feature) return state;
 
-      const actor = getOrCreateFeatureActor(featureId, feature.status);
+      const actor = getOrCreateFeatureActor(featureId, feature.status, {
+        linkedSpecId: feature.linkedSpecId,
+        taskOutcome: feature.taskOutcome,
+        previousStatus: feature.previousStatus
+      });
       actor.send({ type: 'LINK_SPEC', specId } satisfies RoadmapFeatureEvent);
 
       const snapshot = actor.getSnapshot();
