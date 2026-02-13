@@ -643,7 +643,7 @@ export function getBestAvailableProfileEnv(): BestProfileEnvResult {
  * @param env - Profile environment from getProfileEnv() or getActiveProfileEnv()
  * @returns Environment with CLAUDE_CODE_OAUTH_TOKEN and ANTHROPIC_API_KEY cleared if CLAUDE_CONFIG_DIR is set
  */
-function ensureCleanProfileEnv(env: Record<string, string>): Record<string, string> {
+export function ensureCleanProfileEnv(env: Record<string, string>): Record<string, string> {
   if (process.env.DEBUG === 'true') {
     console.warn('[RateLimitDetector] ensureCleanProfileEnv() input:', {
       hasClaudeConfigDir: !!env.CLAUDE_CONFIG_DIR,
