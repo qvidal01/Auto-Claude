@@ -9,7 +9,8 @@ import {
   TooltipContent,
   TooltipTrigger
 } from './ui/tooltip';
-import { Play, ExternalLink, TrendingUp, Layers, ThumbsUp } from 'lucide-react';
+import { Play, ExternalLink, TrendingUp, Layers, ThumbsUp, Archive } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { TaskOutcomeBadge, getTaskOutcomeColorClass } from './roadmap/TaskOutcomeBadge';
 import {
   ROADMAP_PRIORITY_COLORS,
@@ -33,8 +34,10 @@ export function SortableFeatureCard({
   roadmap,
   onClick,
   onConvertToSpec,
-  onGoToTask
+  onGoToTask,
+  onArchive
 }: SortableFeatureCardProps) {
+  const { t } = useTranslation('tasks');
   const {
     attributes,
     listeners,
@@ -121,14 +124,30 @@ export function SortableFeatureCard({
             </div>
             <h3 className="font-medium text-sm leading-snug line-clamp-2">{feature.title}</h3>
           </div>
-          <div className="shrink-0">
+          <div className="shrink-0 flex items-center gap-1">
             {feature.taskOutcome ? (
-              <Badge
-                variant="outline"
-                className={`text-[10px] px-1.5 py-0 ${getTaskOutcomeColorClass(feature.taskOutcome)}`}
-              >
-                <TaskOutcomeBadge outcome={feature.taskOutcome} size="sm" />
-              </Badge>
+              <>
+                <Badge
+                  variant="outline"
+                  className={`text-[10px] px-1.5 py-0 ${getTaskOutcomeColorClass(feature.taskOutcome)}`}
+                >
+                  <TaskOutcomeBadge outcome={feature.taskOutcome} size="sm" />
+                </Badge>
+                {feature.status === 'done' && onArchive && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 px-2"
+                    title={t('tooltips.archiveTask')}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onArchive(feature.id);
+                    }}
+                  >
+                    <Archive className="h-3 w-3" />
+                  </Button>
+                )}
+              </>
             ) : feature.linkedSpecId ? (
               <Button
                 variant="outline"
