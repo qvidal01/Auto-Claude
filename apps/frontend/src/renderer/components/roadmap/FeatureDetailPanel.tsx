@@ -11,6 +11,7 @@ import {
   ExternalLink,
   TrendingUp,
   Trash2,
+  Archive,
 } from 'lucide-react';
 import { TaskOutcomeBadge } from './TaskOutcomeBadge';
 import { Badge } from '../ui/badge';
@@ -31,10 +32,16 @@ export function FeatureDetailPanel({
   onConvertToSpec,
   onGoToTask,
   onDelete,
+  onArchive,
   competitorInsights = [],
 }: FeatureDetailPanelProps) {
   const { t } = useTranslation('common');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  const handleArchive = () => {
+    onArchive?.(feature.id);
+    onClose();
+  };
 
   const handleDelete = () => {
     if (onDelete) {
@@ -216,10 +223,21 @@ export function FeatureDetailPanel({
 
       {/* Actions */}
       {feature.taskOutcome ? (
-        <div className="shrink-0 p-4 border-t border-border">
+        <div className="shrink-0 p-4 border-t border-border space-y-3">
           <div className="flex items-center justify-center gap-2 py-2">
             <TaskOutcomeBadge outcome={feature.taskOutcome} size="lg" />
           </div>
+          {feature.status === 'done' && (
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={handleArchive}
+              aria-label={t('accessibility.archiveFeatureAriaLabel')}
+            >
+              <Archive className="h-4 w-4 mr-2" />
+              {t('roadmap.archiveFeature')}
+            </Button>
+          )}
         </div>
       ) : feature.linkedSpecId ? (
         <div className="shrink-0 p-4 border-t border-border">
