@@ -127,6 +127,7 @@ export function registerRoadmapHandlers(
                 })),
                 strengths: (c.strengths as string[]) || [],
                 marketPosition: (c.market_position as string) || "",
+                source: c.source || undefined,
               })),
               marketGaps: (rawCompetitor.market_gaps || []).map((g: Record<string, unknown>) => ({
                 id: g.id,
