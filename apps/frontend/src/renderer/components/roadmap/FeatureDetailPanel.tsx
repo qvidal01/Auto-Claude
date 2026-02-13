@@ -247,7 +247,19 @@ export function FeatureDetailPanel({
           </Button>
         </div>
       ) : (
-        feature.status !== 'done' && (
+        feature.status === 'done' ? (
+          <div className="shrink-0 p-4 border-t border-border">
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={handleArchive}
+              aria-label={t('accessibility.archiveFeatureAriaLabel')}
+            >
+              <Archive className="h-4 w-4 mr-2" />
+              {t('roadmap.archiveFeature')}
+            </Button>
+          </div>
+        ) : (
           <div className="shrink-0 p-4 border-t border-border">
             <Button className="w-full" onClick={() => onConvertToSpec(feature)}>
               <Zap className="h-4 w-4 mr-2" />

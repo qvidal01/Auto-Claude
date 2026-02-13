@@ -37,7 +37,7 @@ export function SortableFeatureCard({
   onGoToTask,
   onArchive
 }: SortableFeatureCardProps) {
-  const { t } = useTranslation('tasks');
+  const { t } = useTranslation('common');
   const {
     attributes,
     listeners,
@@ -126,28 +126,12 @@ export function SortableFeatureCard({
           </div>
           <div className="shrink-0 flex items-center gap-1">
             {feature.taskOutcome ? (
-              <>
-                <Badge
-                  variant="outline"
-                  className={`text-[10px] px-1.5 py-0 ${getTaskOutcomeColorClass(feature.taskOutcome)}`}
-                >
-                  <TaskOutcomeBadge outcome={feature.taskOutcome} size="sm" />
-                </Badge>
-                {feature.status === 'done' && onArchive && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 px-2"
-                    title={t('tooltips.archiveTask')}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onArchive(feature.id);
-                    }}
-                  >
-                    <Archive className="h-3 w-3" />
-                  </Button>
-                )}
-              </>
+              <Badge
+                variant="outline"
+                className={`text-[10px] px-1.5 py-0 ${getTaskOutcomeColorClass(feature.taskOutcome)}`}
+              >
+                <TaskOutcomeBadge outcome={feature.taskOutcome} size="sm" />
+              </Badge>
             ) : feature.linkedSpecId ? (
               <Button
                 variant="outline"
@@ -177,6 +161,20 @@ export function SortableFeatureCard({
                   Build
                 </Button>
               )
+            )}
+            {feature.status === 'done' && onArchive && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 px-2"
+                title={t('roadmap.archiveFeature')}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onArchive(feature.id);
+                }}
+              >
+                <Archive className="h-3 w-3" />
+              </Button>
             )}
           </div>
         </div>
