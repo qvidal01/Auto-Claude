@@ -68,6 +68,9 @@ class CompetitorAnalyzer:
                 0,
             )
 
+        # Preserve manual competitors before refresh overwrites the file
+        manual_competitors = self._get_manual_competitors()
+
         errors = []
         for attempt in range(MAX_RETRIES):
             print_status(
@@ -84,6 +87,8 @@ class CompetitorAnalyzer:
             if success and self.analysis_file.exists():
                 validation_result = self._validate_analysis()
                 if validation_result is not None:
+                    if manual_competitors:
+                        self._merge_manual_competitors(manual_competitors)
                     return validation_result
                 errors.append(f"Attempt {attempt + 1}: Validation failed")
             else:
@@ -105,6 +110,51 @@ class CompetitorAnalyzer:
         return RoadmapPhaseResult(
             "competitor_analysis", True, [str(self.analysis_file)], errors, MAX_RETRIES
         )
+
+    def _get_manual_competitors(self) -> list[dict]:
+        """Extract manually-added competitors from the existing analysis file.
+
+        Returns a list of competitor dicts where source == 'manual'.
+        Returns an empty list if the file doesn't exist or is malformed.
+        """
+        if not self.analysis_file.exists():
+            return []
+
+        try:
+            with open(self.analysis_file, encoding="utf-8") as f:
+                data = json.load(f)
+
+            return [
+                c
+                for c in data.get("competitors", [])
+                if isinstance(c, dict) and c.get("source") == "manual"
+            ]
+        except (json.JSONDecodeError, OSError):
+            return []
+
+    def _merge_manual_competitors(self, manual_competitors: list[dict]) -> None:
+        """Merge manual competitors back into the newly-generated analysis file.
+
+        Appends manual competitors that don't already exist (by ID) in the file.
+        """
+        if not manual_competitors:
+            return
+
+        try:
+            with open(self.analysis_file, encoding="utf-8") as f:
+                data = json.load(f)
+        except (json.JSONDecodeError, OSError):
+            return
+
+        existing_ids = {
+            c.get("id") for c in data.get("competitors", []) if isinstance(c, dict)
+        }
+
+        for competitor in manual_competitors:
+            if competitor.get("id") not in existing_ids:
+                data.setdefault("competitors", []).append(competitor)
+
+        write_json_atomic(self.analysis_file, data, indent=2)
 
     def _build_context(self) -> str:
         """Build context string for the competitor analysis agent."""
