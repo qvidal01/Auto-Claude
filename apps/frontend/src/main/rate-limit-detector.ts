@@ -626,15 +626,22 @@ export function getBestAvailableProfileEnv(): BestProfileEnvResult {
 /**
  * Ensure the profile environment is clean for subprocess invocation.
  *
- * When CLAUDE_CONFIG_DIR is set, we MUST clear CLAUDE_CODE_OAUTH_TOKEN to prevent
- * the Claude Agent SDK from using a hardcoded/cached token (e.g., from .env file)
- * instead of reading fresh credentials from the specified config directory.
+ * When CLAUDE_CONFIG_DIR is set, we MUST clear both CLAUDE_CODE_OAUTH_TOKEN and
+ * ANTHROPIC_API_KEY to prevent the Claude Agent SDK from using hardcoded/cached
+ * tokens or API keys (e.g., from .env file or shell environment) instead of reading
+ * fresh credentials from the specified config directory.
+ *
+ * ANTHROPIC_API_KEY is cleared to prevent Claude Code from using API keys present
+ * in the shell environment, which would cause it to show "Claude API" instead of
+ * "Claude Max" and bypass the intended config dir credentials.
  *
  * This is critical for multi-account switching: when switching from a rate-limited
  * account to an available one, the subprocess must use the new account's credentials.
  *
+ * Also warns if the profile env is empty, which indicates a misconfigured profile.
+ *
  * @param env - Profile environment from getProfileEnv() or getActiveProfileEnv()
- * @returns Environment with CLAUDE_CODE_OAUTH_TOKEN cleared if CLAUDE_CONFIG_DIR is set
+ * @returns Environment with CLAUDE_CODE_OAUTH_TOKEN and ANTHROPIC_API_KEY cleared if CLAUDE_CONFIG_DIR is set
  */
 function ensureCleanProfileEnv(env: Record<string, string>): Record<string, string> {
   if (process.env.DEBUG === 'true') {
@@ -643,14 +650,23 @@ function ensureCleanProfileEnv(env: Record<string, string>): Record<string, stri
       claudeConfigDir: env.CLAUDE_CONFIG_DIR,
       hasOAuthToken: !!env.CLAUDE_CODE_OAUTH_TOKEN,
       willClearOAuthToken: !!env.CLAUDE_CONFIG_DIR,
+      willClearApiKey: !!env.CLAUDE_CONFIG_DIR,
     });
   }
 
+  // Warn if the profile environment is empty — this likely indicates a misconfigured profile
+  if (Object.keys(env).length === 0) {
+    console.warn('[RateLimitDetector] ensureCleanProfileEnv() received empty profile env — profile may be misconfigured');
+  }
+
   if (env.CLAUDE_CONFIG_DIR) {
-    // Clear CLAUDE_CODE_OAUTH_TOKEN to ensure SDK uses credentials from CLAUDE_CONFIG_DIR
+    // Clear CLAUDE_CODE_OAUTH_TOKEN and ANTHROPIC_API_KEY to ensure SDK uses credentials from CLAUDE_CONFIG_DIR
+    // ANTHROPIC_API_KEY must also be cleared to prevent Claude Code from using
+    // API keys that may be present in the shell environment instead of the config dir credentials.
     const cleanedEnv = {
       ...env,
-      CLAUDE_CODE_OAUTH_TOKEN: ''
+      CLAUDE_CODE_OAUTH_TOKEN: '',
+      ANTHROPIC_API_KEY: ''
     };
 
     if (process.env.DEBUG === 'true') {
