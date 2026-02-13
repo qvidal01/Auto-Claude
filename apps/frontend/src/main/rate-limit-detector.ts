@@ -476,6 +476,16 @@ export function getBestAvailableProfileEnv(): BestProfileEnvResult {
   const profileManager = getClaudeProfileManager();
   const activeProfile = profileManager.getActiveProfile();
 
+  if (process.env.DEBUG === 'true') {
+    console.warn('[RateLimitDetector] getBestAvailableProfileEnv() called:', {
+      activeProfileId: activeProfile.id,
+      activeProfileName: activeProfile.name,
+      hasConfigDir: !!activeProfile.configDir,
+      configDir: activeProfile.configDir,
+      weeklyUsagePercent: activeProfile.usage?.weeklyUsagePercent,
+    });
+  }
+
   // Check for explicit rate limit (from previous API errors)
   const rateLimitStatus = profileManager.isProfileRateLimited(activeProfile.id);
 
@@ -564,6 +574,16 @@ export function getBestAvailableProfileEnv(): BestProfileEnvResult {
 
       const profileEnv = profileManager.getProfileEnv(bestProfile.id);
 
+      if (process.env.DEBUG === 'true') {
+        console.warn('[RateLimitDetector] Profile env for swapped profile:', {
+          profileId: bestProfile.id,
+          hasClaudeConfigDir: !!profileEnv.CLAUDE_CONFIG_DIR,
+          claudeConfigDir: profileEnv.CLAUDE_CONFIG_DIR,
+          hasOAuthToken: !!profileEnv.CLAUDE_CODE_OAUTH_TOKEN,
+          envKeys: Object.keys(profileEnv),
+        });
+      }
+
       return {
         env: ensureCleanProfileEnv(profileEnv),
         profileId: bestProfile.id,
@@ -584,6 +604,17 @@ export function getBestAvailableProfileEnv(): BestProfileEnvResult {
 
   // Use active profile (either it's fine, or no better alternative exists)
   const activeEnv = profileManager.getActiveProfileEnv();
+
+  if (process.env.DEBUG === 'true') {
+    console.warn('[RateLimitDetector] Using active profile env (no swap):', {
+      profileId: activeProfile.id,
+      hasClaudeConfigDir: !!activeEnv.CLAUDE_CONFIG_DIR,
+      claudeConfigDir: activeEnv.CLAUDE_CONFIG_DIR,
+      hasOAuthToken: !!activeEnv.CLAUDE_CODE_OAUTH_TOKEN,
+      envKeys: Object.keys(activeEnv),
+    });
+  }
+
   return {
     env: ensureCleanProfileEnv(activeEnv),
     profileId: activeProfile.id,
@@ -606,12 +637,32 @@ export function getBestAvailableProfileEnv(): BestProfileEnvResult {
  * @returns Environment with CLAUDE_CODE_OAUTH_TOKEN cleared if CLAUDE_CONFIG_DIR is set
  */
 function ensureCleanProfileEnv(env: Record<string, string>): Record<string, string> {
+  if (process.env.DEBUG === 'true') {
+    console.warn('[RateLimitDetector] ensureCleanProfileEnv() input:', {
+      hasClaudeConfigDir: !!env.CLAUDE_CONFIG_DIR,
+      claudeConfigDir: env.CLAUDE_CONFIG_DIR,
+      hasOAuthToken: !!env.CLAUDE_CODE_OAUTH_TOKEN,
+      willClearOAuthToken: !!env.CLAUDE_CONFIG_DIR,
+    });
+  }
+
   if (env.CLAUDE_CONFIG_DIR) {
     // Clear CLAUDE_CODE_OAUTH_TOKEN to ensure SDK uses credentials from CLAUDE_CONFIG_DIR
-    return {
+    const cleanedEnv = {
       ...env,
       CLAUDE_CODE_OAUTH_TOKEN: ''
     };
+
+    if (process.env.DEBUG === 'true') {
+      console.warn('[RateLimitDetector] ensureCleanProfileEnv() output:', {
+        claudeConfigDirPreserved: 'CLAUDE_CONFIG_DIR' in cleanedEnv,
+        claudeConfigDir: (cleanedEnv as Record<string, string>).CLAUDE_CONFIG_DIR,
+        oauthTokenCleared: cleanedEnv.CLAUDE_CODE_OAUTH_TOKEN === '',
+        envKeys: Object.keys(cleanedEnv),
+      });
+    }
+
+    return cleanedEnv;
   }
   return env;
 }
