@@ -1,6 +1,6 @@
 {
   "name": "@auto-claude/ui",
-  "version": "2.7.6-beta.3",
+  "version": "2.7.7",
   "type": "module",
   "description": "Shared UI primitives and components for Auto Claude",
   "homepage": "https://github.com/AndyMik90/Auto-Claude",
@@ -66,7 +66,7 @@
   "peerDependencies": {
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
-    "@auto-claude/types": "2.7.6-beta.3",
+    "@auto-claude/types": "2.7.7",
     "react-i18next": ">=14.0.0",
     "i18next": ">=23.0.0"
   },
