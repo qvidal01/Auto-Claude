@@ -49,6 +49,8 @@ interface PRReviewStoreState {
   handlePRReviewStateChange: (key: string, payload: PRReviewStatePayload) => void;
 
   // Kept actions (not managed by XState)
+  /** Load a review result from disk into the store (not triggered by XState) */
+  setLoadedReviewResult: (projectId: string, result: PRReviewResult, options?: { preserveNewCommitsCheck?: boolean }) => void;
   setNewCommitsCheck: (projectId: string, prNumber: number, check: NewCommitsCheck) => void;
   clearPRReview: (projectId: string, prNumber: number) => void;
   /** Update PR status from polling (CI checks, reviews, mergeability) */
@@ -120,6 +122,36 @@ export const usePRReviewStore = create<PRReviewStoreState>((set, get) => ({
       });
     }
   },
+
+  setLoadedReviewResult: (projectId: string, result: PRReviewResult, options?: { preserveNewCommitsCheck?: boolean }) => set((state) => {
+    const key = `${projectId}:${result.prNumber}`;
+    const existing = state.prReviews[key];
+    // Don't overwrite active review state from XState
+    if (existing?.isReviewing) {
+      return state;
+    }
+    return {
+      prReviews: {
+        ...state.prReviews,
+        [key]: {
+          prNumber: result.prNumber,
+          projectId,
+          isReviewing: false,
+          startedAt: null,
+          progress: null,
+          result,
+          previousResult: existing?.previousResult ?? null,
+          error: null,
+          newCommitsCheck: options?.preserveNewCommitsCheck ? (existing?.newCommitsCheck ?? null) : null,
+          checksStatus: existing?.checksStatus ?? null,
+          reviewsStatus: existing?.reviewsStatus ?? null,
+          mergeableState: existing?.mergeableState ?? null,
+          lastPolled: existing?.lastPolled ?? null,
+          isExternalReview: false,
+        },
+      },
+    };
+  }),
 
   setNewCommitsCheck: (projectId: string, prNumber: number, check: NewCommitsCheck) => set((state) => {
     const key = `${projectId}:${prNumber}`;
