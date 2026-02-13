@@ -25,6 +25,7 @@ interface SortableFeatureCardProps {
   onClick: () => void;
   onConvertToSpec?: (feature: RoadmapFeature) => void;
   onGoToTask?: (specId: string) => void;
+  onArchive?: (featureId: string) => void;
 }
 
 export function SortableFeatureCard({

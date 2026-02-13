@@ -36,6 +36,7 @@ interface RoadmapKanbanViewProps {
   onConvertToSpec?: (feature: RoadmapFeature) => void;
   onGoToTask?: (specId: string) => void;
   onSave?: () => void;
+  onArchive?: (featureId: string) => void;
 }
 
 interface DroppableStatusColumnProps {
@@ -45,6 +46,7 @@ interface DroppableStatusColumnProps {
   onFeatureClick: (feature: RoadmapFeature) => void;
   onConvertToSpec?: (feature: RoadmapFeature) => void;
   onGoToTask?: (specId: string) => void;
+  onArchive?: (featureId: string) => void;
   isOver: boolean;
 }
 
