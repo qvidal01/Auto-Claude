@@ -555,8 +555,27 @@ export class ClaudeProfileManager {
       if (process.env.DEBUG === 'true') {
         console.warn('[ClaudeProfileManager] Using CLAUDE_CONFIG_DIR for profile:', profile.name, expandedConfigDir);
       }
-    } else {
-      console.warn('[ClaudeProfileManager] Profile has no configDir configured:', profile?.name);
+    } else if (profile) {
+      // Fallback: retrieve OAuth token directly from Keychain when configDir is missing.
+      // Without configDir, Claude CLI cannot resolve credentials automatically,
+      // so we inject CLAUDE_CODE_OAUTH_TOKEN as a direct override.
+      console.warn(
+        '[ClaudeProfileManager] Profile has no configDir configured:',
+        profile.name,
+        '- falling back to Keychain token lookup. Subscription display may be degraded.'
+      );
+
+      const credentials = getCredentialsFromKeychain(undefined, true);
+      if (credentials.token) {
+        env.CLAUDE_CODE_OAUTH_TOKEN = credentials.token;
+        console.warn('[ClaudeProfileManager] Injected CLAUDE_CODE_OAUTH_TOKEN from Keychain for profile:', profile.name);
+      } else {
+        console.warn(
+          '[ClaudeProfileManager] No token found in Keychain for profile without configDir:',
+          profile.name,
+          credentials.error ? `(error: ${credentials.error})` : ''
+        );
+      }
     }
 
     return env;
