@@ -8,7 +8,8 @@ import type {
   InsightsToolUsage,
   InsightsModelConfig,
   TaskMetadata,
-  Task
+  Task,
+  ImageAttachment
 } from '../../shared/types';
 
 interface ToolUsage {
@@ -27,6 +28,7 @@ interface InsightsState {
   currentTool: ToolUsage | null; // Currently executing tool
   toolsUsed: InsightsToolUsage[]; // Tools used during current response
   isLoadingSessions: boolean;
+  pendingImages: ImageAttachment[]; // Images pending attachment to next message
 
   // Actions
   setSession: (session: InsightsSession | null) => void;
@@ -44,6 +46,7 @@ interface InsightsState {
   finalizeStreamingMessage: () => void;
   clearSession: () => void;
   setLoadingSessions: (loading: boolean) => void;
+  setPendingImages: (images: ImageAttachment[]) => void;
 }
 
 const initialStatus: InsightsChatStatus = {
@@ -62,6 +65,7 @@ export const useInsightsStore = create<InsightsState>((set, _get) => ({
   currentTool: null,
   toolsUsed: [],
   isLoadingSessions: false,
+  pendingImages: [],
 
   // Actions
   setSession: (session) => set({ session }),
@@ -202,7 +206,9 @@ export const useInsightsStore = create<InsightsState>((set, _get) => ({
       streamingTasks: [],
       currentTool: null,
       toolsUsed: []
-    })
+    }),
+
+  setPendingImages: (images) => set({ pendingImages: images })
 }));
 
 // Helper functions
@@ -234,7 +240,7 @@ export async function loadInsightsSession(projectId: string): Promise<void> {
   await loadInsightsSessions(projectId);
 }
 
-export function sendMessage(projectId: string, message: string, modelConfig?: InsightsModelConfig): void {
+export function sendMessage(projectId: string, message: string, modelConfig?: InsightsModelConfig, images?: ImageAttachment[]): void {
   const store = useInsightsStore.getState();
   const session = store.session;
 
@@ -243,12 +249,14 @@ export function sendMessage(projectId: string, message: string, modelConfig?: In
     id: `msg-${Date.now()}`,
     role: 'user',
     content: message,
-    timestamp: new Date()
+    timestamp: new Date(),
+    ...(images && images.length > 0 ? { images } : {})
   };
   store.addMessage(userMessage);
 
   // Clear pending and set status
   store.setPendingMessage('');
+  store.setPendingImages([]);
   store.clearStreamingContent();
   store.clearToolsUsed(); // Clear tools from previous response
   store.setStatus({
@@ -260,7 +268,7 @@ export function sendMessage(projectId: string, message: string, modelConfig?: In
   const configToUse = modelConfig || session?.modelConfig;
 
   // Send to main process
-  window.electronAPI.sendInsightsMessage(projectId, message, configToUse);
+  window.electronAPI.sendInsightsMessage(projectId, message, configToUse, images);
 }
 
 export async function clearSession(projectId: string): Promise<void> {
