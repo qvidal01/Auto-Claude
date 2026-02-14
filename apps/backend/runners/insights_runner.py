@@ -8,6 +8,7 @@ about a codebase. It can also suggest tasks based on the conversation.
 
 import argparse
 import asyncio
+import base64
 import json
 import sys
 from pathlib import Path
@@ -111,6 +112,58 @@ def load_project_context(project_dir: str) -> str:
     )
 
 
+def load_images_from_manifest(manifest_path: str) -> list[dict]:
+    """Load images from a manifest JSON file.
+
+    The manifest contains an array of objects with 'path' and 'mimeType' fields.
+    Each image file is read as binary and encoded to base64.
+
+    Returns a list of dicts with 'media_type' and 'data' (base64-encoded) fields.
+    """
+    images = []
+    try:
+        with open(manifest_path, encoding="utf-8") as f:
+            manifest = json.load(f)
+
+        for entry in manifest:
+            image_path = entry.get("path")
+            mime_type = entry.get("mimeType", "image/png")
+
+            if not image_path or not Path(image_path).exists():
+                debug_error(
+                    "insights_runner",
+                    f"Image file not found: {image_path}",
+                )
+                continue
+
+            try:
+                with open(image_path, "rb") as img_f:
+                    image_data = base64.b64encode(img_f.read()).decode("utf-8")
+                images.append(
+                    {
+                        "media_type": mime_type,
+                        "data": image_data,
+                    }
+                )
+                debug(
+                    "insights_runner",
+                    "Loaded image",
+                    path=image_path,
+                    mime_type=mime_type,
+                    size_bytes=len(image_data),
+                )
+            except Exception as e:
+                debug_error(
+                    "insights_runner",
+                    f"Failed to read image {image_path}: {e}",
+                )
+
+    except (json.JSONDecodeError, OSError) as e:
+        debug_error("insights_runner", f"Failed to load images manifest: {e}")
+
+    return images
+
+
 def build_system_prompt(project_dir: str) -> str:
     """Build the system prompt for the insights agent."""
     context = load_project_context(project_dir)
@@ -143,11 +196,12 @@ async def run_with_sdk(
     history: list,
     model: str = "sonnet",  # Shorthand - resolved via API Profile if configured
     thinking_level: str = "medium",
+    images: list[dict] | None = None,
 ) -> None:
     """Run the chat using Claude SDK with streaming."""
     if not SDK_AVAILABLE:
         print("Claude SDK not available, falling back to simple mode", file=sys.stderr)
-        run_simple(project_dir, message, history)
+        run_simple(project_dir, message, history, images)
         return
 
     if not get_auth_token():
@@ -155,7 +209,7 @@ async def run_with_sdk(
             "No authentication token found, falling back to simple mode",
             file=sys.stderr,
         )
-        run_simple(project_dir, message, history)
+        run_simple(project_dir, message, history, images)
         return
 
     # Ensure SDK can find the token
@@ -205,8 +259,47 @@ Current question: {message}"""
 
         # Use async context manager pattern
         async with client:
-            # Send the query
-            await client.query(full_prompt)
+            # Build the query - include images as content blocks if available
+            if images:
+                # Construct multi-modal content blocks for vision analysis
+                content_blocks = []
+                for img in images:
+                    content_blocks.append(
+                        {
+                            "type": "image",
+                            "source": {
+                                "type": "base64",
+                                "media_type": img["media_type"],
+                                "data": img["data"],
+                            },
+                        }
+                    )
+                content_blocks.append({"type": "text", "text": full_prompt})
+
+                debug(
+                    "insights_runner",
+                    "Sending multi-modal query",
+                    image_count=len(images),
+                )
+
+                # The SDK query() accepts a string; pass JSON-encoded content blocks
+                # as a structured prompt that includes image references
+                # If the SDK doesn't support content blocks directly, fall back to
+                # text-only with image file path references
+                try:
+                    await client.query(content_blocks)
+                except TypeError:
+                    # SDK query() only accepts strings - fall back to text prompt
+                    # with a note about attached images
+                    debug(
+                        "insights_runner",
+                        "SDK does not support content blocks, falling back to text-only",
+                    )
+                    image_note = f"\n\n[Note: The user attached {len(images)} image(s) but multi-modal input is not supported in this mode. Please ask the user to describe the image content instead.]"
+                    await client.query(full_prompt + image_note)
+            else:
+                # Send the query as plain text
+                await client.query(full_prompt)
 
             # Stream the response
             response_text = ""
@@ -280,12 +373,20 @@ Current question: {message}"""
         import traceback
 
         traceback.print_exc(file=sys.stderr)
-        run_simple(project_dir, message, history)
+        run_simple(project_dir, message, history, images)
 
 
-def run_simple(project_dir: str, message: str, history: list) -> None:
+def run_simple(
+    project_dir: str, message: str, history: list, images: list[dict] | None = None
+) -> None:
     """Simple fallback mode without SDK - uses subprocess to call claude CLI."""
     import subprocess
+
+    if images:
+        print(
+            "Warning: Image attachments are not supported in simple mode and will be skipped.",
+            file=sys.stderr,
+        )
 
     system_prompt = build_system_prompt(project_dir)
 
@@ -355,6 +456,10 @@ def main():
         default="medium",
         help="Thinking level for extended reasoning (low, medium, high)",
     )
+    parser.add_argument(
+        "--images-file",
+        help="Path to JSON manifest file listing image file paths and MIME types",
+    )
     args = parser.parse_args()
 
     # Validate and sanitize thinking level (handles legacy values like 'ultrathink')
@@ -398,9 +503,25 @@ def main():
         debug_error("insights_runner", f"Failed to load history: {e}")
         history = []
 
+    # Load images from manifest file if provided
+    images = None
+    if args.images_file:
+        debug("insights_runner", "Loading images from manifest", file=args.images_file)
+        images = load_images_from_manifest(args.images_file)
+        if images:
+            debug(
+                "insights_runner",
+                "Loaded images for multi-modal query",
+                image_count=len(images),
+            )
+        else:
+            debug("insights_runner", "No valid images loaded from manifest")
+
     # Run the async SDK function
     debug("insights_runner", "Running SDK query")
-    asyncio.run(run_with_sdk(project_dir, user_message, history, model, thinking_level))
+    asyncio.run(
+        run_with_sdk(project_dir, user_message, history, model, thinking_level, images)
+    )
     debug_success("insights_runner", "Query completed")
 
 
