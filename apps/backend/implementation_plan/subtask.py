@@ -20,6 +20,7 @@ class Subtask:
 
     id: str
     description: str
+    title: str | None = None
     status: SubtaskStatus = SubtaskStatus.PENDING
 
     # Scoping
@@ -53,6 +54,8 @@ class Subtask:
             "description": self.description,
             "status": self.status.value,
         }
+        if self.title:
+            result["title"] = self.title
         if self.service:
             result["service"] = self.service
         if self.all_services:
@@ -89,6 +92,7 @@ class Subtask:
         return cls(
             id=data["id"],
             description=data["description"],
+            title=data.get("title"),
             status=SubtaskStatus(data.get("status", "pending")),
             service=data.get("service"),
             all_services=data.get("all_services", False),
