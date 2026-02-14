@@ -1,5 +1,6 @@
 import { spawn, ChildProcess } from 'child_process';
 import { existsSync, writeFileSync, unlinkSync } from 'fs';
+import { randomBytes } from 'crypto';
 import path from 'path';
 import os from 'os';
 import { EventEmitter } from 'events';
@@ -136,7 +137,7 @@ export class InsightsExecutor extends EventEmitter {
 
           const imagePath = path.join(
             os.tmpdir(),
-            `insights-image-${projectId}-${timestamp}-${i}.${ext}`
+            `insights-image-${projectId}-${timestamp}-${i}-${randomBytes(8).toString('hex')}.${ext}`
           );
           writeFileSync(imagePath, Buffer.from(image.data, 'base64'));
           imagesTempFiles.push(imagePath);
@@ -145,7 +146,7 @@ export class InsightsExecutor extends EventEmitter {
 
         imagesManifestFile = path.join(
           os.tmpdir(),
-          `insights-images-manifest-${projectId}-${timestamp}.json`
+          `insights-images-manifest-${projectId}-${timestamp}-${randomBytes(8).toString('hex')}.json`
         );
         writeFileSync(imagesManifestFile, JSON.stringify(manifest), 'utf-8');
         imagesTempFiles.push(imagesManifestFile);
@@ -157,7 +158,7 @@ export class InsightsExecutor extends EventEmitter {
           } catch { /* ignore cleanup errors */ }
         }
         // Also clean up the history file (cleanupTempFiles isn't defined yet at this point)
-        if (historyFileCreated && existsSync(historyFile)) {
+        if (existsSync(historyFile)) {
           try { unlinkSync(historyFile); } catch { /* ignore */ }
         }
         console.error('[Insights] Failed to write image files:', err);
