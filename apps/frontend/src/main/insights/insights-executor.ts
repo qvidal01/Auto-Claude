@@ -104,6 +104,46 @@ export class InsightsExecutor extends EventEmitter {
       throw new Error('Failed to write conversation history to temp file');
     }
 
+    // Write image files and manifest if images are provided
+    const imagesTempFiles: string[] = [];
+    let imagesManifestFile: string | undefined;
+
+    if (images && images.length > 0) {
+      try {
+        const manifest: Array<{ path: string; mimeType: string }> = [];
+        const timestamp = Date.now();
+
+        for (let i = 0; i < images.length; i++) {
+          const image = images[i];
+          if (!image.data) continue;
+          const ext = image.mimeType.split('/')[1] || 'png';
+          const imagePath = path.join(
+            os.tmpdir(),
+            `insights-image-${projectId}-${timestamp}-${i}.${ext}`
+          );
+          writeFileSync(imagePath, Buffer.from(image.data, 'base64'));
+          imagesTempFiles.push(imagePath);
+          manifest.push({ path: imagePath, mimeType: image.mimeType });
+        }
+
+        imagesManifestFile = path.join(
+          os.tmpdir(),
+          `insights-images-manifest-${projectId}-${timestamp}.json`
+        );
+        writeFileSync(imagesManifestFile, JSON.stringify(manifest), 'utf-8');
+        imagesTempFiles.push(imagesManifestFile);
+      } catch (err) {
+        // Clean up any already-written image files
+        for (const tmpFile of imagesTempFiles) {
+          try {
+            if (existsSync(tmpFile)) unlinkSync(tmpFile);
+          } catch { /* ignore cleanup errors */ }
+        }
+        console.error('[Insights] Failed to write image files:', err);
+        throw new Error('Failed to write image files to temp directory');
+      }
+    }
+
     // Build command arguments
     const args = [
       runnerPath,
@@ -111,6 +151,11 @@ export class InsightsExecutor extends EventEmitter {
       '--message', message,
       '--history-file', historyFile
     ];
+
+    // Add images manifest file if images were provided
+    if (imagesManifestFile) {
+      args.push('--images-file', imagesManifestFile);
+    }
 
     // Add model config if provided
     if (modelConfig) {
@@ -173,12 +218,19 @@ export class InsightsExecutor extends EventEmitter {
       proc.on('close', (code) => {
         this.activeSessions.delete(projectId);
 
-        // Cleanup temp file
+        // Cleanup temp files
         if (historyFileCreated && existsSync(historyFile)) {
           try {
             unlinkSync(historyFile);
           } catch (cleanupErr) {
             console.error('[Insights] Failed to cleanup history file:', cleanupErr);
+          }
+        }
+        for (const tmpFile of imagesTempFiles) {
+          try {
+            if (existsSync(tmpFile)) unlinkSync(tmpFile);
+          } catch (cleanupErr) {
+            console.error('[Insights] Failed to cleanup image temp file:', cleanupErr);
           }
         }
 
@@ -220,12 +272,19 @@ export class InsightsExecutor extends EventEmitter {
       proc.on('error', (err) => {
         this.activeSessions.delete(projectId);
 
-        // Cleanup temp file
+        // Cleanup temp files
         if (historyFileCreated && existsSync(historyFile)) {
           try {
             unlinkSync(historyFile);
           } catch (cleanupErr) {
             console.error('[Insights] Failed to cleanup history file:', cleanupErr);
+          }
+        }
+        for (const tmpFile of imagesTempFiles) {
+          try {
+            if (existsSync(tmpFile)) unlinkSync(tmpFile);
+          } catch (cleanupErr) {
+            console.error('[Insights] Failed to cleanup image temp file:', cleanupErr);
           }
         }
 
