@@ -116,6 +116,7 @@
     "selectAll": "Select All",
     "clearSelection": "Clear Selection",
     "deleteSelected": "Delete Selected",
+    "archiveSelected": "Archive Selected",
     "selectedOfTotal": "{{selected}} of {{total}} selected"
   },
   "time": {
@@ -425,7 +426,22 @@
     "suggestedTask": "Suggested Task",
     "creating": "Creating...",
     "taskCreated": "Task Created",
-    "createTask": "Create Task"
+    "createTask": "Create Task",
+    "chatHistory": "Chat History",
+    "archive": "Archive",
+    "unarchive": "Unarchive",
+    "archiveSelected": "Archive Selected",
+    "showArchived": "Show Archived",
+    "hideArchived": "Hide Archived",
+    "bulkDeleteTitle": "Delete Conversations",
+    "bulkDeleteDescription": "Are you sure you want to delete {{count}} conversation(s)? This action cannot be undone.",
+    "bulkDeleteConfirm": "Delete {{count}} Conversation(s)",
+    "noConversations": "No conversations",
+    "archived": "Archived",
+    "conversationsToDelete": "Conversations to delete",
+    "archiveConfirmDescription": "Are you sure you want to archive the selected conversations?",
+    "selectMode": "Select",
+    "exitSelectMode": "Done"
   },
   "ideation": {
     "converting": "Converting...",
