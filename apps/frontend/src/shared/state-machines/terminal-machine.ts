@@ -78,6 +78,7 @@ export const terminalMachine = createMachine(
       },
       claude_active: {
         on: {
+          CLAUDE_ACTIVE: { actions: 'setClaudeSessionId' },
           CLAUDE_BUSY: { actions: 'setBusy' },
           CLAUDE_EXITED: { target: 'shell_ready', actions: 'clearSession' },
           SWAP_INITIATED: {

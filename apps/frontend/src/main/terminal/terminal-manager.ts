@@ -19,7 +19,6 @@ import * as SessionHandler from './session-handler';
 import * as TerminalLifecycle from './terminal-lifecycle';
 import * as TerminalEventHandler from './terminal-event-handler';
 import * as ClaudeIntegration from './claude-integration-handler';
-import { migrateSession } from '../claude-profile/session-utils';
 import { debugLog, debugError } from '../../shared/utils/debug-logger';
 
 export class TerminalManager {
@@ -28,6 +27,8 @@ export class TerminalManager {
   private saveTimer: NodeJS.Timeout | null = null;
   private lastNotifiedRateLimitReset: Map<string, string> = new Map();
   private eventCallbacks: TerminalEventHandler.EventHandlerCallbacks;
+  /** Server-side storage for YOLO mode flags during profile migration (sessionId → flag) */
+  private migratedSessionFlags: Map<string, boolean> = new Map();
 
   constructor(getWindow: WindowGetter) {
     this.getWindow = getWindow;
@@ -225,18 +226,32 @@ export class TerminalManager {
   /**
    * Resume Claude in a terminal asynchronously (non-blocking)
    */
-  async resumeClaudeAsync(id: string, sessionId?: string, options?: { migratedSession?: boolean; dangerouslySkipPermissions?: boolean }): Promise<void> {
+  async resumeClaudeAsync(id: string, sessionId?: string, options?: { migratedSession?: boolean }): Promise<void> {
     const terminal = this.terminals.get(id);
     if (!terminal) {
       return;
     }
 
-    // Preserve YOLO mode flag if passed from profile swap flow
-    if (options?.dangerouslySkipPermissions !== undefined) {
-      terminal.dangerouslySkipPermissions = options.dangerouslySkipPermissions;
+    // For migrated sessions, restore YOLO mode from server-side storage
+    // (set during profile change in storeMigratedSessionFlag)
+    if (options?.migratedSession && sessionId) {
+      const storedFlag = this.migratedSessionFlags.get(sessionId);
+      if (storedFlag !== undefined) {
+        terminal.dangerouslySkipPermissions = storedFlag;
+        this.migratedSessionFlags.delete(sessionId);
+      }
     }
 
     await ClaudeIntegration.resumeClaudeAsync(terminal, sessionId, this.getWindow, options);
+  }
+
+  /**
+   * Store YOLO mode flag for a session being migrated during profile swap.
+   * Called from the profile change handler before the renderer recreates terminals.
+   * The flag is consumed by resumeClaudeAsync when the new terminal resumes.
+   */
+  storeMigratedSessionFlag(sessionId: string, dangerouslySkipPermissions: boolean): void {
+    this.migratedSessionFlags.set(sessionId, dangerouslySkipPermissions);
   }
 
   /**
@@ -267,69 +282,6 @@ export class TerminalManager {
 
     // Now actually resume Claude
     await ClaudeIntegration.resumeClaudeAsync(terminal, undefined, this.getWindow, isPostSwap ? { migratedSession: true } : undefined);
-  }
-
-  /**
-   * Orchestrate a profile swap for a single terminal.
-   * Captures the current session, migrates it to the target profile, and marks swap state.
-   * Called from the CLAUDE_PROFILE_SET_ACTIVE IPC handler for each terminal.
-   *
-   * @returns Info about the swap result for the event payload
-   */
-  async swapProfileAndResume(
-    terminalId: string,
-    sourceConfigDir: string,
-    targetConfigDir: string,
-    targetProfileId: string
-  ): Promise<{ sessionMigrated: boolean; sessionId?: string; isClaudeMode: boolean }> {
-    const terminal = this.terminals.get(terminalId);
-    if (!terminal) {
-      return { sessionMigrated: false, isClaudeMode: false };
-    }
-
-    const isClaudeMode = terminal.isClaudeMode;
-    const sessionId = terminal.claudeSessionId;
-    const sourceProfileId = terminal.claudeProfileId ?? 'unknown';
-
-    // If no active Claude session or no session ID, skip migration
-    if (!isClaudeMode || !sessionId) {
-      debugLog('[terminal-manager] No active Claude session for terminal:', terminalId, '- skipping migration');
-      return { sessionMigrated: false, isClaudeMode };
-    }
-
-    // Mark swap state: capturing session
-    terminal.swapState = {
-      isSwapping: true,
-      phase: 'capturing',
-      targetProfileId,
-      sourceProfileId,
-      sessionMigrated: false
-    };
-
-    // Migrate the session from source to target profile
-    terminal.swapState.phase = 'migrating';
-    debugLog('[terminal-manager] Migrating session for terminal:', terminalId, 'session:', sessionId);
-
-    const migrationResult = migrateSession(
-      sourceConfigDir,
-      targetConfigDir,
-      terminal.cwd,
-      sessionId
-    );
-
-    if (!migrationResult.success) {
-      debugError('[terminal-manager] Session migration failed for terminal:', terminalId, 'error:', migrationResult.error);
-      terminal.swapState.error = migrationResult.error;
-      terminal.swapState.sessionMigrated = false;
-      return { sessionMigrated: false, sessionId, isClaudeMode };
-    }
-
-    // Migration succeeded
-    terminal.swapState.sessionMigrated = true;
-    terminal.swapState.phase = 'recreating';
-    debugLog('[terminal-manager] Session migrated successfully for terminal:', terminalId);
-
-    return { sessionMigrated: true, sessionId, isClaudeMode };
   }
 
   /**

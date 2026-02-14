@@ -345,6 +345,18 @@ describe('terminalMachine', () => {
     });
   });
 
+  describe('CLAUDE_ACTIVE self-transition in claude_active', () => {
+    it('should update claudeSessionId via self-transition', () => {
+      const snapshot = runEvents([
+        { type: 'SHELL_READY' },
+        { type: 'CLAUDE_ACTIVE' },
+        { type: 'CLAUDE_ACTIVE', claudeSessionId: 'late-session' },
+      ]);
+      expect(snapshot.value).toBe('claude_active');
+      expect(snapshot.context.claudeSessionId).toBe('late-session');
+    });
+  });
+
   describe('context mutations', () => {
     it('should set profileId on CLAUDE_START', () => {
       const snapshot = runEvents([

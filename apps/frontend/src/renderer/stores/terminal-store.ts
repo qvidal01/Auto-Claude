@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { createActor } from 'xstate';
-import type { ActorRefFrom, SnapshotFrom } from 'xstate';
+import type { ActorRefFrom } from 'xstate';
 import { v4 as uuid } from 'uuid';
 import { arrayMove } from '@dnd-kit/sortable';
 import type { TerminalSession, TerminalWorktreeConfig } from '../../shared/types';
@@ -43,22 +43,6 @@ export function sendTerminalMachineEvent(terminalId: string, event: TerminalEven
   actor.send(event);
   const stateAfter = String(actor.getSnapshot().value);
   debugLog(`[TerminalStore] Machine ${terminalId}: ${event.type} (${stateBefore} -> ${stateAfter})`);
-}
-
-/**
- * Derive terminal boolean fields from an XState machine snapshot.
- * Used to keep legacy boolean fields in sync with the machine state.
- */
-export function deriveTerminalStateFromMachine(snapshot: SnapshotFrom<typeof terminalMachine>): {
-  isClaudeMode: boolean;
-  isClaudeBusy: boolean;
-  pendingClaudeResume: boolean;
-} {
-  const state = String(snapshot.value);
-  const isClaudeMode = state === 'claude_starting' || state === 'claude_active' || state === 'swapping';
-  const isClaudeBusy = snapshot.context.isBusy;
-  const pendingClaudeResume = state === 'pending_resume';
-  return { isClaudeMode, isClaudeBusy, pendingClaudeResume };
 }
 
 /**
@@ -393,9 +377,11 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
   },
 
   setTerminalStatus: (id: string, status: TerminalStatus) => {
-    // Notify XState machine when terminal becomes running (shell is ready)
+    // Notify XState machine of lifecycle transitions
     if (status === 'running') {
       sendTerminalMachineEvent(id, { type: 'SHELL_READY' });
+    } else if (status === 'exited') {
+      sendTerminalMachineEvent(id, { type: 'SHELL_EXITED' });
     }
 
     set((state) => ({
@@ -503,6 +489,13 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
   },
 
   clearAllTerminals: () => {
+    // Clean up all resources for every terminal
+    const terminals = get().terminals;
+    for (const terminal of terminals) {
+      terminalBufferManager.dispose(terminal.id);
+      xtermCallbacks.delete(terminal.id);
+    }
+
     // Clean up all XState actors
     for (const [_id, actor] of terminalActors) {
       actor.stop();

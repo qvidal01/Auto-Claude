@@ -17,8 +17,7 @@ export function useTerminalProfileChange(): void {
   const recreateTerminal = useCallback(async (
     terminalId: string,
     sessionId?: string,
-    sessionMigrated?: boolean,
-    dangerouslySkipPermissions?: boolean
+    sessionMigrated?: boolean
   ) => {
     // Prevent duplicate recreation
     if (recreatingTerminals.current.has(terminalId)) {
@@ -109,11 +108,13 @@ export function useTerminalProfileChange(): void {
         store.setClaudeSessionId(newTerminal.id, sessionId);
 
         // Auto-resume the Claude session with --continue
-        // Pass dangerouslySkipPermissions so the new terminal preserves YOLO mode
+        // YOLO mode (dangerouslySkipPermissions) is preserved server-side by the
+        // main process during migration (storeMigratedSessionFlag), so resumeClaudeAsync
+        // will restore it automatically when migratedSession is true
         window.electronAPI.resumeClaudeInTerminal(
           newTerminal.id,
           sessionId,
-          { migratedSession: true, dangerouslySkipPermissions }
+          { migratedSession: true }
         );
         debugLog('[useTerminalProfileChange] Resume initiated for terminal:', newTerminal.id);
       }
@@ -136,8 +137,7 @@ export function useTerminalProfileChange(): void {
         await recreateTerminal(
           terminalInfo.id,
           terminalInfo.sessionId,
-          terminalInfo.sessionMigrated,
-          terminalInfo.dangerouslySkipPermissions
+          terminalInfo.sessionMigrated
         );
       }
 
