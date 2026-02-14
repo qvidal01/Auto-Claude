@@ -5,8 +5,8 @@ import { CLOUD_MODE } from "@/lib/cloud-mode";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Auto Claude Cloud",
-  description: "Cloud-synced specs, personas, and team collaboration",
+  title: "Auto Claude",
+  description: "AI-powered software development platform",
 };
 
 export default async function RootLayout({
@@ -26,8 +26,8 @@ export default async function RootLayout({
   }
 
   return (
-    <html lang="en">
-      <body>
+    <html lang="en" className="dark" suppressHydrationWarning>
+      <body className="min-h-screen bg-background font-sans antialiased">
         <I18nProvider>
           <ConvexClientProvider initialToken={token}>
             {children}
