@@ -198,6 +198,7 @@ export interface InsightsSession {
   modelConfig?: InsightsModelConfig; // Per-session model configuration
   createdAt: Date;
   updatedAt: Date;
+  archivedAt?: Date;
 }
 
 // Summary of a session for the history list (without full messages)
@@ -209,6 +210,7 @@ export interface InsightsSessionSummary {
   modelConfig?: InsightsModelConfig; // For displaying model indicator in sidebar
   createdAt: Date;
   updatedAt: Date;
+  archivedAt?: Date;
 }
 
 export interface InsightsChatStatus {
