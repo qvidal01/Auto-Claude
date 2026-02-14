@@ -496,6 +496,10 @@ export const IPC_CHANNELS = {
   INSIGHTS_NEW_SESSION: 'insights:newSession',
   INSIGHTS_SWITCH_SESSION: 'insights:switchSession',
   INSIGHTS_DELETE_SESSION: 'insights:deleteSession',
+  INSIGHTS_DELETE_SESSIONS: 'insights:deleteSessions',
+  INSIGHTS_ARCHIVE_SESSION: 'insights:archiveSession',
+  INSIGHTS_ARCHIVE_SESSIONS: 'insights:archiveSessions',
+  INSIGHTS_UNARCHIVE_SESSION: 'insights:unarchiveSession',
   INSIGHTS_RENAME_SESSION: 'insights:renameSession',
   INSIGHTS_UPDATE_MODEL_CONFIG: 'insights:updateModelConfig',
 
