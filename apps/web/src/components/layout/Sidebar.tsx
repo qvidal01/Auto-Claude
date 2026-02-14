@@ -5,6 +5,7 @@ import {
   Plus,
   Settings,
   LayoutGrid,
+  Terminal,
   Map,
   BookOpen,
   Lightbulb,
@@ -13,6 +14,8 @@ import {
   Github,
   GitPullRequest,
   GitMerge,
+  GitBranch,
+  Wrench,
   HelpCircle,
   PanelLeft,
   PanelLeftClose,
@@ -21,6 +24,7 @@ import { cn } from "@auto-claude/ui";
 import { useSettingsStore, saveSettings } from "@/stores/settings-store";
 import { useUIStore, type SidebarView } from "@/stores/ui-store";
 import { useProjectStore } from "@/stores/project-store";
+import { useProjectEnvStore } from "@/stores/project-env-store";
 import { useTranslation } from "react-i18next";
 
 interface NavItem {
@@ -32,11 +36,14 @@ interface NavItem {
 
 const baseNavItems: NavItem[] = [
   { id: "kanban", labelKey: "sidebar.nav.tasks", icon: LayoutGrid, shortcut: "K" },
+  { id: "terminals", labelKey: "sidebar.nav.terminals", icon: Terminal, shortcut: "A" },
   { id: "insights", labelKey: "sidebar.nav.insights", icon: Sparkles, shortcut: "N" },
   { id: "roadmap", labelKey: "sidebar.nav.roadmap", icon: Map, shortcut: "D" },
   { id: "ideation", labelKey: "sidebar.nav.ideation", icon: Lightbulb, shortcut: "I" },
   { id: "changelog", labelKey: "sidebar.nav.changelog", icon: FileText, shortcut: "L" },
   { id: "context", labelKey: "sidebar.nav.context", icon: BookOpen, shortcut: "C" },
+  { id: "agent-tools", labelKey: "sidebar.nav.agentTools", icon: Wrench, shortcut: "M" },
+  { id: "worktrees", labelKey: "sidebar.nav.worktrees", icon: GitBranch, shortcut: "W" },
 ];
 
 const githubNavItems: NavItem[] = [
@@ -55,6 +62,8 @@ export function Sidebar() {
   const setActiveView = useUIStore((s) => s.setActiveView);
   const setNewTaskDialogOpen = useUIStore((s) => s.setNewTaskDialogOpen);
   const activeProjectId = useProjectStore((s) => s.activeProjectId);
+  const githubEnabled = useProjectEnvStore((s) => s.envConfig?.githubEnabled ?? false);
+  const gitlabEnabled = useProjectEnvStore((s) => s.envConfig?.gitlabEnabled ?? false);
   const { t } = useTranslation("layout");
 
   const isCollapsed = settings.sidebarCollapsed ?? false;
@@ -63,10 +72,16 @@ export function Sidebar() {
     saveSettings({ sidebarCollapsed: !isCollapsed });
   };
 
-  // Show GitHub and GitLab items by default (env config will drive this later)
   const visibleNavItems = useMemo(() => {
-    return [...baseNavItems, ...githubNavItems, ...gitlabNavItems];
-  }, []);
+    const items = [...baseNavItems];
+    if (githubEnabled) {
+      items.push(...githubNavItems);
+    }
+    if (gitlabEnabled) {
+      items.push(...gitlabNavItems);
+    }
+    return items;
+  }, [githubEnabled, gitlabEnabled]);
 
   const renderNavItem = (item: NavItem) => {
     const isActive = activeView === item.id;

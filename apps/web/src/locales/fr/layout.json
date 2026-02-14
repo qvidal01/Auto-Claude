@@ -48,6 +48,9 @@
       "githubIssues": "Tickets GitHub",
       "githubPrs": "PRs GitHub",
       "gitlabIssues": "Tickets GitLab",
+      "terminals": "Terminaux",
+      "agentTools": "Outils d'agent",
+      "worktrees": "Arbres de travail",
       "gitlabMrs": "MRs GitLab"
     },
     "actions": {

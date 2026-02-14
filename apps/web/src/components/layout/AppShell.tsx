@@ -8,8 +8,10 @@ import { useProjectStore } from "@/stores/project-store";
 import { useTaskStore } from "@/stores/task-store";
 import { loadTasks } from "@/stores/task-store";
 import { useSettingsStore } from "@/stores/settings-store";
+import { useProjectEnvStore, loadProjectEnvConfig, clearProjectEnvConfig } from "@/stores/project-env-store";
 import { KanbanBoard } from "@/components/kanban/KanbanBoard";
 import { TaskCreationWizard } from "@/components/kanban/TaskCreationWizard";
+import { TaskDetailModal } from "@/components/kanban/TaskDetailModal";
 import { RoadmapView } from "@/components/roadmap/RoadmapView";
 import { IdeationView } from "@/components/ideation/IdeationView";
 import { InsightsView } from "@/components/insights/InsightsView";
@@ -22,6 +24,12 @@ import { GitLabMRsView } from "@/components/gitlab/GitLabMRsView";
 import { SettingsView } from "@/components/settings/SettingsView";
 import { OnboardingWizard } from "@/components/onboarding/OnboardingWizard";
 import { WelcomeScreen } from "./WelcomeScreen";
+import type { SidebarView } from "@/stores/ui-store";
+
+/** UI scale boundaries matching the Electron app */
+const UI_SCALE_MIN = 0.7;
+const UI_SCALE_MAX = 1.3;
+const UI_SCALE_DEFAULT = 1.0;
 
 export function AppShell() {
   const activeView = useUIStore((s) => s.activeView);
@@ -29,6 +37,8 @@ export function AppShell() {
   const setNewTaskDialogOpen = useUIStore((s) => s.setNewTaskDialogOpen);
   const isOnboardingOpen = useUIStore((s) => s.isOnboardingOpen);
   const setOnboardingOpen = useUIStore((s) => s.setOnboardingOpen);
+  const selectedTask = useUIStore((s) => s.selectedTask);
+  const setSelectedTask = useUIStore((s) => s.setSelectedTask);
   const activeProjectId = useProjectStore((s) => s.activeProjectId);
   const selectedProjectId = useProjectStore((s) => s.selectedProjectId);
   const projects = useProjectStore((s) => s.projects);
@@ -43,6 +53,15 @@ export function AppShell() {
       loadTasks(currentProjectId);
     } else {
       useTaskStore.getState().clearTasks();
+    }
+  }, [currentProjectId]);
+
+  // Load project env config when project changes (for GitHub/GitLab tab visibility)
+  useEffect(() => {
+    if (currentProjectId) {
+      loadProjectEnvConfig(currentProjectId);
+    } else {
+      clearProjectEnvConfig();
     }
   }, [currentProjectId]);
 
@@ -71,7 +90,28 @@ export function AppShell() {
     return () => prefersDark.removeEventListener("change", applyTheme);
   }, [settings.theme]);
 
-  // Keyboard shortcuts for navigation
+  // Apply color theme
+  useEffect(() => {
+    if (settings.colorTheme) {
+      document.documentElement.setAttribute("data-color-theme", settings.colorTheme);
+    } else {
+      document.documentElement.removeAttribute("data-color-theme");
+    }
+  }, [settings.colorTheme]);
+
+  // Apply UI scale
+  useEffect(() => {
+    const scale = Math.min(
+      UI_SCALE_MAX,
+      Math.max(UI_SCALE_MIN, settings.uiScale ?? UI_SCALE_DEFAULT)
+    );
+    document.documentElement.style.fontSize = `${scale * 16}px`;
+    return () => {
+      document.documentElement.style.fontSize = "";
+    };
+  }, [settings.uiScale]);
+
+  // Keyboard shortcuts for navigation (all 13 views)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Don't trigger shortcuts when typing in inputs
@@ -88,13 +128,16 @@ export function AppShell() {
       if (e.metaKey || e.ctrlKey || e.altKey) return;
 
       const key = e.key.toUpperCase();
-      const viewMap: Record<string, typeof activeView> = {
+      const viewMap: Record<string, SidebarView> = {
         K: "kanban",
+        A: "terminals",
         N: "insights",
         D: "roadmap",
         I: "ideation",
         L: "changelog",
         C: "context",
+        M: "agent-tools",
+        W: "worktrees",
         G: "github-issues",
         P: "github-prs",
         B: "gitlab-issues",
@@ -124,6 +167,12 @@ export function AppShell() {
     switch (activeView) {
       case "kanban":
         return <KanbanBoard />;
+      case "terminals":
+        return (
+          <div className="flex h-full items-center justify-center text-muted-foreground">
+            Terminals (coming soon)
+          </div>
+        );
       case "roadmap":
         return <RoadmapView projectId={currentProjectId!} />;
       case "ideation":
@@ -142,6 +191,18 @@ export function AppShell() {
         return <GitLabIssuesView projectId={currentProjectId!} />;
       case "gitlab-merge-requests":
         return <GitLabMRsView projectId={currentProjectId!} />;
+      case "worktrees":
+        return (
+          <div className="flex h-full items-center justify-center text-muted-foreground">
+            Worktrees (coming soon)
+          </div>
+        );
+      case "agent-tools":
+        return (
+          <div className="flex h-full items-center justify-center text-muted-foreground">
+            Agent Tools (coming soon)
+          </div>
+        );
       default:
         return <KanbanBoard />;
     }
@@ -167,6 +228,14 @@ export function AppShell() {
           open={isNewTaskDialogOpen}
           onClose={() => setNewTaskDialogOpen(false)}
           projectId={currentProjectId}
+        />
+      )}
+
+      {/* Task Detail Modal */}
+      {selectedTask && (
+        <TaskDetailModal
+          task={selectedTask}
+          onClose={() => setSelectedTask(null)}
         />
       )}
 

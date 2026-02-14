@@ -3,10 +3,11 @@ import type { Task } from "@auto-claude/types";
 
 /**
  * Sidebar view types matching the Electron app's navigation.
- * Excludes Electron-specific views: terminals, worktrees, agent-tools.
+ * All 13 views from the Electron app plus settings.
  */
 export type SidebarView =
   | "kanban"
+  | "terminals"
   | "roadmap"
   | "context"
   | "ideation"
@@ -16,6 +17,8 @@ export type SidebarView =
   | "gitlab-issues"
   | "gitlab-merge-requests"
   | "changelog"
+  | "worktrees"
+  | "agent-tools"
   | "settings";
 
 /** Keyboard shortcut definition */
@@ -65,6 +68,8 @@ interface UIState {
   isCommandPaletteOpen: boolean;
   isDeleteConfirmOpen: boolean;
   deleteConfirmTaskId: string | null;
+  isGitHubSetupOpen: boolean;
+  isGitLabSetupOpen: boolean;
 
   // Keyboard shortcuts
   shortcuts: KeyboardShortcut[];
@@ -82,6 +87,8 @@ interface UIState {
   setCommandPaletteOpen: (open: boolean) => void;
   openDeleteConfirm: (taskId: string) => void;
   closeDeleteConfirm: () => void;
+  setGitHubSetupOpen: (open: boolean) => void;
+  setGitLabSetupOpen: (open: boolean) => void;
   closeAllModals: () => void;
 
   // Keyboard shortcut actions
@@ -101,6 +108,8 @@ export const useUIStore = create<UIState>((set, get) => ({
   isCommandPaletteOpen: false,
   isDeleteConfirmOpen: false,
   deleteConfirmTaskId: null,
+  isGitHubSetupOpen: false,
+  isGitLabSetupOpen: false,
 
   // Keyboard shortcuts
   shortcuts: DEFAULT_SHORTCUTS,
@@ -127,6 +136,9 @@ export const useUIStore = create<UIState>((set, get) => ({
   closeDeleteConfirm: () =>
     set({ isDeleteConfirmOpen: false, deleteConfirmTaskId: null }),
 
+  setGitHubSetupOpen: (open) => set({ isGitHubSetupOpen: open }),
+  setGitLabSetupOpen: (open) => set({ isGitLabSetupOpen: open }),
+
   closeAllModals: () =>
     set({
       isNewTaskDialogOpen: false,
@@ -135,6 +147,8 @@ export const useUIStore = create<UIState>((set, get) => ({
       isCommandPaletteOpen: false,
       isDeleteConfirmOpen: false,
       deleteConfirmTaskId: null,
+      isGitHubSetupOpen: false,
+      isGitLabSetupOpen: false,
     }),
 
   // Keyboard shortcut actions
