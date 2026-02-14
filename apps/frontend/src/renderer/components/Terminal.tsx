@@ -3,7 +3,7 @@ import { useDroppable, useDndContext } from '@dnd-kit/core';
 import '@xterm/xterm/css/xterm.css';
 import { FileDown } from 'lucide-react';
 import { cn } from '../lib/utils';
-import { useTerminalStore } from '../stores/terminal-store';
+import { useTerminalStore, enqueueAutoResume, dequeueAutoResume } from '../stores/terminal-store';
 import { useSettingsStore } from '../stores/settings-store';
 import { useToast } from '../hooks/use-toast';
 import type { TerminalProps } from './terminal/types';
@@ -381,6 +381,14 @@ export const Terminal = forwardRef<TerminalHandle, TerminalProps>(function Termi
         }
         pendingWorktreeConfigRef.current = null;
       }
+      // Auto-resume: enqueue non-active terminals for staggered resume
+      if (!isActive && !hasAttemptedAutoResumeRef.current) {
+        const currentTerminal = useTerminalStore.getState().terminals.find(t => t.id === id);
+        if (currentTerminal?.pendingClaudeResume) {
+          hasAttemptedAutoResumeRef.current = true;
+          enqueueAutoResume(id);
+        }
+      }
     },
     onError: (error) => {
       // Clear pending config on error to prevent stale config from being applied
@@ -573,6 +581,8 @@ export const Terminal = forwardRef<TerminalHandle, TerminalProps>(function Termi
 
     // Check if both conditions are met for auto-resume
     if (isActive && terminal?.pendingClaudeResume) {
+      // Remove from queue since active terminal handles its own resume
+      dequeueAutoResume(id);
       // Defer the resume slightly to ensure all React state updates have propagated
       // This fixes the race condition where isActive and pendingClaudeResume might update
       // at different times during the restoration flow
@@ -630,6 +640,7 @@ export const Terminal = forwardRef<TerminalHandle, TerminalProps>(function Termi
 
     return () => {
       isMountedRef.current = false;
+      dequeueAutoResume(id);
       cleanupAutoNaming();
 
       // Clear post-creation dimension check timeout to prevent operations on unmounted component

@@ -76,6 +76,80 @@ export function writeToTerminal(terminalId: string, data: string): void {
   }
 }
 
+// === Auto-Resume Queue Coordinator ===
+// Coordinates staggered auto-resume of non-active terminals after app restart.
+// Each terminal enqueues itself when its PTY is confirmed ready (onCreated).
+// A single coordinator processes the queue with stagger delays.
+
+const AUTO_RESUME_INITIAL_DELAY_MS = 1500;
+const AUTO_RESUME_STAGGER_MS = 500;
+
+let autoResumeQueue: string[] = [];
+let autoResumeTimer: ReturnType<typeof setTimeout> | null = null;
+let autoResumeProcessing = false;
+
+export function enqueueAutoResume(terminalId: string): void {
+  if (autoResumeQueue.includes(terminalId)) return;
+  autoResumeQueue.push(terminalId);
+  debugLog(`[AutoResume] Enqueued terminal: ${terminalId}, queue size: ${autoResumeQueue.length}`);
+
+  // Start initial delay timer on first enqueue only
+  if (autoResumeTimer === null && !autoResumeProcessing) {
+    debugLog(`[AutoResume] Starting initial delay (${AUTO_RESUME_INITIAL_DELAY_MS}ms)`);
+    autoResumeTimer = setTimeout(() => {
+      autoResumeTimer = null;
+      processAutoResumeQueue();
+    }, AUTO_RESUME_INITIAL_DELAY_MS);
+  }
+}
+
+export function dequeueAutoResume(terminalId: string): void {
+  const idx = autoResumeQueue.indexOf(terminalId);
+  if (idx !== -1) {
+    autoResumeQueue.splice(idx, 1);
+    debugLog(`[AutoResume] Dequeued terminal: ${terminalId}, queue size: ${autoResumeQueue.length}`);
+  }
+}
+
+export function clearAutoResumeQueue(): void {
+  autoResumeQueue = [];
+  if (autoResumeTimer !== null) {
+    clearTimeout(autoResumeTimer);
+    autoResumeTimer = null;
+  }
+  autoResumeProcessing = false;
+  debugLog('[AutoResume] Queue cleared');
+}
+
+async function processAutoResumeQueue(): Promise<void> {
+  if (autoResumeProcessing) return;
+  autoResumeProcessing = true;
+  debugLog(`[AutoResume] Processing queue, ${autoResumeQueue.length} terminals`);
+
+  while (autoResumeQueue.length > 0) {
+    const terminalId = autoResumeQueue.shift()!;
+
+    // Check if terminal still needs resume
+    const terminal = useTerminalStore.getState().terminals.find(t => t.id === terminalId);
+    if (!terminal?.pendingClaudeResume) {
+      debugLog(`[AutoResume] Skipping ${terminalId} — no longer pending`);
+      continue;
+    }
+
+    debugLog(`[AutoResume] Resuming terminal: ${terminalId}`);
+    useTerminalStore.getState().setPendingClaudeResume(terminalId, false);
+    window.electronAPI.activateDeferredClaudeResume(terminalId);
+
+    // Stagger delay between resumes
+    if (autoResumeQueue.length > 0) {
+      await new Promise(resolve => setTimeout(resolve, AUTO_RESUME_STAGGER_MS));
+    }
+  }
+
+  autoResumeProcessing = false;
+  debugLog('[AutoResume] Queue processing complete');
+}
+
 export type TerminalStatus = 'idle' | 'running' | 'claude-active' | 'exited';
 
 export interface Terminal {
@@ -507,6 +581,7 @@ export async function restoreTerminalSessions(projectPath: string): Promise<void
     return;
   }
   restoringProjects.add(projectPath);
+  clearAutoResumeQueue();
 
   try {
     const store = useTerminalStore.getState();
