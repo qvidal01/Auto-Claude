@@ -1871,9 +1871,6 @@ export function registerPRHandlers(getMainWindow: () => BrowserWindow | null): v
 
     const reviewKey = getReviewKey(projectId, prNumber);
 
-    // Notify state manager that review is starting
-    prReviewStateManager.handleStartReview(projectId, prNumber);
-
     try {
       await withProjectOrNull(projectId, async (project) => {
         const sendProgress = (progress: PRReviewProgress): void => {
@@ -1891,6 +1888,9 @@ export function registerPRHandlers(getMainWindow: () => BrowserWindow | null): v
           });
           return;
         }
+
+        // Notify state manager that review is starting (after duplicate check)
+        prReviewStateManager.handleStartReview(projectId, prNumber);
 
         // Register as running BEFORE CI wait to prevent race conditions
         // Use CI_WAIT_PLACEHOLDER sentinel until real process is spawned
