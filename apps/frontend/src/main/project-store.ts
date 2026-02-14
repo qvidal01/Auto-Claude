@@ -10,6 +10,7 @@ import { findAllSpecPaths } from './utils/spec-path-helpers';
 import { ensureAbsolutePath } from './utils/path-helpers';
 import { writeFileAtomicSync } from './utils/atomic-file';
 import { updateRoadmapFeatureOutcome, revertRoadmapFeatureOutcome } from './utils/roadmap-utils';
+import { extractSubtaskTitle } from '../shared/utils/subtask-title';
 
 interface TabState {
   openProjectIds: string[];
@@ -502,7 +503,7 @@ export class ProjectStore {
           const items = phase.subtasks || (phase as { chunks?: PlanSubtask[] }).chunks || [];
           return items.map((subtask) => ({
             id: subtask.id,
-            title: subtask.description,
+            title: subtask.title || extractSubtaskTitle(subtask.description),
             description: subtask.description,
             status: subtask.status,
             files: []
