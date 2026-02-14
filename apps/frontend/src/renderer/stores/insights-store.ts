@@ -207,12 +207,12 @@ export const useInsightsStore = create<InsightsState>((set, _get) => ({
 
 // Helper functions
 
-export async function loadInsightsSessions(projectId: string): Promise<void> {
+export async function loadInsightsSessions(projectId: string, includeArchived?: boolean): Promise<void> {
   const store = useInsightsStore.getState();
   store.setLoadingSessions(true);
 
   try {
-    const result = await window.electronAPI.listInsightsSessions(projectId);
+    const result = await window.electronAPI.listInsightsSessions(projectId, includeArchived);
     if (result.success && result.data) {
       store.setSessions(result.data);
     } else {
@@ -308,6 +308,42 @@ export async function renameSession(projectId: string, sessionId: string, newTit
   if (result.success) {
     // Reload sessions list to reflect the change
     await loadInsightsSessions(projectId);
+    return true;
+  }
+  return false;
+}
+
+export async function deleteSessions(projectId: string, sessionIds: string[]): Promise<{ success: boolean; failedIds?: string[] }> {
+  const result = await window.electronAPI.deleteInsightsSessions(projectId, sessionIds);
+  if (result.success) {
+    await loadInsightsSession(projectId);
+    return { success: true };
+  }
+  return { success: false, failedIds: result.data?.failedIds };
+}
+
+export async function archiveSession(projectId: string, sessionId: string): Promise<boolean> {
+  const result = await window.electronAPI.archiveInsightsSession(projectId, sessionId);
+  if (result.success) {
+    await loadInsightsSession(projectId);
+    return true;
+  }
+  return false;
+}
+
+export async function archiveSessions(projectId: string, sessionIds: string[]): Promise<{ success: boolean; failedIds?: string[] }> {
+  const result = await window.electronAPI.archiveInsightsSessions(projectId, sessionIds);
+  if (result.success) {
+    await loadInsightsSession(projectId);
+    return { success: true };
+  }
+  return { success: false, failedIds: result.data?.failedIds };
+}
+
+export async function unarchiveSession(projectId: string, sessionId: string): Promise<boolean> {
+  const result = await window.electronAPI.unarchiveInsightsSession(projectId, sessionId);
+  if (result.success) {
+    await loadInsightsSession(projectId);
     return true;
   }
   return false;
