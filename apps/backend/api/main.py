@@ -26,6 +26,7 @@ from .routes.roadmap import router as roadmap_router
 from .routes.settings import router as settings_router
 from .routes.tasks import router as tasks_router
 from .routes.terminal import router as terminal_router
+from .websocket.terminal_ns import get_terminal_service, register_terminal_namespace
 
 # Socket.IO async server for real-time communication
 sio = socketio.AsyncServer(
@@ -33,13 +34,17 @@ sio = socketio.AsyncServer(
     cors_allowed_origins=["http://localhost:3000", "http://localhost:3001"],
 )
 
+# Register Socket.IO namespaces
+register_terminal_namespace(sio)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan: startup and shutdown events."""
     # Startup
     yield
-    # Shutdown
+    # Shutdown — kill all PTY sessions
+    await get_terminal_service().kill_all()
 
 
 app = FastAPI(
