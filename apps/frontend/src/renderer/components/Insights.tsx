@@ -589,11 +589,27 @@ function MessageBubble({
         <div className="text-sm font-medium text-foreground">
           {isUser ? 'You' : 'Assistant'}
         </div>
-        <div className="prose prose-sm dark:prose-invert max-w-none">
-          <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
-            {message.content}
-          </ReactMarkdown>
-        </div>
+        {message.content && (
+          <div className="prose prose-sm dark:prose-invert max-w-none">
+            <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+              {message.content}
+            </ReactMarkdown>
+          </div>
+        )}
+
+        {/* Image attachments for user messages */}
+        {isUser && message.images && message.images.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {message.images.map((image) => (
+              <img
+                key={image.id}
+                src={image.thumbnail || (image.data ? `data:${image.mimeType};base64,${image.data}` : '')}
+                alt={image.filename}
+                className="max-w-[200px] max-h-[200px] rounded-md border border-border object-contain"
+              />
+            ))}
+          </div>
+        )}
 
         {/* Tool usage history for assistant messages */}
         {!isUser && message.toolsUsed && message.toolsUsed.length > 0 && (
