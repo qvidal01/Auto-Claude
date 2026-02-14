@@ -156,6 +156,10 @@ export class InsightsExecutor extends EventEmitter {
             if (existsSync(tmpFile)) unlinkSync(tmpFile);
           } catch { /* ignore cleanup errors */ }
         }
+        // Also clean up the history file (cleanupTempFiles isn't defined yet at this point)
+        if (historyFileCreated && existsSync(historyFile)) {
+          try { unlinkSync(historyFile); } catch { /* ignore */ }
+        }
         console.error('[Insights] Failed to write image files:', err);
         throw new Error('Failed to write image files to temp directory');
       }

@@ -193,7 +193,7 @@ def load_images_from_manifest(manifest_path: str) -> list[dict]:
                     "Loaded image",
                     path=image_path,
                     mime_type=mime_type,
-                    size_bytes=len(image_data),
+                    size_bytes=file_size,
                 )
             except Exception as e:
                 debug_error(
@@ -345,7 +345,7 @@ Current question: {message}"""
                     )
                     image_note = f"\n\n[Note: The user attached {len(images)} image(s) but multi-modal input is not supported in this SDK version. Please describe the image content instead.]"
                     print(
-                        f"Warning: Image attachments could not be sent to the model and were skipped. The model was notified.",
+                        "Warning: Image attachments could not be sent to the model and were skipped. The model was notified.",
                         file=sys.stderr,
                     )
                     await client.query(full_prompt + image_note)
