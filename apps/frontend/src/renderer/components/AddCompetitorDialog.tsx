@@ -157,7 +157,7 @@ export function AddCompetitorDialog({
         if (!result.success) {
           // Rollback store state since save failed
           useRoadmapStore.getState().removeCompetitor(newCompetitorId);
-          throw new Error(result.error || 'Failed to save competitor analysis');
+          throw new Error(result.error || t('addCompetitor.failedToAdd'));
         }
       }
 

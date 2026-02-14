@@ -33,6 +33,7 @@ export function CompetitorAnalysisViewer({
   if (!analysis) return null;
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[85vh] flex flex-col">
         <DialogHeader>
@@ -208,12 +209,13 @@ export function CompetitorAnalysisViewer({
           </div>
         </ScrollArea>
       </DialogContent>
-
-      <AddCompetitorDialog
-        open={showAddDialog}
-        onOpenChange={setShowAddDialog}
-        projectId={projectId}
-      />
     </Dialog>
+
+    <AddCompetitorDialog
+      open={showAddDialog}
+      onOpenChange={setShowAddDialog}
+      projectId={projectId}
+    />
+    </>
   );
 }

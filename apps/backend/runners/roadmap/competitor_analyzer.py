@@ -53,6 +53,9 @@ class CompetitorAnalyzer:
                 "competitor_analysis", True, [str(self.analysis_file)], [], 0
             )
 
+        # Preserve manual competitors before any path that overwrites the file
+        manual_competitors = self._get_manual_competitors()
+
         if not self.discovery_file.exists():
             print_status(
                 "Discovery file not found, skipping competitor analysis", "warning"
@@ -60,6 +63,8 @@ class CompetitorAnalyzer:
             self._create_error_analysis_file(
                 "Discovery file not found - cannot analyze competitors without project context"
             )
+            if manual_competitors:
+                self._merge_manual_competitors(manual_competitors)
             return RoadmapPhaseResult(
                 "competitor_analysis",
                 True,
@@ -67,9 +72,6 @@ class CompetitorAnalyzer:
                 ["Discovery file not found"],
                 0,
             )
-
-        # Preserve manual competitors before refresh overwrites the file
-        manual_competitors = self._get_manual_competitors()
 
         errors = []
         for attempt in range(MAX_RETRIES):
@@ -145,7 +147,8 @@ class CompetitorAnalyzer:
         try:
             with open(self.analysis_file, encoding="utf-8") as f:
                 data = json.load(f)
-        except (json.JSONDecodeError, OSError):
+        except (json.JSONDecodeError, OSError) as e:
+            print_status(f"Warning: failed to merge manual competitors: {e}", "warning")
             return
 
         existing_ids = {

@@ -31,7 +31,7 @@ export function ExistingCompetitorAnalysisDialog({
   analysisDate,
   projectId,
 }: ExistingCompetitorAnalysisDialogProps) {
-  const { t } = useTranslation(['dialogs']);
+  const { t, i18n } = useTranslation(['dialogs']);
   const [showAddDialog, setShowAddDialog] = useState(false);
 
   const handleUseExisting = () => {
@@ -51,7 +51,7 @@ export function ExistingCompetitorAnalysisDialog({
 
   const formatDate = (date?: Date) => {
     if (!date) return t('dialogs:existingCompetitorAnalysis.recently');
-    return new Intl.DateTimeFormat('en-US', {
+    return new Intl.DateTimeFormat(i18n.language, {
       month: 'short',
       day: 'numeric',
       year: 'numeric',
@@ -76,7 +76,7 @@ export function ExistingCompetitorAnalysisDialog({
             {/* Option 1: Use existing (recommended) */}
             <button
               onClick={handleUseExisting}
-              className="w-full rounded-lg bg-primary/10 border border-primary/30 p-4 text-left hover:bg-primary/20 transition-colors"
+              className="w-full rounded-lg bg-primary/10 border border-primary/30 p-4 text-left hover:bg-primary/20 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             >
               <div className="flex items-start gap-3">
                 <CheckCircle className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
@@ -95,7 +95,7 @@ export function ExistingCompetitorAnalysisDialog({
             {/* Option 2: Run new analysis */}
             <button
               onClick={handleRunNew}
-              className="w-full rounded-lg bg-muted/50 border border-border p-4 text-left hover:bg-muted transition-colors"
+              className="w-full rounded-lg bg-muted/50 border border-border p-4 text-left hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             >
               <div className="flex items-start gap-3">
                 <RefreshCw className="h-5 w-5 text-muted-foreground flex-shrink-0 mt-0.5" />
@@ -113,7 +113,7 @@ export function ExistingCompetitorAnalysisDialog({
             {/* Option 3: Add known competitors */}
             <button
               onClick={() => setShowAddDialog(true)}
-              className="w-full rounded-lg bg-muted/50 border border-border p-4 text-left hover:bg-muted transition-colors"
+              className="w-full rounded-lg bg-muted/50 border border-border p-4 text-left hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             >
               <div className="flex items-start gap-3">
                 <UserPlus className="h-5 w-5 text-muted-foreground flex-shrink-0 mt-0.5" />
@@ -131,7 +131,7 @@ export function ExistingCompetitorAnalysisDialog({
             {/* Option 4: Skip */}
             <button
               onClick={handleSkip}
-              className="w-full rounded-lg bg-muted/30 border border-border/50 p-4 text-left hover:bg-muted/50 transition-colors"
+              className="w-full rounded-lg bg-muted/30 border border-border/50 p-4 text-left hover:bg-muted/50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             >
               <div className="flex items-start gap-3">
                 <Globe className="h-5 w-5 text-muted-foreground/60 flex-shrink-0 mt-0.5" />
