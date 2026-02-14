@@ -40,6 +40,7 @@ import {
   setupInsightsListeners
 } from '../stores/insights-store';
 import { useImageUpload } from './task-form/useImageUpload';
+import { createThumbnail, generateImageId } from './ImageUpload';
 import { loadTasks } from '../stores/task-store';
 import { ChatHistorySidebar } from './ChatHistorySidebar';
 import { InsightsModelSelector } from './InsightsModelSelector';
@@ -208,15 +209,17 @@ export function Insights({ projectId }: InsightsProps) {
     setIsUserAtBottom(true); // Resume auto-scroll when user sends a message
   };
 
-  const handleScreenshotCapture = useCallback((imageData: string) => {
+  const handleScreenshotCapture = useCallback(async (imageData: string) => {
     // imageData is base64 PNG from ScreenshotCapture
+    const dataUrl = `data:image/png;base64,${imageData}`;
+    const thumbnail = await createThumbnail(dataUrl);
     const newImage: ImageAttachment = {
-      id: `img-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+      id: generateImageId(),
       filename: `screenshot-${Date.now()}.png`,
       mimeType: 'image/png',
       size: Math.ceil(imageData.length * 0.75), // approximate base64 size
       data: imageData,
-      thumbnail: `data:image/png;base64,${imageData}`
+      thumbnail
     };
     setPendingImages([...pendingImages, newImage]);
   }, [pendingImages, setPendingImages]);

@@ -108,6 +108,16 @@ export class InsightsExecutor extends EventEmitter {
     const imagesTempFiles: string[] = [];
     let imagesManifestFile: string | undefined;
 
+    // Safe extension map for image MIME types — prevents path traversal via crafted mimeType
+    const SAFE_EXT_MAP: Record<string, string> = {
+      'image/png': 'png',
+      'image/jpeg': 'jpg',
+      'image/jpg': 'jpg',
+      'image/gif': 'gif',
+      'image/webp': 'webp',
+      'image/svg+xml': 'svg'
+    };
+
     if (images && images.length > 0) {
       try {
         const manifest: Array<{ path: string; mimeType: string }> = [];
@@ -116,7 +126,14 @@ export class InsightsExecutor extends EventEmitter {
         for (let i = 0; i < images.length; i++) {
           const image = images[i];
           if (!image.data) continue;
-          const ext = image.mimeType.split('/')[1] || 'png';
+
+          // Validate mimeType against allowlist (defense-in-depth for main process)
+          const ext = SAFE_EXT_MAP[image.mimeType];
+          if (!ext) {
+            console.warn(`[Insights] Skipping image with invalid mimeType: ${image.mimeType}`);
+            continue;
+          }
+
           const imagePath = path.join(
             os.tmpdir(),
             `insights-image-${projectId}-${timestamp}-${i}.${ext}`
@@ -172,6 +189,24 @@ export class InsightsExecutor extends EventEmitter {
 
     this.activeSessions.set(projectId, proc);
 
+    // Shared cleanup for temp files used across close/error handlers
+    const cleanupTempFiles = () => {
+      if (historyFileCreated && existsSync(historyFile)) {
+        try {
+          unlinkSync(historyFile);
+        } catch (cleanupErr) {
+          console.error('[Insights] Failed to cleanup history file:', cleanupErr);
+        }
+      }
+      for (const tmpFile of imagesTempFiles) {
+        try {
+          if (existsSync(tmpFile)) unlinkSync(tmpFile);
+        } catch (cleanupErr) {
+          console.error('[Insights] Failed to cleanup image temp file:', cleanupErr);
+        }
+      }
+    };
+
     return new Promise((resolve, reject) => {
       let fullResponse = '';
       const suggestedTasks: InsightsChatMessage['suggestedTasks'] = [];
@@ -217,22 +252,7 @@ export class InsightsExecutor extends EventEmitter {
 
       proc.on('close', (code) => {
         this.activeSessions.delete(projectId);
-
-        // Cleanup temp files
-        if (historyFileCreated && existsSync(historyFile)) {
-          try {
-            unlinkSync(historyFile);
-          } catch (cleanupErr) {
-            console.error('[Insights] Failed to cleanup history file:', cleanupErr);
-          }
-        }
-        for (const tmpFile of imagesTempFiles) {
-          try {
-            if (existsSync(tmpFile)) unlinkSync(tmpFile);
-          } catch (cleanupErr) {
-            console.error('[Insights] Failed to cleanup image temp file:', cleanupErr);
-          }
-        }
+        cleanupTempFiles();
 
         // Check for rate limit if process failed
         if (code !== 0) {
@@ -271,22 +291,7 @@ export class InsightsExecutor extends EventEmitter {
 
       proc.on('error', (err) => {
         this.activeSessions.delete(projectId);
-
-        // Cleanup temp files
-        if (historyFileCreated && existsSync(historyFile)) {
-          try {
-            unlinkSync(historyFile);
-          } catch (cleanupErr) {
-            console.error('[Insights] Failed to cleanup history file:', cleanupErr);
-          }
-        }
-        for (const tmpFile of imagesTempFiles) {
-          try {
-            if (existsSync(tmpFile)) unlinkSync(tmpFile);
-          } catch (cleanupErr) {
-            console.error('[Insights] Failed to cleanup image temp file:', cleanupErr);
-          }
-        }
+        cleanupTempFiles();
 
         this.emit('error', projectId, err.message);
         reject(err);

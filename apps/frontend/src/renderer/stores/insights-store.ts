@@ -205,7 +205,8 @@ export const useInsightsStore = create<InsightsState>((set, _get) => ({
       streamingContent: '',
       streamingTasks: [],
       currentTool: null,
-      toolsUsed: []
+      toolsUsed: [],
+      pendingImages: []
     }),
 
   setPendingImages: (images) => set({ pendingImages: images })

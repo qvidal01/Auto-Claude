@@ -11,6 +11,7 @@ import asyncio
 import base64
 import json
 import sys
+import tempfile
 from pathlib import Path
 
 # Add auto-claude to path
@@ -112,6 +113,13 @@ def load_project_context(project_dir: str) -> str:
     )
 
 
+ALLOWED_MIME_TYPES = frozenset(
+    ["image/png", "image/jpeg", "image/jpg", "image/gif", "image/webp", "image/svg+xml"]
+)
+
+MAX_IMAGE_FILE_SIZE = 20 * 1024 * 1024  # 20 MB
+
+
 def load_images_from_manifest(manifest_path: str) -> list[dict]:
     """Load images from a manifest JSON file.
 
@@ -121,6 +129,8 @@ def load_images_from_manifest(manifest_path: str) -> list[dict]:
     Returns a list of dicts with 'media_type' and 'data' (base64-encoded) fields.
     """
     images = []
+    tmp_dir = Path(tempfile.gettempdir())
+
     try:
         with open(manifest_path, encoding="utf-8") as f:
             manifest = json.load(f)
@@ -133,6 +143,39 @@ def load_images_from_manifest(manifest_path: str) -> list[dict]:
                 debug_error(
                     "insights_runner",
                     f"Image file not found: {image_path}",
+                )
+                continue
+
+            # Validate path is within temp directory
+            try:
+                resolved = Path(image_path).resolve()
+                if not resolved.is_relative_to(tmp_dir):
+                    debug_error(
+                        "insights_runner",
+                        f"Image path outside temp directory, skipping: {image_path}",
+                    )
+                    continue
+            except (ValueError, OSError):
+                debug_error(
+                    "insights_runner",
+                    f"Invalid image path, skipping: {image_path}",
+                )
+                continue
+
+            # Validate MIME type against allowlist
+            if mime_type not in ALLOWED_MIME_TYPES:
+                debug_error(
+                    "insights_runner",
+                    f"Invalid MIME type '{mime_type}', skipping: {image_path}",
+                )
+                continue
+
+            # Validate file size
+            file_size = resolved.stat().st_size
+            if file_size > MAX_IMAGE_FILE_SIZE:
+                debug_error(
+                    "insights_runner",
+                    f"Image too large ({file_size} bytes), skipping: {image_path}",
                 )
                 continue
 
@@ -288,15 +331,24 @@ Current question: {message}"""
                 # text-only with image file path references
                 try:
                     await client.query(content_blocks)
-                except TypeError:
-                    # SDK query() only accepts strings - fall back to text prompt
-                    # with a note about attached images
-                    debug(
-                        "insights_runner",
-                        "SDK does not support content blocks, falling back to text-only",
-                    )
-                    image_note = f"\n\n[Note: The user attached {len(images)} image(s) but multi-modal input is not supported in this mode. Please ask the user to describe the image content instead.]"
-                    await client.query(full_prompt + image_note)
+                except TypeError as e:
+                    # Only catch TypeErrors related to query() argument type mismatch
+                    error_msg = str(e).lower()
+                    if (
+                        "str" in error_msg
+                        or "string" in error_msg
+                        or "expected" in error_msg
+                        or "argument" in error_msg
+                    ):
+                        debug(
+                            "insights_runner",
+                            "SDK does not support content blocks, falling back to text-only",
+                            error=str(e),
+                        )
+                        image_note = f"\n\n[Note: The user attached {len(images)} image(s) but multi-modal input is not supported in this mode. Please ask the user to describe the image content instead.]"
+                        await client.query(full_prompt + image_note)
+                    else:
+                        raise  # Re-raise unexpected TypeErrors
             else:
                 # Send the query as plain text
                 await client.query(full_prompt)
