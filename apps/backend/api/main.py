@@ -13,11 +13,16 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from .routes.agents import router as agents_router
+from .routes.changelog import router as changelog_router
+from .routes.context import router as context_router
 from .routes.env import router as env_router
 from .routes.github import router as github_router
 from .routes.gitlab import router as gitlab_router
 from .routes.health import router as health_router
+from .routes.ideation import router as ideation_router
+from .routes.insights import router as insights_router
 from .routes.projects import router as projects_router
+from .routes.roadmap import router as roadmap_router
 from .routes.settings import router as settings_router
 from .routes.tasks import router as tasks_router
 from .routes.terminal import router as terminal_router
@@ -62,6 +67,11 @@ app.include_router(agents_router)
 app.include_router(terminal_router)
 app.include_router(github_router)
 app.include_router(gitlab_router)
+app.include_router(roadmap_router)
+app.include_router(ideation_router)
+app.include_router(insights_router)
+app.include_router(changelog_router)
+app.include_router(context_router)
 
 # Mount Socket.IO as ASGI sub-application
 sio_asgi_app = socketio.ASGIApp(sio, other_asgi_app=app)
