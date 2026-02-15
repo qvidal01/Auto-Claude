@@ -238,6 +238,42 @@ class SpecOrchestrator:
         task_logger.start_phase(LogPhase.PLANNING, "Starting spec creation process")
         TaskEventEmitter.from_spec_dir(self.spec_dir).emit("PLANNING_STARTED")
 
+        try:
+            return await self._run_phases(interactive, auto_approve, task_logger, ui)
+        except Exception as e:
+            # Emit PLANNING_FAILED so the frontend XState machine transitions to error state
+            # instead of leaving the task stuck in "planning" forever
+            try:
+                task_emitter = TaskEventEmitter.from_spec_dir(self.spec_dir)
+                task_emitter.emit(
+                    "PLANNING_FAILED",
+                    {"error": str(e), "recoverable": True},
+                )
+            except Exception:
+                pass  # Don't mask the original error
+            try:
+                task_logger.end_phase(
+                    LogPhase.PLANNING,
+                    success=False,
+                    message=f"Spec creation crashed: {e}",
+                )
+            except Exception:
+                pass
+            raise
+
+    async def _run_phases(
+        self,
+        interactive: bool,
+        auto_approve: bool,
+        task_logger,
+        ui,
+    ) -> bool:
+        """Internal method that runs all spec creation phases.
+
+        Separated from run() so that run() can wrap this in a try/except
+        to emit PLANNING_FAILED on unhandled exceptions.
+        """
+
         print(
             box(
                 f"Spec Directory: {self.spec_dir}\n"
@@ -294,6 +330,7 @@ class SpecOrchestrator:
             task_logger.end_phase(
                 LogPhase.PLANNING, success=False, message="Discovery failed"
             )
+            self._emit_planning_failed("Discovery phase failed")
             return False
         # Store summary for subsequent phases (compaction)
         await self._store_phase_summary("discovery")
@@ -310,12 +347,28 @@ class SpecOrchestrator:
                 success=False,
                 message="Requirements gathering failed",
             )
+            self._emit_planning_failed("Requirements gathering failed")
             return False
         # Store summary for subsequent phases (compaction)
         await self._store_phase_summary("requirements")
 
         # Rename spec folder with better name from requirements
+        # IMPORTANT: Update self.spec_dir after rename so subsequent phases use the correct path
+        old_spec_dir = self.spec_dir
         rename_spec_dir_from_requirements(self.spec_dir)
+        if not self.spec_dir.exists() and old_spec_dir.name.endswith("-pending"):
+            # Directory was renamed - find the new path
+            parent = old_spec_dir.parent
+            prefix = old_spec_dir.name[:4]  # e.g., "001-"
+            for candidate in parent.iterdir():
+                if (
+                    candidate.name.startswith(prefix)
+                    and candidate.is_dir()
+                    and "pending" not in candidate.name
+                ):
+                    self.spec_dir = candidate
+                    self.validator = SpecValidator(self.spec_dir)
+                    break
 
         # Update task description from requirements
         req = requirements.load_requirements(self.spec_dir)
@@ -338,6 +391,7 @@ class SpecOrchestrator:
             task_logger.end_phase(
                 LogPhase.PLANNING, success=False, message="Complexity assessment failed"
             )
+            self._emit_planning_failed("Complexity assessment failed")
             return False
 
         # Map of all available phases
@@ -400,6 +454,9 @@ class SpecOrchestrator:
                     LogPhase.PLANNING,
                     success=False,
                     message=f"Phase {phase_name} failed",
+                )
+                self._emit_planning_failed(
+                    f"Phase '{phase_name}' failed: {'; '.join(result.errors)}"
                 )
                 return False
 
@@ -637,6 +694,25 @@ class SpecOrchestrator:
                 style="heavy",
             )
         )
+
+    def _emit_planning_failed(self, error: str) -> None:
+        """Emit PLANNING_FAILED event so the frontend transitions to error state.
+
+        Without this, the task stays stuck in 'planning' / 'in_progress' forever
+        when spec creation fails, because the XState machine never receives a
+        terminal event.
+
+        Args:
+            error: Human-readable error description
+        """
+        try:
+            task_emitter = TaskEventEmitter.from_spec_dir(self.spec_dir)
+            task_emitter.emit(
+                "PLANNING_FAILED",
+                {"error": error, "recoverable": True},
+            )
+        except Exception:
+            pass  # Best effort - don't mask the original failure
 
     def _run_review_checkpoint(self, auto_approve: bool) -> bool:
         """Run the human review checkpoint.
