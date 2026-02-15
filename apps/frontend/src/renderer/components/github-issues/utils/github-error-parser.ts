@@ -138,7 +138,7 @@ function extractRateLimitResetTime(error: string): Date | undefined {
   }
 
   // Then try absolute timestamp pattern
-  const absolutePattern = /(?:reset[s]?\s*at[:\s]*|X-RateLimit-Reset[:\s]*)(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z?|\d+)/i;
+  const absolutePattern = /(?:reset[s]?\s*at[:\s]*|X-RateLimit-Reset[:\s]*)(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z?|\d+)/i;
   const match = error.match(absolutePattern);
   if (!match) {
     return undefined;
