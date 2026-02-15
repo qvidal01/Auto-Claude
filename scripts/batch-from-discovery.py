@@ -39,7 +39,10 @@ def clear_screen():
 
 
 def header(text):
-    width = min(os.get_terminal_size().columns, 72)
+    try:
+        width = min(os.get_terminal_size().columns, 72)
+    except OSError:
+        width = 72
     print(f"\n{CYAN}{'═' * width}{RESET}")
     print(f"{CYAN}{BOLD}  {text}{RESET}")
     print(f"{CYAN}{'═' * width}{RESET}\n")
