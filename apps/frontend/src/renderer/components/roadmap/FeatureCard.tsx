@@ -73,7 +73,7 @@ export function FeatureCard({
               }}
             >
               <ExternalLink className="h-3 w-3 mr-1" />
-              Go to Task
+              {t('roadmap.goToTask')}
             </Button>
           ) : (
             feature.status !== 'done' && (
@@ -86,7 +86,7 @@ export function FeatureCard({
                 }}
               >
                 <Play className="h-3 w-3 mr-1" />
-                Build
+                {t('roadmap.build')}
               </Button>
             )
           )}

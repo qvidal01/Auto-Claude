@@ -247,7 +247,7 @@ export function FeatureDetailPanel({
           <div className="shrink-0 p-4 border-t border-border space-y-2">
             <Button className="w-full" onClick={() => onGoToTask(feature.linkedSpecId!)}>
               <ExternalLink className="h-4 w-4 mr-2" />
-              Go to Task
+              {t('roadmap.goToTask')}
             </Button>
             {archiveButton}
           </div>
@@ -263,7 +263,7 @@ export function FeatureDetailPanel({
           <div className="shrink-0 p-4 border-t border-border">
             <Button className="w-full" onClick={() => onConvertToSpec(feature)}>
               <Zap className="h-4 w-4 mr-2" />
-              Convert to Auto-Build Task
+              {t('roadmap.convertToTask')}
             </Button>
           </div>
         );

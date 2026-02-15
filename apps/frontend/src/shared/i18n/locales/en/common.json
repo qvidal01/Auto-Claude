@@ -606,7 +606,10 @@
     "showLessFeatures": "Show less",
     "archiveFeature": "Archive",
     "archiveFeatureConfirmTitle": "Archive Feature?",
-    "archiveFeatureConfirmDescription": "This will remove \"{{title}}\" from your roadmap."
+    "archiveFeatureConfirmDescription": "This will remove \"{{title}}\" from your roadmap.",
+    "goToTask": "Go to Task",
+    "convertToTask": "Convert to Auto-Build Task",
+    "build": "Build"
   },
   "roadmapGeneration": {
     "progress": "Progress",

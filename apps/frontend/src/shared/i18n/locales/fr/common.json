@@ -606,7 +606,10 @@
     "showLessFeatures": "Afficher moins",
     "archiveFeature": "Archiver",
     "archiveFeatureConfirmTitle": "Archiver la fonctionnalité ?",
-    "archiveFeatureConfirmDescription": "Cela supprimera \"{{title}}\" de votre feuille de route."
+    "archiveFeatureConfirmDescription": "Cela supprimera \"{{title}}\" de votre feuille de route.",
+    "goToTask": "Aller à la tâche",
+    "convertToTask": "Convertir en tâche Auto-Build",
+    "build": "Construire"
   },
   "roadmapGeneration": {
     "progress": "Progression",
