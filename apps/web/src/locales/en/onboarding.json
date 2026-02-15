@@ -4,6 +4,7 @@
     "authChoice": "Auth",
     "apiKey": "API Key",
     "project": "Project",
+    "memory": "Memory",
     "complete": "Complete"
   },
   "welcome": {
@@ -64,11 +65,54 @@
       "description": "Drag a folder here to set it as your project directory."
     }
   },
+  "memory": {
+    "title": "Memory",
+    "description": "Configure persistent cross-session memory for agents",
+    "contextDescription": "Auto Claude Memory helps remember context across your coding sessions",
+    "enableMemory": "Enable Memory",
+    "enableMemoryDescription": "Persistent cross-session memory using LadybugDB (embedded database)",
+    "memoryDisabledInfo": "Memory is disabled. Session insights will be stored in local files only.",
+    "enableAgentAccess": "Enable Agent Memory Access",
+    "enableAgentAccessDescription": "Allow agents to search and add to the knowledge graph via MCP",
+    "embeddingProvider": "Embedding Provider",
+    "embeddingProviderDescription": "Provider for semantic search (optional - keyword search works without)",
+    "selectEmbeddingModel": "Select Embedding Model",
+    "openaiApiKey": "OpenAI API Key",
+    "openaiApiKeyDescription": "Required for OpenAI embeddings",
+    "memoryInfo": "Memory stores discoveries, patterns, and insights about your codebase so future sessions start with context already loaded.",
+    "learnMore": "Learn more about Memory",
+    "back": "Back",
+    "skip": "Skip",
+    "saving": "Saving...",
+    "saveAndContinue": "Save & Continue",
+    "providers": {
+      "ollama": "Ollama (Local - Free)",
+      "openai": "OpenAI",
+      "voyage": "Voyage AI",
+      "google": "Google AI",
+      "azure": "Azure OpenAI"
+    }
+  },
   "completion": {
     "title": "You're All Set!",
     "description": "Auto Claude is ready to help you build better software. Start by creating your first task or exploring your project's codebase.",
     "getStarted": "Get Started",
-    "openSettings": "Open Settings"
+    "openSettings": "Open Settings",
+    "setupComplete": "Setup Complete",
+    "setupCompleteDescription": "Your environment is configured and ready.",
+    "whatsNext": "What's Next?",
+    "createTask": {
+      "title": "Create a Task",
+      "description": "Start by creating your first task to see Auto Claude in action.",
+      "action": "Open Task Creator"
+    },
+    "customizeSettings": {
+      "title": "Customize Settings",
+      "description": "Fine-tune your preferences, configure integrations, or re-run this wizard.",
+      "action": "Open Settings"
+    },
+    "finish": "Finish & Start Building",
+    "rerunHint": "You can always re-run this wizard from Settings"
   },
   "actions": {
     "back": "Back",

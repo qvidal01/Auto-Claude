@@ -1,5 +1,9 @@
 {
   "title": "Settings",
+  "tabs": {
+    "app": "App Settings",
+    "project": "Project Settings"
+  },
   "selfHosted": {
     "mode": "Self-Hosted Mode",
     "description": "Running in self-hosted mode. Configure your local Python backend via environment variables.",
@@ -31,9 +35,17 @@
       "title": "Appearance",
       "description": "Customize the look and feel of the application."
     },
+    "language": {
+      "title": "Language",
+      "description": "Choose your preferred language"
+    },
     "accounts": {
       "title": "Accounts",
       "description": "Manage API keys and authentication."
+    },
+    "agent": {
+      "title": "Agent Settings",
+      "description": "Default model and framework"
     },
     "github": {
       "title": "GitHub Integration",
@@ -46,6 +58,10 @@
     "advanced": {
       "title": "Advanced",
       "description": "Advanced configuration options."
+    },
+    "debug": {
+      "title": "Debug & Logs",
+      "description": "Troubleshooting tools"
     }
   },
   "fields": {
@@ -61,7 +77,10 @@
     "memorySystemDescription": "Configure the AI memory system for your projects."
   },
   "actions": {
-    "configure": "Configure"
+    "configure": "Configure",
+    "save": "Save Settings",
+    "rerunWizard": "Re-run Wizard",
+    "rerunWizardDescription": "Start the setup wizard again"
   },
   "status": {
     "active": "Active",
@@ -80,7 +99,157 @@
     "dark": "dark",
     "system": "system"
   },
+  "language": {
+    "label": "Interface Language",
+    "description": "Select the language for the application interface"
+  },
+  "theme": {
+    "title": "Appearance",
+    "description": "Customize how Auto Claude looks",
+    "mode": "Mode",
+    "modeDescription": "Choose between light and dark themes",
+    "light": "Light",
+    "dark": "Dark",
+    "system": "System",
+    "colorTheme": "Color Theme",
+    "colorThemeDescription": "Choose your preferred color palette"
+  },
+  "logOrder": {
+    "label": "Log Order",
+    "description": "Choose how logs are displayed in the task detail view",
+    "chronological": "Chronological (oldest first)",
+    "reverseChronological": "Reverse-chronological (newest first)"
+  },
+  "general": {
+    "agentFramework": "Agent Framework",
+    "agentFrameworkDescription": "The coding framework used for autonomous tasks",
+    "agentFrameworkAutoClaude": "Auto Claude",
+    "featureModelSettings": "Feature Model Settings",
+    "featureModelSettingsDescription": "Model and thinking level for Insights, Ideation, and Roadmap",
+    "model": "Model",
+    "thinkingLevel": "Thinking Level"
+  },
+  "agentProfile": {
+    "label": "Agent Profile",
+    "title": "Default Agent Profile",
+    "sectionDescription": "Select a preset configuration for model and thinking level",
+    "profilesInfo": "Agent profiles provide preset configurations for Claude model and thinking level. When you create a new task, these settings will be used as defaults.",
+    "custom": "Custom",
+    "customConfiguration": "Custom Configuration",
+    "customDescription": "Choose model & thinking level",
+    "phaseConfiguration": "Phase Configuration",
+    "phaseConfigurationDescription": "Customize model and thinking level for each phase",
+    "model": "Model",
+    "thinking": "Thinking",
+    "thinkingLevel": "Thinking Level",
+    "selectModel": "Select model",
+    "selectThinkingLevel": "Select thinking level",
+    "resetToDefaults": "Reset to defaults",
+    "customized": "Customized",
+    "phases": {
+      "spec": {
+        "label": "Spec Creation",
+        "description": "Discovery, requirements, context gathering"
+      },
+      "planning": {
+        "label": "Planning",
+        "description": "Implementation planning and architecture"
+      },
+      "coding": {
+        "label": "Coding",
+        "description": "Actual code implementation"
+      },
+      "qa": {
+        "label": "QA Review",
+        "description": "Quality assurance and validation"
+      }
+    }
+  },
+  "apiProfiles": {
+    "title": "API Profiles",
+    "description": "Configure custom Anthropic-compatible API endpoints",
+    "addButton": "Add Profile",
+    "fields": {
+      "name": "Name",
+      "preset": "Preset",
+      "baseUrl": "Base URL",
+      "apiKey": "API Key"
+    },
+    "placeholders": {
+      "name": "My Custom API",
+      "preset": "Choose a provider preset",
+      "baseUrl": "https://api.anthropic.com",
+      "apiKey": "sk-ant-..."
+    },
+    "validation": {
+      "nameRequired": "Name is required",
+      "baseUrlRequired": "Base URL is required",
+      "baseUrlInvalid": "Invalid URL format (must be http:// or https://)",
+      "apiKeyRequired": "API Key is required",
+      "apiKeyInvalid": "Invalid API Key format"
+    },
+    "actions": {
+      "save": "Save Profile",
+      "saving": "Saving...",
+      "cancel": "Cancel"
+    },
+    "testConnection": {
+      "label": "Test Connection",
+      "testing": "Testing...",
+      "success": "Connection Successful",
+      "failure": "Connection Failed"
+    },
+    "empty": {
+      "title": "No API profiles configured",
+      "description": "Create a profile to configure custom API endpoints for your builds.",
+      "action": "Create First Profile"
+    },
+    "activeBadge": "Active",
+    "setActive": {
+      "label": "Set Active",
+      "loading": "Setting..."
+    },
+    "tooltips": {
+      "edit": "Edit profile",
+      "deleteActive": "Cannot delete active profile",
+      "deleteInactive": "Delete profile"
+    },
+    "toast": {
+      "create": {
+        "title": "Profile created",
+        "description": "\"{{name}}\" has been added successfully."
+      },
+      "update": {
+        "title": "Profile updated",
+        "description": "\"{{name}}\" has been updated successfully."
+      },
+      "delete": {
+        "title": "Profile deleted",
+        "description": "\"{{name}}\" has been removed.",
+        "errorTitle": "Failed to delete profile",
+        "errorFallback": "An error occurred while deleting the profile."
+      }
+    },
+    "dialog": {
+      "createTitle": "Add API Profile",
+      "editTitle": "Edit Profile",
+      "description": "Configure a custom Anthropic-compatible API endpoint for your builds.",
+      "deleteTitle": "Delete Profile?",
+      "deleteDescription": "Are you sure you want to delete \"{{name}}\"? This action cannot be undone.",
+      "cancel": "Cancel",
+      "delete": "Delete",
+      "deleting": "Deleting..."
+    }
+  },
+  "modelSelect": {
+    "placeholder": "Select a model or type manually",
+    "placeholderManual": "Enter model name",
+    "searchPlaceholder": "Search models...",
+    "noResults": "No models match your search"
+  },
   "notifications": {
+    "title": "Notifications",
+    "description": "Configure notification preferences",
     "taskCompleted": {
       "label": "Task Completed",
       "description": "Notify when a task finishes execution"
@@ -92,6 +261,60 @@
     "reviewNeeded": {
       "label": "Review Needed",
       "description": "Notify when a task needs human review"
+    },
+    "sound": "Sound",
+    "soundDescription": "Play sound with notifications"
+  },
+  "projectSections": {
+    "general": {
+      "title": "General",
+      "description": "Auto-Build and agent config",
+      "useClaudeMd": "Use CLAUDE.md",
+      "useClaudeMdDescription": "Include CLAUDE.md instructions in agent context"
+    },
+    "github": {
+      "title": "GitHub",
+      "description": "GitHub issues sync",
+      "integrationTitle": "GitHub Integration",
+      "integrationDescription": "Connect to GitHub for issue tracking",
+      "syncDescription": "Sync with GitHub Issues",
+      "defaultBranch": {
+        "label": "Default Branch",
+        "description": "Base branch for creating task worktrees",
+        "autoDetect": "Auto-detect (main/master)",
+        "searchPlaceholder": "Search branches...",
+        "noBranchesFound": "No branches found",
+        "selectedBranchHelp": "All new tasks will branch from {{branch}}"
+      }
+    },
+    "memory": {
+      "title": "Memory",
+      "description": "Memory backend configuration",
+      "integrationTitle": "Memory",
+      "integrationDescription": "Configure persistent cross-session memory for agents",
+      "syncDescription": "Configure persistent memory"
+    }
+  },
+  "debug": {
+    "title": "Debug & Logs",
+    "description": "Access logs and debug information for troubleshooting",
+    "errorReporting": {
+      "label": "Anonymous Error Reporting",
+      "description": "Send crash reports to help improve Auto Claude. No personal data or code is collected."
+    },
+    "copyDebugInfo": "Copy Debug Info",
+    "copied": "Copied!",
+    "loadInfo": "Load Debug Info",
+    "systemInfo": "System Information",
+    "recentErrors": "Recent Errors",
+    "noRecentErrors": "No recent errors",
+    "helpTitle": "Reporting Issues",
+    "helpText": "When reporting bugs, click \"Copy Debug Info\" to get system information and recent errors."
+  },
+  "projectSettings": {
+    "noProjectSelected": {
+      "title": "No Project Selected",
+      "description": "Select a project from the sidebar to configure its settings."
     }
   }
 }

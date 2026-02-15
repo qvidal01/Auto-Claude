@@ -13,6 +13,10 @@ import enViews from "../locales/en/views.json";
 import enIntegrations from "../locales/en/integrations.json";
 import enLayout from "../locales/en/layout.json";
 import enOnboarding from "../locales/en/onboarding.json";
+import enTasks from "../locales/en/tasks.json";
+import enTerminal from "../locales/en/terminal.json";
+import enErrors from "../locales/en/errors.json";
+import enDialogs from "../locales/en/dialogs.json";
 
 // Import French translation resources
 import frCommon from "../locales/fr/common.json";
@@ -25,6 +29,10 @@ import frViews from "../locales/fr/views.json";
 import frIntegrations from "../locales/fr/integrations.json";
 import frLayout from "../locales/fr/layout.json";
 import frOnboarding from "../locales/fr/onboarding.json";
+import frTasks from "../locales/fr/tasks.json";
+import frTerminal from "../locales/fr/terminal.json";
+import frErrors from "../locales/fr/errors.json";
+import frDialogs from "../locales/fr/dialogs.json";
 
 export const defaultNS = "common";
 
@@ -40,6 +48,10 @@ export const resources = {
     integrations: enIntegrations,
     layout: enLayout,
     onboarding: enOnboarding,
+    tasks: enTasks,
+    terminal: enTerminal,
+    errors: enErrors,
+    dialogs: enDialogs,
   },
   fr: {
     common: frCommon,
@@ -52,6 +64,10 @@ export const resources = {
     integrations: frIntegrations,
     layout: frLayout,
     onboarding: frOnboarding,
+    tasks: frTasks,
+    terminal: frTerminal,
+    errors: frErrors,
+    dialogs: frDialogs,
   },
 } as const;
 
@@ -73,6 +89,10 @@ i18n
       "integrations",
       "layout",
       "onboarding",
+      "tasks",
+      "terminal",
+      "errors",
+      "dialogs",
     ],
     interpolation: {
       escapeValue: false, // React already escapes values

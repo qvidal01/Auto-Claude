@@ -1,0 +1,59 @@
+{
+  "expand": {
+    "expand": "Expand terminal",
+    "collapse": "Collapse terminal"
+  },
+  "resume": {
+    "pending": "Resume Available",
+    "pendingTooltip": "Click to resume previous Claude session",
+    "resumeAllSessions": "Resume All"
+  },
+  "worktree": {
+    "create": "Worktree",
+    "createNew": "New Worktree",
+    "existing": "Terminal Worktrees",
+    "taskWorktrees": "Task Worktrees",
+    "otherWorktrees": "Others",
+    "createTitle": "Create Terminal Worktree",
+    "createDescription": "Create an isolated workspace for this terminal.",
+    "name": "Worktree Name",
+    "namePlaceholder": "my-feature",
+    "nameRequired": "Worktree name is required",
+    "nameInvalid": "Name must start and end with a letter or number",
+    "nameHelp": "Lowercase letters, numbers, dashes, and underscores (spaces become hyphens)",
+    "associateTask": "Link to Task",
+    "selectTask": "Select a task...",
+    "noTask": "No task (standalone worktree)",
+    "createBranch": "Create Git Branch",
+    "branchHelp": "Creates branch: {{branch}}",
+    "baseBranch": "Base Branch",
+    "selectBaseBranch": "Select base branch...",
+    "searchBranch": "Search branches...",
+    "noBranchFound": "No branch found",
+    "useProjectDefault": "Use project default ({{branch}})",
+    "baseBranchHelp": "The branch to create the worktree from",
+    "maxReached": "Maximum of 12 terminal worktrees reached",
+    "alreadyExists": "A worktree with this name already exists",
+    "searchPlaceholder": "Search worktrees...",
+    "noResults": "No worktrees found",
+    "deleteTitle": "Delete Worktree?",
+    "deleteDescription": "This will permanently delete the worktree and its branch. Any uncommitted changes will be lost.",
+    "detached": "(detached)"
+  },
+  "actions": {
+    "newTerminal": "New Terminal",
+    "closeTerminal": "Close Terminal",
+    "clearTerminal": "Clear Terminal",
+    "splitTerminal": "Split Terminal",
+    "renameTerminal": "Rename Terminal"
+  },
+  "status": {
+    "connected": "Connected",
+    "disconnected": "Disconnected",
+    "connecting": "Connecting..."
+  },
+  "empty": {
+    "title": "No terminal sessions",
+    "description": "Open a new terminal to get started"
+  }
+}

@@ -1,0 +1,51 @@
+{
+  "generic": "An error occurred",
+  "unknownError": "An unknown error occurred",
+  "operationFailed": "Operation failed",
+  "networkError": "Network error. Please check your connection.",
+  "notFound": "The requested resource was not found",
+  "unauthorized": "You are not authorized to perform this action",
+  "forbidden": "Access denied",
+  "serverError": "Server error. Please try again later.",
+  "timeout": "Request timed out. Please try again.",
+  "validation": "Please check your input and try again.",
+  "task": {
+    "parseImplementationPlan": "Failed to parse implementation plan for {{specId}}: {{error}}",
+    "createFailed": "Failed to create task",
+    "updateFailed": "Failed to update task",
+    "deleteFailed": "Failed to delete task",
+    "startFailed": "Failed to start task",
+    "stopFailed": "Failed to stop task",
+    "notFound": "Task not found",
+    "loadFailed": "Failed to load tasks"
+  },
+  "spec": {
+    "parseFailed": "Failed to parse specification",
+    "createFailed": "Failed to create specification",
+    "notFound": "Specification not found"
+  },
+  "project": {
+    "loadFailed": "Failed to load project",
+    "initFailed": "Failed to initialize project",
+    "notFound": "Project not found",
+    "settingsSaveFailed": "Failed to save project settings"
+  },
+  "auth": {
+    "loginFailed": "Login failed. Please try again.",
+    "tokenExpired": "Your session has expired. Please sign in again.",
+    "invalidCredentials": "Invalid credentials",
+    "accountLocked": "Account is locked. Please try again later."
+  },
+  "worktree": {
+    "createFailed": "Failed to create worktree",
+    "deleteFailed": "Failed to delete worktree",
+    "mergeFailed": "Failed to merge worktree",
+    "notFound": "Worktree not found"
+  },
+  "api": {
+    "rateLimited": "Rate limited. Please try again later.",
+    "quotaExceeded": "API quota exceeded",
+    "connectionFailed": "Failed to connect to the API",
+    "invalidResponse": "Invalid response from the API"
+  }
+}
