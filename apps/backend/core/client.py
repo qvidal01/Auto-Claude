@@ -821,6 +821,22 @@ def create_client(
     if should_use_claude_md():
         claude_md_content = load_claude_md(project_dir)
         if claude_md_content:
+            # On Windows, the SDK passes system_prompt as a --system-prompt CLI argument.
+            # Windows CreateProcessW has a 32,768 character limit for the entire command line.
+            # When CLAUDE.md is very large, the command can exceed this limit, causing Windows
+            # to return ERROR_FILE_NOT_FOUND which the SDK misreports as "Claude Code not found".
+            # Cap CLAUDE.md content to keep total command line under the limit. (#1661)
+            if is_windows():
+                # Reserve ~8000 chars for the rest of the CLI command (model, tools, MCP config, etc.)
+                max_claude_md_chars = 24000 - len(base_prompt)
+                if len(claude_md_content) > max_claude_md_chars > 0:
+                    claude_md_content = (
+                        claude_md_content[:max_claude_md_chars]
+                        + "\n\n[... CLAUDE.md truncated due to Windows command-line length limit ...]"
+                    )
+                    print(
+                        "   - CLAUDE.md: truncated (exceeded Windows command-line limit)"
+                    )
             base_prompt = f"{base_prompt}\n\n# Project Instructions (from CLAUDE.md)\n\n{claude_md_content}"
             print("   - CLAUDE.md: included in system prompt")
         else:

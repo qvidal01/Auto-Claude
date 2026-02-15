@@ -25,7 +25,7 @@ import type { AppSettings } from '../../shared/types/settings';
 import { getOAuthModeClearVars } from './env-utils';
 import { getAugmentedEnv } from '../env-utils';
 import { getToolInfo, getClaudeCliPathForSdk } from '../cli-tool-manager';
-import { killProcessGracefully, isWindows } from '../platform';
+import { killProcessGracefully, isWindows, getPathDelimiter } from '../platform';
 import { debugLog } from '../../shared/utils/debug-logger';
 
 /**
@@ -679,7 +679,32 @@ export class AgentProcessManager {
       },
     });
 
-    // Parse Python commandto handle space-separated commands like "py -3"
+    // Merge PATH from pythonEnv with augmented PATH from env.
+    // pythonEnv may contain its own PATH (e.g., on Windows with pywin32_system32 prepended).
+    // Simply spreading pythonEnv after env would overwrite the augmented PATH (which includes
+    // npm globals, homebrew, etc.), causing "Claude code not found" on Windows (#1661).
+    // Instead, merge PATH entries: prepend pythonEnv-specific paths to the augmented PATH.
+    const mergedPythonEnv = { ...pythonEnv };
+    const pathSep = getPathDelimiter();
+    const envPathKey = Object.keys(env).find(k => k.toUpperCase() === 'PATH') || 'PATH';
+    const pythonPathKey = Object.keys(mergedPythonEnv).find(k => k.toUpperCase() === 'PATH');
+
+    if (pythonPathKey && env[envPathKey]) {
+      const augmentedPathEntries = new Set(
+        (env[envPathKey] as string).split(pathSep).filter(Boolean)
+      );
+      // Extract only new entries from pythonEnv.PATH that aren't already in the augmented PATH
+      const pythonPathEntries = (mergedPythonEnv[pythonPathKey] as string)
+        .split(pathSep)
+        .filter(entry => entry && !augmentedPathEntries.has(entry));
+
+      // Prepend python-specific paths (e.g., pywin32_system32) to the augmented PATH
+      mergedPythonEnv[pythonPathKey] = pythonPathEntries.length > 0
+        ? [...pythonPathEntries, env[envPathKey] as string].join(pathSep)
+        : env[envPathKey] as string;
+    }
+
+    // Parse Python command to handle space-separated commands like "py -3"
     const [pythonCommand, pythonBaseArgs] = parsePythonCommand(this.getPythonPath());
     let childProcess;
     try {
@@ -687,7 +712,7 @@ export class AgentProcessManager {
         cwd,
         env: {
           ...env, // Already includes process.env, extraEnv, profileEnv, PYTHONUNBUFFERED, PYTHONUTF8
-          ...pythonEnv, // Include Python environment (PYTHONPATH for bundled packages)
+          ...mergedPythonEnv, // Python env with merged PATH (preserves augmented PATH entries)
           ...oauthModeClearVars, // Clear stale ANTHROPIC_* vars when in OAuth mode
           ...apiProfileEnv // Include active API profile config (highest priority for ANTHROPIC_* vars)
         }
