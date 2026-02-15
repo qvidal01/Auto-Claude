@@ -338,6 +338,9 @@ Assistant:"""
 
 
 def main():
+    from preflight_hook import run_preflight
+    run_preflight()
+
     parser = argparse.ArgumentParser(description="Insights AI Chat Runner")
     parser.add_argument("--project-dir", required=True, help="Project directory path")
     parser.add_argument("--message", required=True, help="User message")

@@ -45,6 +45,9 @@ from runners.roadmap import RoadmapOrchestrator
 
 def main():
     """CLI entry point."""
+    from preflight_hook import run_preflight
+    run_preflight()
+
     import argparse
 
     parser = argparse.ArgumentParser(
