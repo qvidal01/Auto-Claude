@@ -27,6 +27,19 @@ let generationActor: Actor<typeof roadmapGenerationMachine> | null = null;
 const featureActors = new Map<string, Actor<typeof roadmapFeatureMachine>>();
 
 /**
+ * Reset all actors to clean state.
+ * Use this in tests (afterEach) and HMR dispose handlers to avoid stale actors.
+ */
+export function resetActors(): void {
+  if (generationActor) {
+    generationActor.stop();
+    generationActor = null;
+  }
+  featureActors.forEach((actor) => actor.stop());
+  featureActors.clear();
+}
+
+/**
  * Get or create the singleton generation actor.
  */
 function getOrCreateGenerationActor(): Actor<typeof roadmapGenerationMachine> {
@@ -457,7 +470,7 @@ export const useRoadmapStore = create<RoadmapState>((set) => ({
 
   // Add a new feature to the roadmap
   addFeature: (featureData) => {
-    const newId = `feature-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    const newId = `feature-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
     const newFeature: RoadmapFeature = {
       ...featureData,
       id: newId
