@@ -20,6 +20,9 @@ import { safeSendToRenderer } from "./utils";
 import { getClaudeProfileManager } from "../claude-profile-manager";
 import { taskStateManager } from "../task-state-manager";
 
+// Timeout for fallback safety net to check if task is still stuck after process exit
+const STUCK_TASK_FALLBACK_TIMEOUT_MS = 500;
+
 /**
  * Register all agent-events-related IPC handlers
  */
@@ -96,16 +99,26 @@ export function registerAgenteventsHandlers(
 
     taskStateManager.handleProcessExited(taskId, code, exitTask, exitProject);
 
-    // Fallback safety net: If XState failed to transition the task out of in_progress,
+    // Fallback safety net: If XState failed to transition the task out of an active state,
     // force it to human_review after a short delay. This prevents tasks from getting stuck
-    // in in_progress state when the process exits without XState properly handling it.
+    // when the process exits without XState properly handling it.
+    // We check XState's current state directly to avoid stale cache issues from projectStore.
     setTimeout(() => {
-      const { task: checkTask, project: checkProject } = findTaskAndProject(taskId, projectId);
-      if (checkTask && checkTask.status === 'in_progress' && checkProject) {
-        console.warn(`[agent-events-handlers] Task ${taskId} still in_progress 500ms after exit, forcing USER_STOPPED`);
-        taskStateManager.handleUiEvent(taskId, { type: 'USER_STOPPED', hasPlan: true }, checkTask, checkProject);
+      const currentState = taskStateManager.getCurrentState(taskId);
+      // Active states that should transition on process exit: planning, coding, qa_review, qa_fixing
+      const activeStates = ['planning', 'coding', 'qa_review', 'qa_fixing'];
+
+      if (currentState && activeStates.includes(currentState)) {
+        const { task: checkTask, project: checkProject } = findTaskAndProject(taskId, projectId);
+        if (checkTask && checkProject) {
+          console.warn(
+            `[agent-events-handlers] Task ${taskId} still in XState ${currentState} ` +
+            `${STUCK_TASK_FALLBACK_TIMEOUT_MS}ms after exit, forcing USER_STOPPED`
+          );
+          taskStateManager.handleUiEvent(taskId, { type: 'USER_STOPPED', hasPlan: true }, checkTask, checkProject);
+        }
       }
-    }, 500);
+    }, STUCK_TASK_FALLBACK_TIMEOUT_MS);
 
     // Send final plan state to renderer BEFORE unwatching
     // This ensures the renderer has the final subtask data (fixes 0/0 subtask bug)
