@@ -1,1 +1,59 @@
-{}
+{
+  "expand": {
+    "expand": "Agrandir le terminal",
+    "collapse": "Réduire le terminal"
+  },
+  "resume": {
+    "pending": "Reprise disponible",
+    "pendingTooltip": "Cliquez pour reprendre la session Claude précédente",
+    "resumeAllSessions": "Reprendre tout"
+  },
+  "worktree": {
+    "create": "Worktree",
+    "createNew": "Nouveau Worktree",
+    "existing": "Worktrees Terminal",
+    "taskWorktrees": "Worktrees de tâches",
+    "otherWorktrees": "Autres",
+    "createTitle": "Créer un Worktree Terminal",
+    "createDescription": "Créer un espace de travail isolé pour ce terminal.",
+    "name": "Nom du Worktree",
+    "namePlaceholder": "ma-fonctionnalité",
+    "nameRequired": "Le nom du worktree est requis",
+    "nameInvalid": "Le nom doit commencer et se terminer par une lettre ou un chiffre",
+    "nameHelp": "Lettres minuscules, chiffres, tirets et underscores (les espaces deviennent des tirets)",
+    "associateTask": "Lier à une tâche",
+    "selectTask": "Sélectionner une tâche...",
+    "noTask": "Pas de tâche (worktree autonome)",
+    "createBranch": "Créer une branche Git",
+    "branchHelp": "Crée la branche : {{branch}}",
+    "baseBranch": "Branche de base",
+    "selectBaseBranch": "Sélectionner la branche de base...",
+    "searchBranch": "Rechercher des branches...",
+    "noBranchFound": "Aucune branche trouvée",
+    "useProjectDefault": "Utiliser la valeur par défaut du projet ({{branch}})",
+    "baseBranchHelp": "La branche à partir de laquelle créer le worktree",
+    "maxReached": "Maximum de 12 worktrees terminal atteint",
+    "alreadyExists": "Un worktree avec ce nom existe déjà",
+    "searchPlaceholder": "Rechercher des worktrees...",
+    "noResults": "Aucun worktree trouvé",
+    "deleteTitle": "Supprimer le Worktree ?",
+    "deleteDescription": "Ceci supprimera définitivement le worktree et sa branche. Les modifications non committées seront perdues.",
+    "detached": "(détaché)"
+  },
+  "actions": {
+    "newTerminal": "Nouveau terminal",
+    "closeTerminal": "Fermer le terminal",
+    "clearTerminal": "Effacer le terminal",
+    "splitTerminal": "Diviser le terminal",
+    "renameTerminal": "Renommer le terminal"
+  },
+  "status": {
+    "connected": "Connecté",
+    "disconnected": "Déconnecté",
+    "connecting": "Connexion..."
+  },
+  "empty": {
+    "title": "Aucune session terminal",
+    "description": "Ouvrez un nouveau terminal pour commencer"
+  }
+}

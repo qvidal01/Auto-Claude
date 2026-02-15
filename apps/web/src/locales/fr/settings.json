@@ -1,5 +1,9 @@
 {
   "title": "Paramètres",
+  "tabs": {
+    "app": "Paramètres de l'app",
+    "project": "Paramètres du projet"
+  },
   "selfHosted": {
     "mode": "Mode auto-hébergé",
     "description": "Fonctionne en mode auto-hébergé. Configurez votre backend Python local via les variables d'environnement.",
@@ -31,9 +35,17 @@
       "title": "Apparence",
       "description": "Personnaliser l'apparence de l'application."
     },
+    "language": {
+      "title": "Langue",
+      "description": "Choisissez votre langue préférée"
+    },
     "accounts": {
       "title": "Comptes",
       "description": "Gérer les clés API et l'authentification."
+    },
+    "agent": {
+      "title": "Paramètres de l'agent",
+      "description": "Modèle par défaut et framework"
     },
     "github": {
       "title": "Intégration GitHub",
@@ -46,6 +58,10 @@
     "advanced": {
       "title": "Avancé",
       "description": "Options de configuration avancées."
+    },
+    "debug": {
+      "title": "Debug & Logs",
+      "description": "Outils de dépannage"
     }
   },
   "fields": {
@@ -61,7 +77,10 @@
     "memorySystemDescription": "Configurez le système de mémoire IA pour vos projets."
   },
   "actions": {
-    "configure": "Configurer"
+    "configure": "Configurer",
+    "save": "Enregistrer les paramètres",
+    "rerunWizard": "Relancer l'assistant",
+    "rerunWizardDescription": "Relancer l'assistant de configuration"
   },
   "status": {
     "active": "Actif",
@@ -80,7 +99,157 @@
     "dark": "sombre",
     "system": "système"
   },
+  "language": {
+    "label": "Langue de l'interface",
+    "description": "Sélectionnez la langue de l'interface de l'application"
+  },
+  "theme": {
+    "title": "Apparence",
+    "description": "Personnalisez l'apparence de Auto Claude",
+    "mode": "Mode",
+    "modeDescription": "Choisir entre les thèmes clair et sombre",
+    "light": "Clair",
+    "dark": "Sombre",
+    "system": "Système",
+    "colorTheme": "Thème de couleur",
+    "colorThemeDescription": "Choisissez votre palette de couleurs préférée"
+  },
+  "logOrder": {
+    "label": "Ordre des journaux",
+    "description": "Choisir comment les journaux sont affichés dans la vue détaillée des tâches",
+    "chronological": "Chronologique (plus ancien en premier)",
+    "reverseChronological": "Chronologique inverse (plus récent en premier)"
+  },
+  "general": {
+    "agentFramework": "Framework de l'agent",
+    "agentFrameworkDescription": "Le framework de codage utilisé pour les tâches autonomes",
+    "agentFrameworkAutoClaude": "Auto Claude",
+    "featureModelSettings": "Paramètres du modèle de fonctionnalité",
+    "featureModelSettingsDescription": "Modèle et niveau de réflexion pour Insights, Idéation et Feuille de route",
+    "model": "Modèle",
+    "thinkingLevel": "Niveau de réflexion"
+  },
+  "agentProfile": {
+    "label": "Profil de l'agent",
+    "title": "Profil d'agent par défaut",
+    "sectionDescription": "Sélectionnez une configuration prédéfinie pour le modèle et le niveau de réflexion",
+    "profilesInfo": "Les profils d'agent fournissent des configurations prédéfinies pour le modèle Claude et le niveau de réflexion. Lorsque vous créez une nouvelle tâche, ces paramètres seront utilisés par défaut.",
+    "custom": "Personnalisé",
+    "customConfiguration": "Configuration personnalisée",
+    "customDescription": "Choisir le modèle et le niveau de réflexion",
+    "phaseConfiguration": "Configuration par phase",
+    "phaseConfigurationDescription": "Personnaliser le modèle et le niveau de réflexion pour chaque phase",
+    "model": "Modèle",
+    "thinking": "Réflexion",
+    "thinkingLevel": "Niveau de réflexion",
+    "selectModel": "Sélectionner un modèle",
+    "selectThinkingLevel": "Sélectionner un niveau de réflexion",
+    "resetToDefaults": "Réinitialiser les valeurs par défaut",
+    "customized": "Personnalisé",
+    "phases": {
+      "spec": {
+        "label": "Création de spécification",
+        "description": "Découverte, exigences, collecte de contexte"
+      },
+      "planning": {
+        "label": "Planification",
+        "description": "Planification d'implémentation et architecture"
+      },
+      "coding": {
+        "label": "Codage",
+        "description": "Implémentation du code"
+      },
+      "qa": {
+        "label": "Révision QA",
+        "description": "Assurance qualité et validation"
+      }
+    }
+  },
+  "apiProfiles": {
+    "title": "Profils API",
+    "description": "Configurez des endpoints API compatibles Anthropic personnalisés",
+    "addButton": "Ajouter un profil",
+    "fields": {
+      "name": "Nom",
+      "preset": "Préréglage",
+      "baseUrl": "URL de base",
+      "apiKey": "Clé API"
+    },
+    "placeholders": {
+      "name": "Mon API personnalisée",
+      "preset": "Choisir un préréglage de fournisseur",
+      "baseUrl": "https://api.anthropic.com",
+      "apiKey": "sk-ant-..."
+    },
+    "validation": {
+      "nameRequired": "Le nom est requis",
+      "baseUrlRequired": "L'URL de base est requise",
+      "baseUrlInvalid": "Format d'URL invalide (doit être http:// ou https://)",
+      "apiKeyRequired": "La clé API est requise",
+      "apiKeyInvalid": "Format de clé API invalide"
+    },
+    "actions": {
+      "save": "Enregistrer le profil",
+      "saving": "Enregistrement...",
+      "cancel": "Annuler"
+    },
+    "testConnection": {
+      "label": "Tester la connexion",
+      "testing": "Test en cours...",
+      "success": "Connexion réussie",
+      "failure": "Échec de la connexion"
+    },
+    "empty": {
+      "title": "Aucun profil API configuré",
+      "description": "Créez un profil pour configurer des endpoints API personnalisés pour vos builds.",
+      "action": "Créer le premier profil"
+    },
+    "activeBadge": "Actif",
+    "setActive": {
+      "label": "Définir comme actif",
+      "loading": "Activation..."
+    },
+    "tooltips": {
+      "edit": "Modifier le profil",
+      "deleteActive": "Impossible de supprimer le profil actif",
+      "deleteInactive": "Supprimer le profil"
+    },
+    "toast": {
+      "create": {
+        "title": "Profil créé",
+        "description": "\"{{name}}\" a été ajouté avec succès."
+      },
+      "update": {
+        "title": "Profil mis à jour",
+        "description": "\"{{name}}\" a été mis à jour avec succès."
+      },
+      "delete": {
+        "title": "Profil supprimé",
+        "description": "\"{{name}}\" a été supprimé.",
+        "errorTitle": "Échec de la suppression du profil",
+        "errorFallback": "Une erreur s'est produite lors de la suppression du profil."
+      }
+    },
+    "dialog": {
+      "createTitle": "Ajouter un profil API",
+      "editTitle": "Modifier le profil",
+      "description": "Configurez un endpoint API compatible Anthropic personnalisé pour vos builds.",
+      "deleteTitle": "Supprimer le profil ?",
+      "deleteDescription": "Êtes-vous sûr de vouloir supprimer \"{{name}}\" ? Cette action est irréversible.",
+      "cancel": "Annuler",
+      "delete": "Supprimer",
+      "deleting": "Suppression..."
+    }
+  },
+  "modelSelect": {
+    "placeholder": "Sélectionner un modèle ou saisir manuellement",
+    "placeholderManual": "Saisir le nom du modèle",
+    "searchPlaceholder": "Rechercher des modèles...",
+    "noResults": "Aucun modèle ne correspond à votre recherche"
+  },
   "notifications": {
+    "title": "Notifications",
+    "description": "Configurer les préférences de notification",
     "taskCompleted": {
       "label": "Tâche terminée",
       "description": "Notifier lorsqu'une tâche termine son exécution"
@@ -92,6 +261,60 @@
     "reviewNeeded": {
       "label": "Révision nécessaire",
       "description": "Notifier lorsqu'une tâche nécessite une révision humaine"
+    },
+    "sound": "Son",
+    "soundDescription": "Jouer un son avec les notifications"
+  },
+  "projectSections": {
+    "general": {
+      "title": "Général",
+      "description": "Auto-Build et configuration de l'agent",
+      "useClaudeMd": "Utiliser CLAUDE.md",
+      "useClaudeMdDescription": "Inclure les instructions CLAUDE.md dans le contexte de l'agent"
+    },
+    "github": {
+      "title": "GitHub",
+      "description": "Synchronisation des issues GitHub",
+      "integrationTitle": "Intégration GitHub",
+      "integrationDescription": "Connecter à GitHub pour le suivi des issues",
+      "syncDescription": "Synchroniser avec les issues GitHub",
+      "defaultBranch": {
+        "label": "Branche par défaut",
+        "description": "Branche de base pour la création des worktrees de tâches",
+        "autoDetect": "Détection automatique (main/master)",
+        "searchPlaceholder": "Rechercher des branches...",
+        "noBranchesFound": "Aucune branche trouvée",
+        "selectedBranchHelp": "Toutes les nouvelles tâches partiront de {{branch}}"
+      }
+    },
+    "memory": {
+      "title": "Mémoire",
+      "description": "Configuration du backend de mémoire",
+      "integrationTitle": "Mémoire",
+      "integrationDescription": "Configurer la mémoire persistante inter-sessions pour les agents",
+      "syncDescription": "Configurer la mémoire persistante"
+    }
+  },
+  "debug": {
+    "title": "Debug & Logs",
+    "description": "Accéder aux journaux et aux informations de débogage pour le dépannage",
+    "errorReporting": {
+      "label": "Rapports d'erreurs anonymes",
+      "description": "Envoyer des rapports de plantage pour aider à améliorer Auto Claude. Aucune donnée personnelle ou code n'est collecté."
+    },
+    "copyDebugInfo": "Copier les infos de débogage",
+    "copied": "Copié !",
+    "loadInfo": "Charger les infos de débogage",
+    "systemInfo": "Informations système",
+    "recentErrors": "Erreurs récentes",
+    "noRecentErrors": "Aucune erreur récente",
+    "helpTitle": "Signaler des problèmes",
+    "helpText": "Lors du signalement de bugs, cliquez sur « Copier les infos de débogage » pour obtenir les informations système et les erreurs récentes."
+  },
+  "projectSettings": {
+    "noProjectSelected": {
+      "title": "Aucun projet sélectionné",
+      "description": "Sélectionnez un projet dans la barre latérale pour configurer ses paramètres."
     }
   }
 }

@@ -1,1 +1,51 @@
-{}
+{
+  "generic": "Une erreur s'est produite",
+  "unknownError": "Une erreur inconnue s'est produite",
+  "operationFailed": "Opération échouée",
+  "networkError": "Erreur réseau. Veuillez vérifier votre connexion.",
+  "notFound": "La ressource demandée est introuvable",
+  "unauthorized": "Vous n'êtes pas autorisé à effectuer cette action",
+  "forbidden": "Accès refusé",
+  "serverError": "Erreur serveur. Veuillez réessayer plus tard.",
+  "timeout": "La requête a expiré. Veuillez réessayer.",
+  "validation": "Veuillez vérifier vos données et réessayer.",
+  "task": {
+    "parseImplementationPlan": "Échec de l'analyse du plan d'implémentation pour {{specId}} : {{error}}",
+    "createFailed": "Échec de la création de la tâche",
+    "updateFailed": "Échec de la mise à jour de la tâche",
+    "deleteFailed": "Échec de la suppression de la tâche",
+    "startFailed": "Échec du démarrage de la tâche",
+    "stopFailed": "Échec de l'arrêt de la tâche",
+    "notFound": "Tâche introuvable",
+    "loadFailed": "Échec du chargement des tâches"
+  },
+  "spec": {
+    "parseFailed": "Échec de l'analyse de la spécification",
+    "createFailed": "Échec de la création de la spécification",
+    "notFound": "Spécification introuvable"
+  },
+  "project": {
+    "loadFailed": "Échec du chargement du projet",
+    "initFailed": "Échec de l'initialisation du projet",
+    "notFound": "Projet introuvable",
+    "settingsSaveFailed": "Échec de l'enregistrement des paramètres du projet"
+  },
+  "auth": {
+    "loginFailed": "Échec de la connexion. Veuillez réessayer.",
+    "tokenExpired": "Votre session a expiré. Veuillez vous reconnecter.",
+    "invalidCredentials": "Identifiants invalides",
+    "accountLocked": "Le compte est verrouillé. Veuillez réessayer plus tard."
+  },
+  "worktree": {
+    "createFailed": "Échec de la création du worktree",
+    "deleteFailed": "Échec de la suppression du worktree",
+    "mergeFailed": "Échec de la fusion du worktree",
+    "notFound": "Worktree introuvable"
+  },
+  "api": {
+    "rateLimited": "Limite de requêtes atteinte. Veuillez réessayer plus tard.",
+    "quotaExceeded": "Quota API dépassé",
+    "connectionFailed": "Échec de la connexion à l'API",
+    "invalidResponse": "Réponse invalide de l'API"
+  }
+}
