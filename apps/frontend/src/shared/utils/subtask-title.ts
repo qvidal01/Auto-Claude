@@ -2,7 +2,7 @@
  * Extract a concise title from a subtask description.
  *
  * Strategy:
- * 1. Return 'Untitled' for empty/undefined input
+ * 1. Return '' for empty/undefined input (lets i18n fallback activate in UI)
  * 2. If description fits within maxLength, return as-is
  * 3. Try extracting the first sentence (split on '. ' or ': ')
  * 4. If first sentence fits, return it (strip trailing period)
@@ -10,7 +10,7 @@
  */
 export function extractSubtaskTitle(description: string | undefined | null, maxLength = 80): string {
   if (!description || !description.trim()) {
-    return 'Untitled';
+    return '';
   }
 
   const trimmed = description.trim();

@@ -3,7 +3,7 @@
  * Tests extractSubtaskTitle() which derives concise titles from subtask descriptions
  */
 import { describe, it, expect } from 'vitest';
-import { extractSubtaskTitle } from '../shared/utils/subtask-title';
+import { extractSubtaskTitle } from '../subtask-title';
 
 describe('extractSubtaskTitle', () => {
   describe('short descriptions (<=80 chars)', () => {
@@ -49,20 +49,20 @@ describe('extractSubtaskTitle', () => {
   });
 
   describe('empty and falsy inputs', () => {
-    it('should return Untitled for empty string', () => {
-      expect(extractSubtaskTitle('')).toBe('Untitled');
+    it('should return empty string for empty string', () => {
+      expect(extractSubtaskTitle('')).toBe('');
     });
 
-    it('should return Untitled for undefined', () => {
-      expect(extractSubtaskTitle(undefined)).toBe('Untitled');
+    it('should return empty string for undefined', () => {
+      expect(extractSubtaskTitle(undefined)).toBe('');
     });
 
-    it('should return Untitled for null', () => {
-      expect(extractSubtaskTitle(null)).toBe('Untitled');
+    it('should return empty string for null', () => {
+      expect(extractSubtaskTitle(null)).toBe('');
     });
 
-    it('should return Untitled for whitespace-only string', () => {
-      expect(extractSubtaskTitle('   ')).toBe('Untitled');
+    it('should return empty string for whitespace-only string', () => {
+      expect(extractSubtaskTitle('   ')).toBe('');
     });
   });
 
