@@ -1,88 +1,197 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  Lightbulb,
-  Sparkles,
-  RefreshCw,
-  Shield,
-  Zap,
-  Code,
-  Paintbrush,
-  Bug,
-  ArrowRight,
-  ThumbsUp,
-  ThumbsDown,
-} from "lucide-react";
-import { cn } from "@auto-claude/ui";
+import { Lightbulb, Sparkles, Loader2 } from "lucide-react";
+import { useIdeationStore } from "@/stores/ideation-store";
+import type {
+  Idea,
+  IdeationType,
+  IdeationStatus,
+} from "@/stores/ideation-store";
+import { apiClient } from "@/lib/data/api-client";
+import { IdeationHeader } from "./IdeationHeader";
+import { IdeationFilters } from "./IdeationFilters";
+import { IdeaCard } from "./IdeaCard";
+import { IdeaDetailPanel } from "./IdeaDetailPanel";
+import { GenerationProgress } from "./GenerationProgress";
 
 interface IdeationViewProps {
   projectId: string;
 }
 
-type IdeaCategory =
-  | "code_improvements"
-  | "security_hardening"
-  | "performance_optimization"
-  | "ui_ux_improvements"
-  | "bug_predictions"
-  | "new_features";
-
-const CATEGORY_ICONS: Record<IdeaCategory, React.ElementType> = {
-  code_improvements: Code,
-  security_hardening: Shield,
-  performance_optimization: Zap,
-  ui_ux_improvements: Paintbrush,
-  bug_predictions: Bug,
-  new_features: Sparkles,
-};
-
-const CATEGORY_KEYS: Record<IdeaCategory, string> = {
-  code_improvements: "ideation.categories.codeImprovements",
-  security_hardening: "ideation.categories.securityHardening",
-  performance_optimization: "ideation.categories.performanceOptimization",
-  ui_ux_improvements: "ideation.categories.uiUxImprovements",
-  bug_predictions: "ideation.categories.bugPredictions",
-  new_features: "ideation.categories.newFeatures",
-};
-
-const CATEGORY_IDS: IdeaCategory[] = [
-  "code_improvements",
-  "security_hardening",
-  "performance_optimization",
-  "ui_ux_improvements",
-  "bug_predictions",
-  "new_features",
-];
-
-interface Idea {
-  id: string;
-  title: string;
-  description: string;
-  category: IdeaCategory;
-  impact: "low" | "medium" | "high";
-  effort: "small" | "medium" | "large";
-}
-
-const PLACEHOLDER_IDEAS: Idea[] = [
-  { id: "1", title: "Add input validation to user forms", description: "Several user-facing forms lack proper input validation which could lead to data integrity issues.", category: "code_improvements", impact: "high", effort: "small" },
-  { id: "2", title: "Rate limit API endpoints", description: "Public API endpoints should have rate limiting to prevent abuse and ensure fair usage.", category: "security_hardening", impact: "high", effort: "medium" },
-  { id: "3", title: "Optimize database queries on dashboard", description: "The dashboard page makes N+1 queries that could be batched for better performance.", category: "performance_optimization", impact: "medium", effort: "small" },
-  { id: "4", title: "Add loading skeletons", description: "Replace loading spinners with skeleton loaders for a smoother perceived loading experience.", category: "ui_ux_improvements", impact: "medium", effort: "small" },
-];
-
 export function IdeationView({ projectId }: IdeationViewProps) {
   const { t } = useTranslation("views");
-  const [selectedCategory, setSelectedCategory] = useState<IdeaCategory | null>(null);
-  const [ideas] = useState<Idea[]>(PLACEHOLDER_IDEAS);
-  const [isEmpty] = useState(false);
+  const [selectedIdea, setSelectedIdea] = useState<Idea | null>(null);
+  const [activeType, setActiveType] = useState<IdeationType | "all">("all");
+  const [activeStatus, setActiveStatus] = useState<IdeationStatus | "all">(
+    "all",
+  );
+  const [isLoading, setIsLoading] = useState(false);
 
-  const filteredIdeas = selectedCategory
-    ? ideas.filter((i) => i.category === selectedCategory)
-    : ideas;
+  const {
+    session,
+    isGenerating,
+    generationStatus,
+    typeStates,
+    logs,
+    setSession,
+    setIsGenerating,
+    setGenerationStatus,
+    dismissIdea,
+    dismissAllIdeas,
+    deleteIdea,
+    setCurrentProjectId,
+    initializeTypeStates,
+    setTypeState,
+    addIdeasForType,
+    addLog,
+    clearLogs,
+  } = useIdeationStore();
 
-  if (isEmpty) {
+  // Set project context
+  useEffect(() => {
+    setCurrentProjectId(projectId);
+  }, [projectId, setCurrentProjectId]);
+
+  // Fetch existing ideas on mount
+  const fetchIdeas = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const response = await apiClient.getIdeas(projectId);
+      if (response.ideas && Array.isArray(response.ideas)) {
+        setSession({
+          id: `session-${Date.now()}`,
+          projectId,
+          ideas: response.ideas as Idea[],
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        });
+      }
+    } catch {
+      // Ideas may not exist yet
+    } finally {
+      setIsLoading(false);
+    }
+  }, [projectId, setSession]);
+
+  useEffect(() => {
+    fetchIdeas();
+  }, [fetchIdeas]);
+
+  // Generate ideas
+  const handleGenerate = async () => {
+    setIsGenerating(true);
+    clearLogs();
+    setGenerationStatus({
+      phase: "analyzing",
+      progress: 0,
+      message: t("ideation.analyzingProject"),
+    });
+
+    const types: IdeationType[] = [
+      "code_improvements",
+      "ui_ux_improvements",
+      "documentation_gaps",
+      "security_hardening",
+      "performance_optimizations",
+      "code_quality",
+    ];
+    initializeTypeStates(types);
+
+    try {
+      const response = await apiClient.generateIdeas(projectId);
+      if (response.ideas && Array.isArray(response.ideas)) {
+        for (const type of types) {
+          const typeIdeas = (response.ideas as Idea[]).filter(
+            (i) => i.type === type,
+          );
+          if (typeIdeas.length > 0) {
+            addIdeasForType(type, typeIdeas);
+          }
+          setTypeState(type, typeIdeas.length > 0 ? "completed" : "failed");
+        }
+      }
+      setGenerationStatus({
+        phase: "complete",
+        progress: 100,
+        message: t("ideation.generateComplete"),
+      });
+    } catch {
+      setGenerationStatus({
+        phase: "error",
+        progress: 0,
+        message: t("ideation.generateError"),
+      });
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const handleConvert = (idea: Idea) => {
+    // TODO: integrate with task creation flow
+    addLog(`Converting idea "${idea.title}" to task...`);
+  };
+
+  const handleDismiss = (idea: Idea) => {
+    dismissIdea(idea.id);
+    if (selectedIdea?.id === idea.id) {
+      setSelectedIdea(null);
+    }
+  };
+
+  const handleDelete = (ideaId: string) => {
+    deleteIdea(ideaId);
+    if (selectedIdea?.id === ideaId) {
+      setSelectedIdea(null);
+    }
+  };
+
+  // Filtered ideas
+  const ideas = session?.ideas ?? [];
+  const filteredIdeas = useMemo(() => {
+    return ideas.filter((idea) => {
+      if (activeType !== "all" && idea.type !== activeType) return false;
+      if (activeStatus !== "all" && idea.status !== activeStatus) return false;
+      return true;
+    });
+  }, [ideas, activeType, activeStatus]);
+
+  // Type counts for filter badges
+  const typeCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const idea of ideas) {
+      counts[idea.type] = (counts[idea.type] ?? 0) + 1;
+    }
+    return counts;
+  }, [ideas]);
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="flex h-full flex-col items-center justify-center p-8">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <p className="mt-4 text-sm text-muted-foreground">
+          {t("ideation.loading")}
+        </p>
+      </div>
+    );
+  }
+
+  // Generation in progress
+  if (isGenerating) {
+    return (
+      <GenerationProgress
+        typeStates={typeStates}
+        logs={logs}
+        progress={generationStatus.progress}
+        message={generationStatus.message}
+      />
+    );
+  }
+
+  // Empty state
+  if (!session || ideas.length === 0) {
     return (
       <div className="flex h-full flex-col items-center justify-center p-8">
         <div className="max-w-md text-center">
@@ -91,11 +200,16 @@ export function IdeationView({ projectId }: IdeationViewProps) {
               <Lightbulb className="h-8 w-8 text-primary" />
             </div>
           </div>
-          <h2 className="mb-3 text-xl font-semibold">{t("ideation.empty.title")}</h2>
+          <h2 className="mb-3 text-xl font-semibold">
+            {t("ideation.empty.title")}
+          </h2>
           <p className="mb-6 text-sm text-muted-foreground">
             {t("ideation.empty.description")}
           </p>
-          <button className="flex items-center gap-2 mx-auto rounded-lg bg-primary px-6 py-3 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors">
+          <button
+            className="flex items-center gap-2 mx-auto rounded-lg bg-primary px-6 py-3 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
+            onClick={handleGenerate}
+          >
             <Sparkles className="h-4 w-4" />
             {t("ideation.empty.generate")}
           </button>
@@ -104,104 +218,62 @@ export function IdeationView({ projectId }: IdeationViewProps) {
     );
   }
 
+  // Main view
   return (
     <div className="flex h-full flex-col overflow-hidden">
-      {/* Header */}
-      <div className="flex items-center justify-between border-b border-border px-6 py-3">
-        <h1 className="text-lg font-semibold">{t("ideation.title")}</h1>
-        <div className="flex items-center gap-2">
-          <button className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-foreground transition-colors">
-            <RefreshCw className="h-3.5 w-3.5" />
-            {t("ideation.regenerate")}
-          </button>
-          <button className="flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-sm text-primary-foreground hover:bg-primary/90 transition-colors">
-            <Sparkles className="h-3.5 w-3.5" />
-            {t("ideation.analyzeCodebase")}
-          </button>
-        </div>
+      <IdeationHeader
+        ideaCount={ideas.length}
+        isGenerating={isGenerating}
+        onGenerate={handleGenerate}
+        onRefresh={fetchIdeas}
+        onDismissAll={dismissAllIdeas}
+        hasIdeas={ideas.length > 0}
+      />
+
+      <div className="pt-4">
+        <IdeationFilters
+          activeType={activeType}
+          activeStatus={activeStatus}
+          onTypeChange={setActiveType}
+          onStatusChange={setActiveStatus}
+          typeCounts={typeCounts}
+        />
       </div>
 
-      {/* Category filters */}
-      <div className="border-b border-border px-6 py-3">
-        <div className="flex items-center gap-2 overflow-x-auto">
-          <button
-            className={cn(
-              "shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition-colors",
-              !selectedCategory ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground hover:text-foreground"
-            )}
-            onClick={() => setSelectedCategory(null)}
-          >
-            {t("ideation.allFilter", { count: ideas.length })}
-          </button>
-          {CATEGORY_IDS.map((catId) => {
-            const Icon = CATEGORY_ICONS[catId];
-            const count = ideas.filter((i) => i.category === catId).length;
-            return (
-              <button
-                key={catId}
-                className={cn(
-                  "shrink-0 flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors",
-                  selectedCategory === catId ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground hover:text-foreground"
-                )}
-                onClick={() => setSelectedCategory(catId)}
-              >
-                <Icon className="h-3 w-3" />
-                {t("ideation.categoryCount", { label: t(`${CATEGORY_KEYS[catId]}.label`), count })}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Ideas list */}
-      <div className="flex-1 overflow-y-auto p-6">
-        <div className="space-y-3 max-w-3xl">
-          {filteredIdeas.map((idea) => {
-            const Icon = CATEGORY_ICONS[idea.category] || Lightbulb;
-
-            return (
-              <div
+      {/* Ideas grid */}
+      <div className="flex-1 overflow-auto p-6">
+        {filteredIdeas.length === 0 ? (
+          <div className="flex h-full items-center justify-center">
+            <p className="text-sm text-muted-foreground">
+              {t("ideation.noMatchingIdeas")}
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
+            {filteredIdeas.map((idea) => (
+              <IdeaCard
                 key={idea.id}
-                className="rounded-lg border border-border bg-card p-4 hover:shadow-md transition-all"
-              >
-                <div className="flex items-start gap-3">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-secondary shrink-0">
-                    <Icon className="h-4 w-4 text-muted-foreground" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h3 className="text-sm font-medium">{idea.title}</h3>
-                    <p className="mt-1 text-xs text-muted-foreground">{idea.description}</p>
-                    <div className="mt-3 flex items-center gap-2 flex-wrap">
-                      <span className={cn(
-                        "rounded-full px-2 py-0.5 text-[10px] font-medium",
-                        idea.impact === "high" && "bg-red-500/10 text-red-600",
-                        idea.impact === "medium" && "bg-yellow-500/10 text-yellow-600",
-                        idea.impact === "low" && "bg-blue-500/10 text-blue-600"
-                      )}>
-                        {t("ideation.impact", { level: idea.impact })}
-                      </span>
-                      <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
-                        {t("ideation.effort", { level: idea.effort })}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-1 shrink-0">
-                    <button className="flex h-7 w-7 items-center justify-center rounded-md hover:bg-accent transition-colors text-muted-foreground hover:text-green-500">
-                      <ThumbsUp className="h-3.5 w-3.5" />
-                    </button>
-                    <button className="flex h-7 w-7 items-center justify-center rounded-md hover:bg-accent transition-colors text-muted-foreground hover:text-red-500">
-                      <ThumbsDown className="h-3.5 w-3.5" />
-                    </button>
-                    <button className="flex h-7 w-7 items-center justify-center rounded-md hover:bg-accent transition-colors text-muted-foreground hover:text-primary">
-                      <ArrowRight className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
+                idea={idea}
+                isSelected={selectedIdea?.id === idea.id}
+                onClick={() => setSelectedIdea(idea)}
+                onConvert={handleConvert}
+                onDismiss={handleDismiss}
+              />
+            ))}
+          </div>
+        )}
       </div>
+
+      {/* Detail panel */}
+      {selectedIdea && (
+        <IdeaDetailPanel
+          idea={selectedIdea}
+          onClose={() => setSelectedIdea(null)}
+          onConvert={handleConvert}
+          onDismiss={handleDismiss}
+          onDelete={handleDelete}
+        />
+      )}
     </div>
   );
 }
