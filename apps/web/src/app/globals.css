@@ -1,5 +1,5 @@
 @import "tailwindcss";
-@import "../../../../../packages/ui/src/styles/theme.css";
+@import "../../../../packages/ui/src/styles/theme.css";
 
 /* Base styles */
 * {
@@ -44,6 +44,10 @@ body {
   border-color: var(--primary);
 }
 
+.dark .card-interactive:hover {
+  border-color: rgba(214, 216, 118, 0.5);
+}
+
 /* Surface elevated - for dropdowns, popovers */
 .surface-elevated {
   background-color: var(--card);
@@ -59,6 +63,15 @@ body {
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
+}
+
+/* Scroll anchoring - prevent scroll position jumps during DOM updates */
+[data-radix-scroll-area-viewport] {
+  overflow-anchor: none;
+}
+
+[data-radix-scroll-area-viewport] > * {
+  overflow-anchor: auto;
 }
 
 ::-webkit-scrollbar-track {
@@ -119,6 +132,161 @@ body {
   border-top-color: var(--success);
 }
 
+/* Progress bar working animation - subtle glow sweep */
+@keyframes progress-glow-sweep {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.progress-working {
+  position: relative;
+  overflow: hidden;
+}
+
+.progress-working::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(214, 216, 118, 0.4) 25%,
+    rgba(214, 216, 118, 0.7) 50%,
+    rgba(214, 216, 118, 0.4) 75%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: progress-glow-sweep 2s ease-in-out infinite;
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+/* Light mode variant */
+:root .progress-working::after {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(165, 166, 106, 0.3) 25%,
+    rgba(165, 166, 106, 0.6) 50%,
+    rgba(165, 166, 106, 0.3) 75%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+}
+
+/* ============================================
+   Task Card Enhanced Styles
+   ============================================ */
+
+/* Task card hover glow effect */
+.task-card-glow {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.task-card-glow:hover {
+  box-shadow: 0 0 0 1px var(--primary), 0 4px 12px -2px rgba(214, 216, 118, 0.15);
+}
+
+:root .task-card-glow:hover {
+  box-shadow: 0 0 0 1px var(--primary), var(--shadow-lg);
+}
+
+/* Status badge pulse for running tasks */
+.status-running {
+  animation: status-pulse 2s ease-in-out infinite;
+}
+
+@keyframes status-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+/* Drag overlay shadow */
+.drag-overlay-shadow {
+  box-shadow:
+    0 20px 25px -5px rgba(0, 0, 0, 0.25),
+    0 10px 10px -5px rgba(0, 0, 0, 0.15),
+    0 0 0 1px var(--primary);
+}
+
+/* Drop zone highlight */
+.drop-zone-active {
+  background: linear-gradient(
+    to bottom,
+    rgba(214, 216, 118, 0.08),
+    transparent
+  );
+  border-color: var(--primary);
+}
+
+/* Column empty state animation */
+.empty-state-bounce {
+  animation: empty-bounce 3s ease-in-out infinite;
+}
+
+@keyframes empty-bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
+/* Badge overflow indicator */
+.badge-overflow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  padding: 0 6px;
+  font-size: 10px;
+  font-weight: 600;
+  border-radius: 9999px;
+  background: var(--muted);
+  color: var(--muted-foreground);
+}
+
+/* Subtask indicator dot with tooltip support */
+.subtask-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 9999px;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: help;
+}
+
+.subtask-dot:hover {
+  transform: scale(1.5);
+}
+
+.subtask-dot-active {
+  animation: subtask-dot-pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes subtask-dot-pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(1.2);
+  }
+}
+
+/* Task title truncation with fade */
+.title-truncate {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 /* Line clamp utility */
 .line-clamp-2 {
   display: -webkit-box;
@@ -126,3 +294,327 @@ body {
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
+
+/* Section divider with label */
+.section-divider {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.625rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted-foreground);
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+:root .section-divider {
+  border-bottom-color: rgba(0, 0, 0, 0.08);
+}
+
+.section-divider-gradient {
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--border) 20%,
+    var(--border) 80%,
+    transparent 100%
+  );
+  margin: 1rem 0;
+}
+
+/* ============================================
+   Enhanced Task Card Styling
+   ============================================ */
+
+.task-card-enhanced {
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.task-card-enhanced:hover {
+  border-color: rgba(214, 216, 118, 0.4);
+  box-shadow: 0 0 0 1px rgba(214, 216, 118, 0.1), 0 4px 12px rgba(0, 0, 0, 0.15);
+  transform: translateY(-1px);
+}
+
+.dark .task-card-enhanced:hover {
+  box-shadow: 0 0 0 1px rgba(214, 216, 118, 0.15), 0 4px 20px rgba(0, 0, 0, 0.4);
+}
+
+/* Running task pulse animation */
+.task-running-pulse {
+  animation: task-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes task-pulse {
+  0%, 100% {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 0 rgba(214, 216, 118, 0.4);
+  }
+  50% {
+    border-color: rgba(214, 216, 118, 0.8);
+    box-shadow: 0 0 0 4px rgba(214, 216, 118, 0.1);
+  }
+}
+
+/* Stuck task warning pulse */
+.task-stuck-pulse {
+  animation: stuck-pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes stuck-pulse {
+  0%, 100% {
+    border-color: var(--warning);
+    box-shadow: 0 0 0 0 rgba(210, 215, 20, 0.3);
+  }
+  50% {
+    border-color: rgba(210, 215, 20, 0.8);
+    box-shadow: 0 0 8px rgba(210, 215, 20, 0.2);
+  }
+}
+
+/* Progress bar animated shimmer for active state */
+.progress-animated-fill {
+  background: linear-gradient(
+    90deg,
+    var(--primary) 0%,
+    rgba(214, 216, 118, 0.7) 50%,
+    var(--primary) 100%
+  );
+  background-size: 200% 100%;
+  animation: progress-shimmer 2s linear infinite;
+}
+
+@keyframes progress-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* Empty column drop zone state */
+.empty-column-dropzone {
+  border: 2px dashed var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  text-align: center;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.empty-column-dropzone:hover,
+.empty-column-dropzone.active {
+  border-color: rgba(214, 216, 118, 0.4);
+  background-color: rgba(214, 216, 118, 0.05);
+}
+
+/* Drag overlay card styling */
+.drag-overlay-card {
+  opacity: 0.95;
+  transform: rotate(2deg) scale(1.02);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+  cursor: grabbing;
+}
+
+.dark .drag-overlay-card {
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+}
+
+/* Dragging source placeholder effect */
+.dragging-placeholder {
+  opacity: 0.4;
+  transform: scale(0.98);
+  border-style: dashed;
+}
+
+/* Drop zone highlight when dragging over */
+.drop-zone-highlight {
+  border-color: var(--primary) !important;
+  background-color: rgba(214, 216, 118, 0.08) !important;
+}
+
+/* Column count badge styling */
+.column-count-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.5rem;
+  height: 1.5rem;
+  padding: 0 0.375rem;
+  border-radius: var(--radius-full);
+  background: var(--secondary);
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--muted-foreground);
+  transition: all 0.2s ease;
+}
+
+/* Phase progress indicator bar */
+.phase-indicator {
+  display: flex;
+  gap: 2px;
+  height: 4px;
+  border-radius: var(--radius-full);
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.phase-indicator-segment {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.phase-indicator-segment.active {
+  filter: brightness(1.2);
+}
+
+/* Badge priority ordering */
+.badge-priority-urgent {
+  order: -3;
+}
+
+.badge-priority-high {
+  order: -2;
+}
+
+.badge-priority-medium {
+  order: -1;
+}
+
+/* Review section styling */
+.review-section-highlight {
+  border: 1px solid rgba(168, 85, 247, 0.3);
+  background: linear-gradient(
+    135deg,
+    rgba(168, 85, 247, 0.08) 0%,
+    rgba(168, 85, 247, 0.02) 100%
+  );
+  border-radius: var(--radius-xl);
+  padding: 1rem;
+}
+
+/* Success completion state */
+.completion-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  color: var(--success);
+  padding: 1rem;
+  border-radius: var(--radius-lg);
+  background: rgba(78, 190, 150, 0.1);
+}
+
+/* Metadata list styling */
+.metadata-list-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.metadata-list-item:last-child {
+  border-bottom: none;
+}
+
+/* Tooltip enhanced styling */
+.tooltip-enhanced {
+  max-width: 250px;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.dark .tooltip-enhanced {
+  background: #1A1A1F;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+}
+
+/* ============================================
+   Full Screen Dialog Animations
+   ============================================ */
+
+@keyframes zoom-in-98 {
+  from {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes zoom-out-98 {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+}
+
+[data-state="open"].animate-in.zoom-in-98 {
+  animation: zoom-in-98 0.2s ease-out;
+}
+
+[data-state="closed"].animate-out.zoom-out-98 {
+  animation: zoom-out-98 0.2s ease-in;
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ============================================
+   UI Scale System (75% - 200%)
+   ============================================ */
+
+:root {
+  font-size: 16px;
+  transition: font-size 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Scale levels via data-ui-scale attribute on html element */
+[data-ui-scale="75"] { font-size: 12px; }
+[data-ui-scale="80"] { font-size: 12.8px; }
+[data-ui-scale="85"] { font-size: 13.6px; }
+[data-ui-scale="90"] { font-size: 14.4px; }
+[data-ui-scale="95"] { font-size: 15.2px; }
+[data-ui-scale="100"] { font-size: 16px; }
+[data-ui-scale="105"] { font-size: 16.8px; }
+[data-ui-scale="110"] { font-size: 17.6px; }
+[data-ui-scale="115"] { font-size: 18.4px; }
+[data-ui-scale="120"] { font-size: 19.2px; }
+[data-ui-scale="125"] { font-size: 20px; }
+[data-ui-scale="130"] { font-size: 20.8px; }
+[data-ui-scale="135"] { font-size: 21.6px; }
+[data-ui-scale="140"] { font-size: 22.4px; }
+[data-ui-scale="145"] { font-size: 23.2px; }
+[data-ui-scale="150"] { font-size: 24px; }
+[data-ui-scale="155"] { font-size: 24.8px; }
+[data-ui-scale="160"] { font-size: 25.6px; }
+[data-ui-scale="165"] { font-size: 26.4px; }
+[data-ui-scale="170"] { font-size: 27.2px; }
+[data-ui-scale="175"] { font-size: 28px; }
+[data-ui-scale="180"] { font-size: 28.8px; }
+[data-ui-scale="185"] { font-size: 29.6px; }
+[data-ui-scale="190"] { font-size: 30.4px; }
+[data-ui-scale="195"] { font-size: 31.2px; }
+[data-ui-scale="200"] { font-size: 32px; }
