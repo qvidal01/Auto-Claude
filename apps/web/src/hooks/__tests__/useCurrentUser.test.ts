@@ -3,13 +3,13 @@ import { renderHook } from '@testing-library/react';
 import { useCurrentUser } from '../useCurrentUser';
 import * as convexReact from 'convex/react';
 
-// Mock the Convex API
-vi.mock('../../convex/_generated/api', () => ({
+// Mock the Convex API — path is relative to the source file (useCurrentUser.ts)
+vi.mock('../../../convex/_generated/api', () => ({
   api: {
     users: {
-      me: 'users:me'
-    }
-  }
+      me: 'users:me',
+    },
+  },
 }));
 
 describe('useCurrentUser', () => {
