@@ -379,7 +379,7 @@ async function setupWorktreeDependencies(projectPath: string, worktreePath: stri
             } catch {
               debugLog('[TerminalWorktree] Symlinked venv health check failed, falling back to recreate:', config.sourceRelPath);
               // Remove the broken symlink and recreate
-              try { rmSync(path.join(worktreePath, config.sourceRelPath), { force: true }); } catch { /* best-effort */ }
+              try { rmSync(path.join(worktreePath, config.sourceRelPath), { recursive: true, force: true }); } catch { /* best-effort */ }
               performed = await applyRecreateStrategy(projectPath, worktreePath, config);
             }
           }

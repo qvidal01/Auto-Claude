@@ -657,10 +657,13 @@ def setup_worktree_dependencies(
                         )
                         # Remove the broken symlink and recreate
                         symlink_path = worktree_path / config.source_rel_path
-                        if symlink_path.is_symlink():
-                            symlink_path.unlink()
-                        elif symlink_path.exists():
-                            shutil.rmtree(symlink_path, ignore_errors=True)
+                        try:
+                            if symlink_path.is_symlink():
+                                symlink_path.unlink()
+                            elif symlink_path.exists():
+                                shutil.rmtree(symlink_path, ignore_errors=True)
+                        except OSError:
+                            pass  # Best-effort removal; recreate strategy handles existing paths
                         performed = _apply_recreate_strategy(
                             project_dir, worktree_path, config
                         )
