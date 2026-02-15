@@ -175,3 +175,6 @@ OPUS_ANALYSIS_AND_IDEAS.md
 /shared_docs
 logs/security/
 Agents.md
+desktop.env
+auto-claude-desktop.sh
+images/

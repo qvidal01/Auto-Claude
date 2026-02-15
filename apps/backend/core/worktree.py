@@ -344,7 +344,11 @@ class WorktreeManager:
 
     def get_branch_name(self, spec_name: str) -> str:
         """Get the branch name for a spec."""
-        return f"auto-claude/{spec_name}"
+        # Sanitize spec_name: remove characters invalid in git branch names
+        sanitized = re.sub(r'[\[\]~^:?*\\{}]', '', spec_name)
+        # Collapse repeated dashes from removal
+        sanitized = re.sub(r'-{2,}', '-', sanitized)
+        return f"auto-claude/{sanitized}"
 
     def worktree_exists(self, spec_name: str) -> bool:
         """Check if a worktree exists for a spec."""
