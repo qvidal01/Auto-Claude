@@ -238,6 +238,41 @@ class SpecOrchestrator:
         task_logger.start_phase(LogPhase.PLANNING, "Starting spec creation process")
         TaskEventEmitter.from_spec_dir(self.spec_dir).emit("PLANNING_STARTED")
 
+        # Track whether we've already ended the planning phase (to avoid double-end)
+        planning_phase_ended = False
+
+        try:
+            return await self._run_phases(interactive, auto_approve, task_logger, ui)
+        except Exception as e:
+            # Ensure planning phase is always properly ended on unexpected errors
+            # This prevents the task from being stuck in "active" planning state
+            if not planning_phase_ended:
+                planning_phase_ended = True
+                task_logger.end_phase(
+                    LogPhase.PLANNING,
+                    success=False,
+                    message=f"Spec creation failed with unexpected error: {e}",
+                )
+            raise
+
+    async def _run_phases(
+        self,
+        interactive: bool,
+        auto_approve: bool,
+        task_logger,
+        ui,
+    ) -> bool:
+        """Execute all spec creation phases.
+
+        Args:
+            interactive: Whether to run in interactive mode
+            auto_approve: Whether to skip human review
+            task_logger: The task logger instance
+            ui: The UI module
+
+        Returns:
+            True if spec creation and review completed successfully
+        """
         print(
             box(
                 f"Spec Directory: {self.spec_dir}\n"
