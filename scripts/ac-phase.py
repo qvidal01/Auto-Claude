@@ -559,7 +559,7 @@ def interactive(project_dir):
 
     if not specs:
         print(f"  {C_RED}No specs found in {get_specs_dir(project_dir)}{C_RESET}")
-        print("  Run ac-batch first to create specs from ideation.")
+        print("  Run ac-batch --discover first to create specs from ideation/roadmap.")
         return
 
     # Load or generate phases
