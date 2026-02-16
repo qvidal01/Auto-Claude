@@ -348,7 +348,7 @@ def action_build_spec(project_dir, spec_id, generate_spec=True, run_qa=False):
     # Step 2: Build
     print(f"  {C_CYAN}Building spec {spec_id}...{C_RESET}")
     build_cmd = [python, str(RUN_PY), "--project-dir", str(project_dir),
-                 "--spec", spec_id]
+                 "--spec", spec_id, "--force"]
     print(f"  {C_DIM}$ {' '.join(build_cmd)}{C_RESET}")
 
     try:
