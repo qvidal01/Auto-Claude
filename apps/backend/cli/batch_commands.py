@@ -6,6 +6,7 @@ Commands for creating and managing multiple tasks from batch files.
 """
 
 import json
+import re
 import shutil
 import subprocess
 from pathlib import Path
@@ -60,10 +61,19 @@ def handle_batch_create_command(batch_file: str, project_dir: str) -> bool:
     for idx, task in enumerate(tasks, 1):
         spec_id = f"{next_id:03d}"
         task_title = task.get("title", f"Task {idx}")
-        import re
-        task_slug = re.sub(r"[^\w\-]", "-", task_title.lower())
-        task_slug = re.sub(r"-+", "-", task_slug).strip("-")[:50]
-        spec_name = f"{spec_id}-{task_slug}"
+
+        # Extract category tag like [sec-001] from title if present
+        tag_match = re.match(r"^\[(\w+-\d+)\]\s*(.*)", task_title)
+        if tag_match:
+            tag = tag_match.group(1)       # e.g. "sec-001"
+            title_rest = tag_match.group(2) # e.g. "Remove hardcoded API key..."
+            title_slug = re.sub(r"[^\w\-]", "-", title_rest.lower())
+            title_slug = re.sub(r"-+", "-", title_slug).strip("-")[:50]
+            spec_name = f"{spec_id}-[{tag}]-{title_slug}"
+        else:
+            task_slug = re.sub(r"[^\w\-]", "-", task_title.lower())
+            task_slug = re.sub(r"-+", "-", task_slug).strip("-")[:50]
+            spec_name = f"{spec_id}-{task_slug}"
         spec_dir = specs_dir / spec_name
         spec_dir.mkdir(exist_ok=True)
 
