@@ -60,7 +60,9 @@ def handle_batch_create_command(batch_file: str, project_dir: str) -> bool:
     for idx, task in enumerate(tasks, 1):
         spec_id = f"{next_id:03d}"
         task_title = task.get("title", f"Task {idx}")
-        task_slug = task_title.lower().replace(" ", "-")[:50]
+        import re
+        task_slug = re.sub(r"[^\w\-]", "-", task_title.lower())
+        task_slug = re.sub(r"-+", "-", task_slug).strip("-")[:50]
         spec_name = f"{spec_id}-{task_slug}"
         spec_dir = specs_dir / spec_name
         spec_dir.mkdir(exist_ok=True)
