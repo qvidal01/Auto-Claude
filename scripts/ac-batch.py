@@ -10,6 +10,8 @@ Usage:
     ac-batch                          # Interactive menu (auto-detects project)
     ac-batch --insights               # Interactive codebase Q&A chat
     ac-batch --insights "question"    # One-shot codebase question
+    ac-batch --ideation               # Brainstorm improvements and features
+    ac-batch --roadmap                # Generate strategic feature roadmap
     ac-batch --status                 # Show all spec statuses
     ac-batch --create tasks.json      # Create specs from batch JSON file
     ac-batch --discover               # Create batch from discovery outputs
@@ -450,6 +452,93 @@ def action_qa_all(project_dir):
     return True
 
 
+def action_ideation(project_dir):
+    """Run ideation to brainstorm features and improvements for the project."""
+    python = get_python()
+    backend_dir = AUTO_CLAUDE_ROOT / "apps" / "backend"
+
+    print(f"  {C_CYAN}Running ideation for {project_dir.name}...{C_RESET}")
+    print(f"  {C_DIM}This will analyze the codebase and suggest improvements,{C_RESET}")
+    print(f"  {C_DIM}security fixes, performance optimizations, and new features.{C_RESET}")
+    print()
+
+    cmd = [python, "-m", "runners.ideation_runner",
+           "--project", str(project_dir)]
+    print(f"  {C_DIM}$ {' '.join(cmd)}{C_RESET}")
+    print()
+
+    try:
+        result = subprocess.run(cmd, cwd=str(backend_dir))
+    except KeyboardInterrupt:
+        print(f"\n  {C_YELLOW}Ideation interrupted{C_RESET}")
+        return False
+
+    if result.returncode == 0:
+        # Check if output was created
+        ideation_file = project_dir / ".auto-claude" / "ideation" / "ideation.json"
+        if ideation_file.exists():
+            try:
+                data = json.loads(ideation_file.read_text())
+                count = len(data.get("ideas", []))
+                print()
+                print(f"  {C_GREEN}✓ Ideation complete — {count} ideas generated{C_RESET}")
+                print(f"  {C_DIM}Output: {ideation_file}{C_RESET}")
+                print()
+                print(f"  {C_BOLD}Next steps:{C_RESET}")
+                print(f"    • Run {C_CYAN}ac-batch --discover{C_RESET} to create specs from these ideas")
+                print(f"    • Or select option 4 from the menu")
+            except (json.JSONDecodeError, KeyError):
+                pass
+        return True
+
+    print(f"  {C_RED}Ideation failed{C_RESET}")
+    return False
+
+
+def action_roadmap(project_dir):
+    """Run roadmap generation to create an implementation plan for the project."""
+    python = get_python()
+    backend_dir = AUTO_CLAUDE_ROOT / "apps" / "backend"
+
+    print(f"  {C_CYAN}Generating roadmap for {project_dir.name}...{C_RESET}")
+    print(f"  {C_DIM}This will create a strategic roadmap with prioritized features{C_RESET}")
+    print(f"  {C_DIM}and implementation phases.{C_RESET}")
+    print()
+
+    cmd = [python, "-m", "runners.roadmap_runner",
+           "--project", str(project_dir)]
+    print(f"  {C_DIM}$ {' '.join(cmd)}{C_RESET}")
+    print()
+
+    try:
+        result = subprocess.run(cmd, cwd=str(backend_dir))
+    except KeyboardInterrupt:
+        print(f"\n  {C_YELLOW}Roadmap generation interrupted{C_RESET}")
+        return False
+
+    if result.returncode == 0:
+        # Check if output was created
+        roadmap_file = project_dir / ".auto-claude" / "roadmap" / "roadmap.json"
+        if roadmap_file.exists():
+            try:
+                data = json.loads(roadmap_file.read_text())
+                count = len(data.get("features", []))
+                phases = len(data.get("phases", []))
+                print()
+                print(f"  {C_GREEN}✓ Roadmap complete — {count} features across {phases} phases{C_RESET}")
+                print(f"  {C_DIM}Output: {roadmap_file}{C_RESET}")
+                print()
+                print(f"  {C_BOLD}Next steps:{C_RESET}")
+                print(f"    • Run {C_CYAN}ac-batch --discover{C_RESET} to create specs from this roadmap")
+                print(f"    • Or select option 4 from the menu")
+            except (json.JSONDecodeError, KeyError):
+                pass
+        return True
+
+    print(f"  {C_RED}Roadmap generation failed{C_RESET}")
+    return False
+
+
 def action_insights(project_dir, message=None):
     """Run an insights query against the project codebase."""
     python = get_python()
@@ -573,15 +662,24 @@ def interactive(project_dir):
         # Menu
         print(f"  {C_BOLD}What would you like to do?{C_RESET}")
         print()
-        print(f"    {C_CYAN}1){C_RESET} Ask about the codebase (insights)")
-        print(f"    {C_CYAN}2){C_RESET} Create batch from discovery outputs (ideation/roadmap/insights)")
-        print(f"    {C_CYAN}3){C_RESET} Create batch from JSON file")
-        print(f"    {C_CYAN}4){C_RESET} Build all pending specs")
-        print(f"    {C_CYAN}5){C_RESET} Build a specific spec")
-        print(f"    {C_CYAN}6){C_RESET} QA all built specs")
-        print(f"    {C_CYAN}7){C_RESET} View status")
-        print(f"    {C_CYAN}8){C_RESET} Cleanup completed specs")
-        print(f"    {C_CYAN}q){C_RESET} Quit")
+        print(f"  {C_DIM}  Discover{C_RESET}")
+        print(f"    {C_CYAN} 1){C_RESET} Ask about the codebase (insights)")
+        print(f"    {C_CYAN} 2){C_RESET} Run ideation (brainstorm improvements)")
+        print(f"    {C_CYAN} 3){C_RESET} Run roadmap (strategic feature planning)")
+        print()
+        print(f"  {C_DIM}  Create{C_RESET}")
+        print(f"    {C_CYAN} 4){C_RESET} Create batch from discovery outputs")
+        print(f"    {C_CYAN} 5){C_RESET} Create batch from JSON file")
+        print()
+        print(f"  {C_DIM}  Build{C_RESET}")
+        print(f"    {C_CYAN} 6){C_RESET} Build all pending specs")
+        print(f"    {C_CYAN} 7){C_RESET} Build a specific spec")
+        print(f"    {C_CYAN} 8){C_RESET} QA all built specs")
+        print()
+        print(f"  {C_DIM}  Manage{C_RESET}")
+        print(f"    {C_CYAN} 9){C_RESET} View status")
+        print(f"    {C_CYAN}10){C_RESET} Cleanup completed specs")
+        print(f"    {C_CYAN} q){C_RESET} Quit")
         print()
 
         try:
@@ -598,9 +696,15 @@ def interactive(project_dir):
             action_insights(project_dir)
 
         elif choice == "2":
-            action_discover(project_dir)
+            action_ideation(project_dir)
 
         elif choice == "3":
+            action_roadmap(project_dir)
+
+        elif choice == "4":
+            action_discover(project_dir)
+
+        elif choice == "5":
             try:
                 path = input(f"  {C_BOLD}Path to batch JSON file:{C_RESET} ").strip()
             except (KeyboardInterrupt, EOFError):
@@ -608,11 +712,11 @@ def interactive(project_dir):
             if path:
                 action_create_from_file(project_dir, path)
 
-        elif choice == "4":
+        elif choice == "6":
             qa_too = prompt_yn("Also run QA after each build?", default=False)
             action_build_all(project_dir, run_qa=qa_too)
 
-        elif choice == "5":
+        elif choice == "7":
             if not specs:
                 print(f"  {C_YELLOW}No specs found.{C_RESET}")
                 continue
@@ -626,14 +730,14 @@ def interactive(project_dir):
                 qa_too = prompt_yn("Run QA after build?", default=False)
                 action_build_spec(project_dir, s["id"], run_qa=qa_too)
 
-        elif choice == "6":
+        elif choice == "8":
             action_qa_all(project_dir)
 
-        elif choice == "7":
+        elif choice == "9":
             # Just loops back to top which shows status
             pass
 
-        elif choice == "8":
+        elif choice == "10":
             print()
             action_cleanup(project_dir, confirm=False)
             print()
@@ -641,7 +745,7 @@ def interactive(project_dir):
                 action_cleanup(project_dir, confirm=True)
 
         else:
-            print(f"  {C_DIM}Unknown option. Try 1-8 or q.{C_RESET}")
+            print(f"  {C_DIM}Unknown option. Try 1-10 or q.{C_RESET}")
 
         print()
 
@@ -659,9 +763,11 @@ Examples:
   ac-batch                            Interactive menu
   ac-batch --insights                 Interactive codebase Q&A chat
   ac-batch --insights "How does auth work?"   One-shot question
+  ac-batch --ideation                 Brainstorm improvements
+  ac-batch --roadmap                  Generate feature roadmap
+  ac-batch --discover                 Create specs from discovery outputs
   ac-batch --status                   Show all spec statuses
   ac-batch --create tasks.json        Create specs from batch JSON
-  ac-batch --discover                 Create batch from discovery outputs
   ac-batch --build                    Build all pending specs
   ac-batch --build --spec 016         Build specific spec
   ac-batch --build --qa               Build all + run QA
@@ -674,6 +780,10 @@ Examples:
                         help="Project directory (default: auto-detect from cwd)")
     parser.add_argument("--insights", nargs="?", const="", metavar="QUESTION",
                         help="Ask about the codebase (interactive if no question given)")
+    parser.add_argument("--ideation", action="store_true",
+                        help="Run ideation to brainstorm improvements and features")
+    parser.add_argument("--roadmap", action="store_true",
+                        help="Generate a strategic feature roadmap")
     parser.add_argument("--status", action="store_true",
                         help="Show status of all specs")
     parser.add_argument("--create", metavar="FILE",
@@ -711,6 +821,14 @@ Examples:
             action_insights(project_dir, message=args.insights)
         else:
             action_insights(project_dir)
+        return
+
+    if args.ideation:
+        action_ideation(project_dir)
+        return
+
+    if args.roadmap:
+        action_roadmap(project_dir)
         return
 
     if args.status:
