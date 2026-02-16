@@ -8,6 +8,8 @@ outputs (ideation, roadmap, insights) or manual batch JSON files.
 
 Usage:
     ac-batch                          # Interactive menu (auto-detects project)
+    ac-batch --insights               # Interactive codebase Q&A chat
+    ac-batch --insights "question"    # One-shot codebase question
     ac-batch --status                 # Show all spec statuses
     ac-batch --create tasks.json      # Create specs from batch JSON file
     ac-batch --discover               # Create batch from discovery outputs
@@ -48,6 +50,7 @@ signal.signal(signal.SIGINT, _handle_sigint)
 AUTO_CLAUDE_ROOT = Path(__file__).resolve().parent.parent
 RUN_PY = AUTO_CLAUDE_ROOT / "apps" / "backend" / "run.py"
 SPEC_RUNNER_PY = AUTO_CLAUDE_ROOT / "apps" / "backend" / "runners" / "spec_runner.py"
+INSIGHTS_RUNNER_PY = AUTO_CLAUDE_ROOT / "apps" / "backend" / "runners" / "insights_runner.py"
 VENV_PYTHON = AUTO_CLAUDE_ROOT / "apps" / "backend" / ".venv" / "bin" / "python"
 BATCH_FROM_DISCOVERY = Path(__file__).resolve().parent / "batch-from-discovery.py"
 
@@ -447,6 +450,102 @@ def action_qa_all(project_dir):
     return True
 
 
+def action_insights(project_dir, message=None):
+    """Run an insights query against the project codebase."""
+    python = get_python()
+    backend_dir = AUTO_CLAUDE_ROOT / "apps" / "backend"
+
+    if message:
+        # One-shot mode
+        print(f"  {C_CYAN}Asking about {project_dir.name}...{C_RESET}")
+        print(f"  {C_DIM}Q: {message}{C_RESET}")
+        print()
+        cmd = [python, "-m", "runners.insights_runner",
+               "--project-dir", str(project_dir),
+               "--message", message]
+        try:
+            result = subprocess.run(cmd, cwd=str(backend_dir))
+        except KeyboardInterrupt:
+            print(f"\n  {C_YELLOW}Interrupted{C_RESET}")
+            return False
+        return result.returncode == 0
+
+    # Interactive chat mode
+    print_header(f"Insights — {project_dir.name}")
+    print(f"  {C_BOLD}Ask questions about your codebase.{C_RESET}")
+    print(f"  {C_DIM}Type your question and press Enter. Type 'q' to go back.{C_RESET}")
+    print()
+
+    # Suggested questions
+    print(f"  {C_BOLD}Suggested questions:{C_RESET}")
+    suggestions = [
+        "What is the overall architecture?",
+        "What are the main API endpoints?",
+        "Are there any security concerns?",
+        "What features are missing for production readiness?",
+        "What are the biggest technical debt items?",
+        "How does authentication work?",
+        "What error handling patterns are used?",
+        "What would need to change to add a new feature?",
+    ]
+    for i, q in enumerate(suggestions, 1):
+        print(f"    {C_CYAN}{i}){C_RESET} {q}")
+    print()
+
+    history_file = project_dir / ".auto-claude" / "insights" / "ac-batch-history.json"
+    history = []
+
+    while True:
+        try:
+            raw = input(f"  {C_BOLD}?{C_RESET} ").strip()
+        except (KeyboardInterrupt, EOFError):
+            print()
+            break
+
+        if not raw or raw.lower() == "q":
+            break
+
+        # Allow selecting a suggested question by number
+        try:
+            idx = int(raw) - 1
+            if 0 <= idx < len(suggestions):
+                raw = suggestions[idx]
+                print(f"  {C_DIM}Q: {raw}{C_RESET}")
+        except ValueError:
+            pass
+
+        # Build command
+        cmd = [python, "-m", "runners.insights_runner",
+               "--project-dir", str(project_dir),
+               "--message", raw]
+
+        # Pass conversation history if we have prior messages
+        if history:
+            history_file.parent.mkdir(parents=True, exist_ok=True)
+            history_file.write_text(json.dumps(history))
+            cmd.extend(["--history-file", str(history_file)])
+
+        print()
+        try:
+            result = subprocess.run(cmd, cwd=str(backend_dir),
+                                    capture_output=False)
+        except KeyboardInterrupt:
+            print(f"\n  {C_YELLOW}Interrupted{C_RESET}")
+            continue
+
+        # Track conversation for context
+        history.append({"role": "user", "content": raw})
+        history.append({"role": "assistant", "content": "(see above)"})
+
+        print()
+
+    # Clean up temp history file
+    if history_file.exists():
+        history_file.unlink()
+
+    return True
+
+
 def action_cleanup(project_dir, confirm=False):
     """Clean up completed specs."""
     python = get_python()
@@ -474,13 +573,14 @@ def interactive(project_dir):
         # Menu
         print(f"  {C_BOLD}What would you like to do?{C_RESET}")
         print()
-        print(f"    {C_CYAN}1){C_RESET} Create batch from discovery outputs (ideation/roadmap/insights)")
-        print(f"    {C_CYAN}2){C_RESET} Create batch from JSON file")
-        print(f"    {C_CYAN}3){C_RESET} Build all pending specs")
-        print(f"    {C_CYAN}4){C_RESET} Build a specific spec")
-        print(f"    {C_CYAN}5){C_RESET} QA all built specs")
-        print(f"    {C_CYAN}6){C_RESET} View status")
-        print(f"    {C_CYAN}7){C_RESET} Cleanup completed specs")
+        print(f"    {C_CYAN}1){C_RESET} Ask about the codebase (insights)")
+        print(f"    {C_CYAN}2){C_RESET} Create batch from discovery outputs (ideation/roadmap/insights)")
+        print(f"    {C_CYAN}3){C_RESET} Create batch from JSON file")
+        print(f"    {C_CYAN}4){C_RESET} Build all pending specs")
+        print(f"    {C_CYAN}5){C_RESET} Build a specific spec")
+        print(f"    {C_CYAN}6){C_RESET} QA all built specs")
+        print(f"    {C_CYAN}7){C_RESET} View status")
+        print(f"    {C_CYAN}8){C_RESET} Cleanup completed specs")
         print(f"    {C_CYAN}q){C_RESET} Quit")
         print()
 
@@ -495,9 +595,12 @@ def interactive(project_dir):
             break
 
         elif choice == "1":
-            action_discover(project_dir)
+            action_insights(project_dir)
 
         elif choice == "2":
+            action_discover(project_dir)
+
+        elif choice == "3":
             try:
                 path = input(f"  {C_BOLD}Path to batch JSON file:{C_RESET} ").strip()
             except (KeyboardInterrupt, EOFError):
@@ -505,11 +608,11 @@ def interactive(project_dir):
             if path:
                 action_create_from_file(project_dir, path)
 
-        elif choice == "3":
+        elif choice == "4":
             qa_too = prompt_yn("Also run QA after each build?", default=False)
             action_build_all(project_dir, run_qa=qa_too)
 
-        elif choice == "4":
+        elif choice == "5":
             if not specs:
                 print(f"  {C_YELLOW}No specs found.{C_RESET}")
                 continue
@@ -523,14 +626,14 @@ def interactive(project_dir):
                 qa_too = prompt_yn("Run QA after build?", default=False)
                 action_build_spec(project_dir, s["id"], run_qa=qa_too)
 
-        elif choice == "5":
+        elif choice == "6":
             action_qa_all(project_dir)
 
-        elif choice == "6":
+        elif choice == "7":
             # Just loops back to top which shows status
             pass
 
-        elif choice == "7":
+        elif choice == "8":
             print()
             action_cleanup(project_dir, confirm=False)
             print()
@@ -538,7 +641,7 @@ def interactive(project_dir):
                 action_cleanup(project_dir, confirm=True)
 
         else:
-            print(f"  {C_DIM}Unknown option. Try 1-7 or q.{C_RESET}")
+            print(f"  {C_DIM}Unknown option. Try 1-8 or q.{C_RESET}")
 
         print()
 
@@ -554,6 +657,8 @@ def main():
         epilog="""
 Examples:
   ac-batch                            Interactive menu
+  ac-batch --insights                 Interactive codebase Q&A chat
+  ac-batch --insights "How does auth work?"   One-shot question
   ac-batch --status                   Show all spec statuses
   ac-batch --create tasks.json        Create specs from batch JSON
   ac-batch --discover                 Create batch from discovery outputs
@@ -567,6 +672,8 @@ Examples:
     )
     parser.add_argument("--project-dir", type=Path, default=None,
                         help="Project directory (default: auto-detect from cwd)")
+    parser.add_argument("--insights", nargs="?", const="", metavar="QUESTION",
+                        help="Ask about the codebase (interactive if no question given)")
     parser.add_argument("--status", action="store_true",
                         help="Show status of all specs")
     parser.add_argument("--create", metavar="FILE",
@@ -599,6 +706,13 @@ Examples:
         sys.exit(1)
 
     # Handle CLI modes
+    if args.insights is not None:
+        if args.insights:
+            action_insights(project_dir, message=args.insights)
+        else:
+            action_insights(project_dir)
+        return
+
     if args.status:
         specs = load_all_specs(project_dir)
         print_header(f"ac-batch — {project_dir.name}")
