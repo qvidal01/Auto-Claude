@@ -420,7 +420,7 @@ def run_spec(project_dir, spec_id, auto_qa=True):
 
     # Step 2: Build
     print(f"\n  {C_CYAN}▸ Building spec {spec_id}...{C_RESET}")
-    build_cmd = [python, run_py, "--project-dir", str(project_dir), "--spec", spec_id]
+    build_cmd = [python, run_py, "--project-dir", str(project_dir), "--spec", spec_id, "--force"]
     print(f"    {C_DIM}$ {' '.join(build_cmd)}{C_RESET}")
 
     try:
