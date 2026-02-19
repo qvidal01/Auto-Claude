@@ -138,7 +138,28 @@ from agents.tools_pkg import (
     is_tools_available,
 )
 from claude_agent_sdk import ClaudeAgentOptions, ClaudeSDKClient
-from claude_agent_sdk.types import HookMatcher
+from claude_agent_sdk.types import HookMatcher, SystemMessage
+from claude_agent_sdk._internal import message_parser as _sdk_message_parser
+from claude_agent_sdk._errors import MessageParseError as _MessageParseError
+
+# Monkey-patch the SDK message parser to gracefully handle unknown message types
+# (e.g. rate_limit_event) instead of raising MessageParseError and killing agent sessions.
+# This is needed until the upstream SDK adds native support for these message types.
+_original_parse_message = _sdk_message_parser.parse_message
+
+
+def _patched_parse_message(data):
+    try:
+        return _original_parse_message(data)
+    except _MessageParseError as e:
+        if "Unknown message type" in str(e):
+            msg_type = data.get("type", "unknown")
+            logger.debug(f"Skipping unknown SDK message type: {msg_type}")
+            return SystemMessage(subtype=msg_type, data=data)
+        raise
+
+
+_sdk_message_parser.parse_message = _patched_parse_message
 from core.auth import (
     configure_sdk_authentication,
     get_sdk_env_vars,
