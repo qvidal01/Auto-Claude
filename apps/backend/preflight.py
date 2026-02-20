@@ -5,15 +5,20 @@ Run before any Auto-Claude command to detect and fix common issues.
 Usage: python preflight.py [--fix]
 """
 import json
-import os
-import sys
 import subprocess
-import time
+import sys
 from pathlib import Path
+from urllib.error import URLError
+from urllib.request import urlopen
 
 BACKEND_DIR = Path(__file__).parent
 ENV_FILE = BACKEND_DIR / ".env"
-VENV_PYTHON = BACKEND_DIR / ".venv" / "bin" / "python"
+
+# Cross-platform venv python path
+if sys.platform == "win32":
+    VENV_PYTHON = BACKEND_DIR / ".venv" / "Scripts" / "python.exe"
+else:
+    VENV_PYTHON = BACKEND_DIR / ".venv" / "bin" / "python"
 
 RED = "\033[91m"
 GREEN = "\033[92m"
@@ -64,7 +69,7 @@ class PreflightCheck:
             if self.auto_fix:
                 self._fix_token(env)
         else:
-            ok(f"OAuth token present ({token[:20]}...)")
+            ok("OAuth token present")
 
         # Check Ollama URL
         ollama_url = env.get("OLLAMA_BASE_URL", "")
@@ -96,15 +101,21 @@ class PreflightCheck:
                 fail("No access token in credentials file")
                 return
 
-            # Read and update .env
+            # Read and update .env line-by-line to avoid replacing token
+            # substrings in unrelated values
             content = ENV_FILE.read_text()
-            old_token = env.get("CLAUDE_CODE_OAUTH_TOKEN", "")
-            if old_token:
-                content = content.replace(old_token, new_token)
-            else:
-                content = f"CLAUDE_CODE_OAUTH_TOKEN={new_token}\n" + content
-            ENV_FILE.write_text(content)
-            ok(f"Token auto-fixed from ~/.claude/.credentials.json ({new_token[:20]}...)")
+            lines = content.split("\n")
+            updated = False
+            for i, line in enumerate(lines):
+                if line.strip().startswith("CLAUDE_CODE_OAUTH_TOKEN="):
+                    lines[i] = f"CLAUDE_CODE_OAUTH_TOKEN={new_token}"
+                    updated = True
+                    break
+            if not updated:
+                lines.insert(0, f"CLAUDE_CODE_OAUTH_TOKEN={new_token}")
+
+            ENV_FILE.write_text("\n".join(lines))
+            ok("Token auto-fixed from ~/.claude/.credentials.json")
             self.fixed.append("expired_token")
         except Exception as e:
             fail(f"Auto-fix failed: {e}")
@@ -113,8 +124,8 @@ class PreflightCheck:
         """Verify Ollama is reachable and models are available."""
         print(f"\n{BLUE}[2/6] Checking Ollama connectivity{RESET}")
 
-        # Read URL from .env
-        ollama_url = "http://192.168.0.234:11434"
+        # Read URL from .env, default to localhost
+        ollama_url = "http://localhost:11434"
         if ENV_FILE.exists():
             with open(ENV_FILE) as f:
                 for line in f:
@@ -122,16 +133,8 @@ class PreflightCheck:
                         ollama_url = line.strip().split("=", 1)[1]
 
         try:
-            result = subprocess.run(
-                ["curl", "-s", "-m", "5", f"{ollama_url}/api/tags"],
-                capture_output=True, text=True, timeout=10
-            )
-            if result.returncode != 0:
-                fail(f"Ollama unreachable at {ollama_url}")
-                self.issues.append("ollama_unreachable")
-                return
-
-            data = json.loads(result.stdout)
+            with urlopen(f"{ollama_url}/api/tags", timeout=5) as resp:
+                data = json.loads(resp.read().decode())
             models = [m["name"] for m in data.get("models", [])]
             ok(f"Ollama responding ({len(models)} models)")
 
@@ -144,6 +147,9 @@ class PreflightCheck:
                 else:
                     fail(f"Model missing: {model}")
                     self.issues.append(f"missing_model_{model}")
+        except (URLError, OSError, json.JSONDecodeError) as e:
+            fail(f"Ollama unreachable at {ollama_url}: {e}")
+            self.issues.append("ollama_unreachable")
         except Exception as e:
             fail(f"Ollama check failed: {e}")
             self.issues.append("ollama_error")
@@ -178,11 +184,18 @@ class PreflightCheck:
         """Find and optionally clear stuck specs/locks."""
         print(f"\n{BLUE}[4/6] Checking for stuck specs/locks{RESET}")
 
-        # Check common project locations
-        project_dirs = [
-            Path.home() / "projects",
-            Path("/aidata/projects"),
-        ]
+        # Check project directories from env or common locations
+        project_dirs = [Path.home() / "projects"]
+        extra = ENV_FILE.parent / ".env"
+        if extra.exists():
+            with open(extra) as f:
+                for line in f:
+                    if line.strip().startswith("AUTO_CLAUDE_PROJECT_DIRS="):
+                        dirs = line.strip().split("=", 1)[1]
+                        for d in dirs.split(":"):
+                            p = Path(d.strip())
+                            if p.exists():
+                                project_dirs.append(p)
 
         stuck_count = 0
         for pdir in project_dirs:

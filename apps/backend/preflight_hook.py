@@ -5,7 +5,7 @@ Designed to be called once at the start of main() in each runner.
 
 Usage in runners:
     from preflight_hook import run_preflight
-    run_preflight()  # Returns True if OK, exits with message if critical failure
+    run_preflight()  # Returns True if OK, False if critical failure
 
 Checks:
     - OAuth token present and not known-expired (auto-fixes from ~/.claude/.credentials.json)
@@ -18,12 +18,16 @@ Skips checks if:
 """
 
 import json
+import logging
 import os
-import subprocess
-import sys
+import time
 from pathlib import Path
+from urllib.error import URLError
+from urllib.request import urlopen
 
-_PREFLIGHT_RAN = False
+logger = logging.getLogger(__name__)
+
+_preflight_ran = False
 BACKEND_DIR = Path(__file__).parent
 ENV_FILE = BACKEND_DIR / ".env"
 
@@ -74,9 +78,8 @@ def _auto_fix_token() -> bool:
             print("[preflight] ERROR: No access token in credentials file")
             return False
 
-        # Update .env
+        # Update .env line-by-line to target only the token key
         content = ENV_FILE.read_text()
-        # Find and replace existing token line
         lines = content.split("\n")
         updated = False
         for i, line in enumerate(lines):
@@ -89,7 +92,7 @@ def _auto_fix_token() -> bool:
 
         ENV_FILE.write_text("\n".join(lines))
         os.environ["CLAUDE_CODE_OAUTH_TOKEN"] = new_token
-        print(f"[preflight] Token auto-fixed from ~/.claude/.credentials.json ({new_token[:20]}...)")
+        print("[preflight] Token auto-fixed from ~/.claude/.credentials.json")
         return True
     except Exception as e:
         print(f"[preflight] Token auto-fix failed: {e}")
@@ -98,17 +101,15 @@ def _auto_fix_token() -> bool:
 
 def _check_ollama(env: dict) -> bool:
     """Check Ollama connectivity. Warns but doesn't fail (not always needed)."""
-    ollama_url = env.get("OLLAMA_BASE_URL", "http://192.168.0.234:11434")
+    ollama_url = env.get("OLLAMA_BASE_URL", "http://localhost:11434")
     try:
-        result = subprocess.run(
-            ["curl", "-s", "-m", "3", f"{ollama_url}/api/tags"],
-            capture_output=True, text=True, timeout=5
-        )
-        if result.returncode != 0:
-            print(f"[preflight] WARNING: Ollama unreachable at {ollama_url}")
-            print("[preflight]   Local LLM tasks (embeddings, complexity) may fail")
-            return True  # Warn but don't block
+        with urlopen(f"{ollama_url}/api/tags", timeout=3) as resp:
+            resp.read()
         return True
+    except (URLError, OSError):
+        print(f"[preflight] WARNING: Ollama unreachable at {ollama_url}")
+        print("[preflight]   Local LLM tasks (embeddings, complexity) may fail")
+        return True  # Warn but don't block
     except Exception:
         print(f"[preflight] WARNING: Could not reach Ollama at {ollama_url}")
         return True  # Warn but don't block
@@ -116,49 +117,57 @@ def _check_ollama(env: dict) -> bool:
 
 def _check_stale_locks() -> None:
     """Remove stale .lock files from spec directories."""
-    project_dirs = [Path.home() / "projects", Path("/aidata/projects")]
+    project_dirs = [Path.home() / "projects"]
+
+    # Allow additional dirs via env var
+    extra_dirs = os.environ.get("AUTO_CLAUDE_PROJECT_DIRS", "")
+    if extra_dirs:
+        for d in extra_dirs.split(":"):
+            p = Path(d.strip())
+            if p.exists():
+                project_dirs.append(p)
+
     for pdir in project_dirs:
         if not pdir.exists():
             continue
         for lock_file in pdir.glob("*/.auto-claude/specs/*/.lock"):
             try:
                 # Only remove locks older than 1 hour
-                import time
                 age = time.time() - lock_file.stat().st_mtime
                 if age > 3600:
                     lock_file.unlink()
                     print(f"[preflight] Removed stale lock: {lock_file}")
-            except Exception:
-                pass
+            except OSError as e:
+                logger.debug("Could not check/remove lock %s: %s", lock_file, e)
 
 
 def run_preflight() -> bool:
     """Run preflight checks. Call at the start of each runner's main().
 
     Returns True if all critical checks pass.
-    Exits with error message if critical checks fail.
+    Raises SystemExit on critical failures since callers rely on early termination.
     """
-    global _PREFLIGHT_RAN
+    global _preflight_ran
 
     # Skip if already ran this process, or explicitly disabled
-    if _PREFLIGHT_RAN:
+    if _preflight_ran:
         return True
     if os.environ.get("SKIP_PREFLIGHT") == "1":
         return True
 
-    _PREFLIGHT_RAN = True
+    _preflight_ran = True
 
     # Check .env exists
     if not ENV_FILE.exists():
         print("[preflight] ERROR: .env file not found at", ENV_FILE)
         print("[preflight] Copy .env.example to .env and configure it")
-        sys.exit(1)
+        raise SystemExit(1)
 
     env = _load_env_vars()
 
     # Critical: OAuth token
     if not _check_and_fix_token(env):
-        sys.exit(1)
+        raise SystemExit(1)
 
     # Non-critical: Ollama
     _check_ollama(env)

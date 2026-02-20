@@ -98,7 +98,7 @@ def prompt_choice(question, options, allow_multi=False, allow_all=True):
                 if 0 <= idx < len(options):
                     return [idx]
         except ValueError:
-            pass
+            pass  # Invalid numeric input, re-prompt
         warn("Invalid choice. Enter a number, 'a' for all, or 'q' to cancel.")
 
 
@@ -133,7 +133,7 @@ def detect_sources(project_dir: Path):
                 "label": f"Ideation ({count} ideas)",
             })
         except (json.JSONDecodeError, KeyError):
-            pass
+            pass  # Skip malformed ideation file silently
 
     # Roadmap
     roadmap_file = ac_dir / "roadmap" / "roadmap.json"
@@ -149,7 +149,7 @@ def detect_sources(project_dir: Path):
                 "label": f"Roadmap ({count} features)",
             })
         except (json.JSONDecodeError, KeyError):
-            pass
+            pass  # Skip malformed roadmap file silently
 
     # Insights — check for saved chat messages with suggestedTasks
     insights_dir = ac_dir / "insights"
@@ -184,7 +184,7 @@ def _collect_insights_tasks(insights_dir: Path):
                     if isinstance(t, dict) and t.get("title"):
                         tasks.append(t)
         except (json.JSONDecodeError, KeyError, TypeError):
-            continue
+            continue  # Skip unparseable insight files
     return tasks
 
 
@@ -402,16 +402,29 @@ def item_to_batch_task(item):
 # ---------------------------------------------------------------------------
 
 def find_auto_claude_dir():
-    """Try to find the Auto-Claude installation."""
-    candidates = [
-        Path("/aidata/projects/Auto-Claude"),
-        Path.home() / "Auto-Claude",
-        Path.home() / "auto-claude",
-    ]
-    # Also check if we're inside Auto-Claude itself
+    """Try to find the Auto-Claude installation.
+
+    Checks (in order): AUTO_CLAUDE_DIR env var, current directory,
+    ~/Auto-Claude, ~/auto-claude, ~/projects/Auto-Claude.
+    """
+    candidates = []
+
+    # Env var override takes priority
+    env_dir = os.environ.get("AUTO_CLAUDE_DIR")
+    if env_dir:
+        candidates.append(Path(env_dir))
+
+    # Check if we're inside Auto-Claude itself
     cwd = Path.cwd()
     if (cwd / "apps" / "backend" / "run.py").exists():
         candidates.insert(0, cwd)
+
+    # Common install locations
+    candidates.extend([
+        Path.home() / "Auto-Claude",
+        Path.home() / "auto-claude",
+        Path.home() / "projects" / "Auto-Claude",
+    ])
 
     for p in candidates:
         if (p / "apps" / "backend" / "run.py").exists():
