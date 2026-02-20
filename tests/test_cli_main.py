@@ -28,7 +28,8 @@ import json
 import os
 import sys
 from pathlib import Path
-from unittest.mock import MagicMock, patch, Mock
+from unittest.mock import MagicMock, Mock, patch
+
 import pytest
 
 # Note: conftest.py already adds apps/backend to sys.path at line 52
@@ -74,11 +75,12 @@ def mock_project_dir(temp_dir):
 @pytest.fixture
 def mock_utils():
     """Mock CLI utility functions."""
-    with patch("cli.main.print_banner"), \
-         patch("cli.main.get_project_dir") as mock_get_project_dir, \
-         patch("cli.main.find_spec") as mock_find_spec, \
-         patch("cli.main.setup_environment"):
-
+    with (
+        patch("cli.main.print_banner"),
+        patch("cli.main.get_project_dir") as mock_get_project_dir,
+        patch("cli.main.find_spec") as mock_find_spec,
+        patch("cli.main.setup_environment"),
+    ):
         yield {
             "get_project_dir": mock_get_project_dir,
             "find_spec": mock_find_spec,
@@ -89,10 +91,12 @@ def mock_utils():
 def mock_debug():
     """Mock debug functions."""
     # The debug module is imported inside _run_cli, so we need to mock it there
-    with patch("debug.debug"), \
-         patch("debug.debug_section"), \
-         patch("debug.debug_success"), \
-         patch("debug.debug_error"):
+    with (
+        patch("debug.debug"),
+        patch("debug.debug_section"),
+        patch("debug.debug_success"),
+        patch("debug.debug_error"),
+    ):
         yield
 
 
@@ -217,7 +221,10 @@ class TestParseArgs:
 
     def test_parse_pr_options(self, clear_env):
         """Test PR-related flags."""
-        with patch("sys.argv", ["run.py", "--pr-target", "develop", "--pr-title", "My PR", "--pr-draft"]):
+        with patch(
+            "sys.argv",
+            ["run.py", "--pr-target", "develop", "--pr-title", "My PR", "--pr-draft"],
+        ):
             args = parse_args()
             assert args.pr_target == "develop"
             assert args.pr_title == "My PR"
@@ -277,7 +284,17 @@ class TestParseArgs:
 
     def test_parse_batch_flags(self, clear_env):
         """Test batch operation flags."""
-        with patch("sys.argv", ["run.py", "--batch-create", "tasks.json", "--batch-status", "--batch-cleanup", "--no-dry-run"]):
+        with patch(
+            "sys.argv",
+            [
+                "run.py",
+                "--batch-create",
+                "tasks.json",
+                "--batch-status",
+                "--batch-cleanup",
+                "--no-dry-run",
+            ],
+        ):
             args = parse_args()
             assert args.batch_create == "tasks.json"
             assert args.batch_status is True
@@ -292,10 +309,12 @@ class TestMain:
         """Test main() handles KeyboardInterrupt correctly."""
         from cli.main import main
 
-        with patch("cli.main.setup_environment"), \
-             patch("core.sentry.init_sentry"), \
-             patch("cli.main._run_cli", side_effect=KeyboardInterrupt):
-
+        with (
+            patch("preflight_hook.run_preflight", return_value=True),
+            patch("cli.main.setup_environment"),
+            patch("core.sentry.init_sentry"),
+            patch("cli.main._run_cli", side_effect=KeyboardInterrupt),
+        ):
             with pytest.raises(SystemExit) as exc_info:
                 main()
 
@@ -307,11 +326,13 @@ class TestMain:
 
         test_error = RuntimeError("Unexpected error")
 
-        with patch("cli.main.setup_environment"), \
-             patch("core.sentry.init_sentry"), \
-             patch("core.sentry.capture_exception") as mock_capture, \
-             patch("cli.main._run_cli", side_effect=test_error):
-
+        with (
+            patch("preflight_hook.run_preflight", return_value=True),
+            patch("cli.main.setup_environment"),
+            patch("core.sentry.init_sentry"),
+            patch("core.sentry.capture_exception") as mock_capture,
+            patch("cli.main._run_cli", side_effect=test_error),
+        ):
             with pytest.raises(SystemExit) as exc_info:
                 main()
 
@@ -322,10 +343,12 @@ class TestMain:
         """Test main() executes successfully."""
         from cli.main import main
 
-        with patch("cli.main.setup_environment"), \
-             patch("core.sentry.init_sentry"), \
-             patch("cli.main._run_cli"):
-
+        with (
+            patch("preflight_hook.run_preflight", return_value=True),
+            patch("cli.main.setup_environment"),
+            patch("core.sentry.init_sentry"),
+            patch("cli.main._run_cli"),
+        ):
             # Should not raise
             main()
 
@@ -476,9 +499,10 @@ class TestRunCliSpecResolution:
         mock_utils["get_project_dir"].return_value = project_dir
         mock_utils["find_spec"].return_value = spec_dir
 
-        with patch("core.sentry.set_context") as mock_set_context, \
-             patch("cli.main.handle_build_command"):
-
+        with (
+            patch("core.sentry.set_context") as mock_set_context,
+            patch("cli.main.handle_build_command"),
+        ):
             with patch("sys.argv", ["run.py", "--spec", "001"]):
                 _run_cli()
 
@@ -524,7 +548,9 @@ class TestRunCliBuildCommands:
         mock_utils["find_spec"].return_value = spec_dir
 
         with patch("cli.main.handle_merge_command", return_value=True) as mock_handle:
-            with patch("sys.argv", ["run.py", "--spec", "001", "--merge", "--no-commit"]):
+            with patch(
+                "sys.argv", ["run.py", "--spec", "001", "--merge", "--no-commit"]
+            ):
                 _run_cli()
 
             mock_handle.assert_called_once_with(
@@ -545,7 +571,10 @@ class TestRunCliBuildCommands:
         mock_utils["find_spec"].return_value = spec_dir
 
         with patch("cli.main.handle_merge_command", return_value=True) as mock_handle:
-            with patch("sys.argv", ["run.py", "--spec", "001", "--merge", "--base-branch", "develop"]):
+            with patch(
+                "sys.argv",
+                ["run.py", "--spec", "001", "--merge", "--base-branch", "develop"],
+            ):
                 _run_cli()
 
             mock_handle.assert_called_once_with(
@@ -585,7 +614,10 @@ class TestRunCliBuildCommands:
         preview_result = {"conflicts": [], "files": ["test.py"]}
 
         # handle_merge_preview_command is imported locally in _run_cli
-        with patch("cli.workspace_commands.handle_merge_preview_command", return_value=preview_result):
+        with patch(
+            "cli.workspace_commands.handle_merge_preview_command",
+            return_value=preview_result,
+        ):
             with patch("sys.argv", ["run.py", "--spec", "001", "--merge-preview"]):
                 with patch("builtins.print") as mock_print:
                     _run_cli()
@@ -644,7 +676,9 @@ class TestRunCliPRCommand:
 
         result = {"success": True, "url": "https://github.com/test/pr/1"}
 
-        with patch("cli.main.handle_create_pr_command", return_value=result) as mock_handle:
+        with patch(
+            "cli.main.handle_create_pr_command", return_value=result
+        ) as mock_handle:
             with patch("sys.argv", ["run.py", "--spec", "001", "--create-pr"]):
                 _run_cli()
 
@@ -668,13 +702,23 @@ class TestRunCliPRCommand:
 
         result = {"success": True, "url": "https://github.com/test/pr/1"}
 
-        with patch("cli.main.handle_create_pr_command", return_value=result) as mock_handle:
-            with patch("sys.argv", [
-                "run.py", "--spec", "001", "--create-pr",
-                "--pr-target", "develop",
-                "--pr-title", "My PR Title",
-                "--pr-draft"
-            ]):
+        with patch(
+            "cli.main.handle_create_pr_command", return_value=result
+        ) as mock_handle:
+            with patch(
+                "sys.argv",
+                [
+                    "run.py",
+                    "--spec",
+                    "001",
+                    "--create-pr",
+                    "--pr-target",
+                    "develop",
+                    "--pr-title",
+                    "My PR Title",
+                    "--pr-draft",
+                ],
+            ):
                 _run_cli()
 
             mock_handle.assert_called_once_with(
@@ -772,7 +816,9 @@ class TestRunCliQACommands:
         mock_utils["find_spec"].return_value = spec_dir
 
         with patch("cli.main.handle_qa_command") as mock_handle:
-            with patch("sys.argv", ["run.py", "--spec", "001", "--qa", "--model", "opus"]):
+            with patch(
+                "sys.argv", ["run.py", "--spec", "001", "--qa", "--model", "opus"]
+            ):
                 _run_cli()
 
             mock_handle.assert_called_once_with(
@@ -839,7 +885,18 @@ class TestRunCliFollowupCommand:
         mock_utils["find_spec"].return_value = spec_dir
 
         with patch("cli.main.handle_followup_command") as mock_handle:
-            with patch("sys.argv", ["run.py", "--spec", "001", "--followup", "--model", "sonnet", "--verbose"]):
+            with patch(
+                "sys.argv",
+                [
+                    "run.py",
+                    "--spec",
+                    "001",
+                    "--followup",
+                    "--model",
+                    "sonnet",
+                    "--verbose",
+                ],
+            ):
                 _run_cli()
 
             mock_handle.assert_called_once_with(
@@ -892,17 +949,25 @@ class TestRunCliBuildFlow:
         mock_utils["find_spec"].return_value = spec_dir
 
         with patch("cli.main.handle_build_command") as mock_handle:
-            with patch("sys.argv", [
-                "run.py", "--spec", "001",
-                "--model", "opus",
-                "--max-iterations", "10",
-                "--verbose",
-                "--isolated",
-                "--auto-continue",
-                "--skip-qa",
-                "--force",
-                "--base-branch", "develop",
-            ]):
+            with patch(
+                "sys.argv",
+                [
+                    "run.py",
+                    "--spec",
+                    "001",
+                    "--model",
+                    "opus",
+                    "--max-iterations",
+                    "10",
+                    "--verbose",
+                    "--isolated",
+                    "--auto-continue",
+                    "--skip-qa",
+                    "--force",
+                    "--base-branch",
+                    "develop",
+                ],
+            ):
                 _run_cli()
 
             mock_handle.assert_called_once_with(
@@ -1039,9 +1104,14 @@ class TestModuleImportPathInsertion:
         # Verify parent_dir_str is the apps/backend directory
         # Use os.path.normpath for cross-platform path comparison
         import os
+
         normalized_path = os.path.normpath(parent_dir_str)
         # Check that the normalized path contains apps/backend or apps\backend (Windows)
-        assert ("apps" + os.sep + "backend") in normalized_path or "apps/backend" in normalized_path or "apps\\backend" in normalized_path
+        assert (
+            ("apps" + os.sep + "backend") in normalized_path
+            or "apps/backend" in normalized_path
+            or "apps\\backend" in normalized_path
+        )
 
         # Save current sys.path state to restore later
         original_path = sys.path.copy()
@@ -1059,7 +1129,9 @@ class TestModuleImportPathInsertion:
             importlib.reload(main_module)
 
             # Verify the parent dir was added to sys.path by line 16
-            assert parent_dir_str in sys.path, f"Parent dir {parent_dir_str} should be in sys.path"
+            assert parent_dir_str in sys.path, (
+                f"Parent dir {parent_dir_str} should be in sys.path"
+            )
 
         finally:
             # Restore sys.path to original state
@@ -1083,11 +1155,13 @@ class TestMainEntryExecution:
         assert callable(main)
 
         # Test that main() calls _run_cli with proper mocking
-        with patch("cli.main.setup_environment"), \
-             patch("core.sentry.init_sentry"), \
-             patch("cli.main._run_cli") as mock_run_cli, \
-             patch("sys.argv", ["run.py", "--list"]):
-
+        with (
+            patch("preflight_hook.run_preflight", return_value=True),
+            patch("cli.main.setup_environment"),
+            patch("core.sentry.init_sentry"),
+            patch("cli.main._run_cli") as mock_run_cli,
+            patch("sys.argv", ["run.py", "--list"]),
+        ):
             # Call main() - this is what line 484 does
             main()
 
@@ -1097,6 +1171,7 @@ class TestMainEntryExecution:
     def test_module_can_be_imported(self):
         """Test that cli.main module can be imported without errors."""
         import importlib
+
         main_module = importlib.import_module("cli.main")
 
         # Verify module has expected attributes
@@ -1117,20 +1192,20 @@ class TestMainEntryExecution:
         Note: This test is marked with pytest.mark.slow because it executes
         the entire module which may have side effects.
         """
-        import runpy
         import importlib
+        import runpy
 
         # Save original state
         original_argv = sys.argv.copy()
         original_modules = sys.modules.copy()
 
         # Remove cli modules to force re-import
-        modules_to_remove = [mod for mod in sys.modules if 'cli' in mod]
+        modules_to_remove = [mod for mod in sys.modules if "cli" in mod]
         for mod in modules_to_remove:
             del sys.modules[mod]
 
         # Set up argv
-        sys.argv = ['cli.main', '--list']
+        sys.argv = ["cli.main", "--list"]
 
         # Create mocks that will be used when the module imports
         mock_setup = MagicMock()
@@ -1140,13 +1215,15 @@ class TestMainEntryExecution:
 
         try:
             # Apply patches BEFORE importing
-            with patch('cli.utils.setup_environment', mock_setup), \
-                 patch('core.sentry.init_sentry', mock_init_sentry), \
-                 patch('cli.utils.print_banner', mock_print_banner), \
-                 patch('cli.spec_commands.print_specs_list', mock_print_specs_list):
-
+            with (
+                patch("preflight_hook.run_preflight", return_value=True),
+                patch("cli.utils.setup_environment", mock_setup),
+                patch("core.sentry.init_sentry", mock_init_sentry),
+                patch("cli.utils.print_banner", mock_print_banner),
+                patch("cli.spec_commands.print_specs_list", mock_print_specs_list),
+            ):
                 # Run the module as __main__ - this executes line 484
-                runpy.run_module('cli.main', run_name='__main__', alter_sys=True)
+                runpy.run_module("cli.main", run_name="__main__", alter_sys=True)
 
                 # Verify the mocks were called
                 mock_setup.assert_called_once()
