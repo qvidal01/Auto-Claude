@@ -161,6 +161,9 @@ playwright/.cache/
 *.tmp
 *.temp
 
+# Windows path artifacts (created when Windows symlinks leak into WSL/git)
+C:\\
+
 # Development
 dev/
 _bmad/
