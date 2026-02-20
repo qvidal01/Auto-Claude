@@ -276,7 +276,7 @@ class PreflightCheck:
             if remaining:
                 print(f" {RED}Remaining: {', '.join(remaining)}{RESET}")
                 if not self.auto_fix:
-                    print(f"\n Run with --fix to attempt auto-repair")
+                    print("\n Run with --fix to attempt auto-repair")
         print(f"{'='*60}\n")
 
         return len(self.issues) - len(self.fixed) == 0
