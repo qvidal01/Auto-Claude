@@ -287,6 +287,7 @@ def main() -> None:
     """Main CLI entry point."""
     # Preflight self-healing checks (token refresh, ollama, stale locks)
     from preflight_hook import run_preflight
+
     run_preflight()
 
     # Set up environment first

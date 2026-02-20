@@ -66,7 +66,9 @@ def _auto_fix_token() -> bool:
     """Pull fresh token from ~/.claude/.credentials.json and update .env."""
     creds_file = Path.home() / ".claude" / ".credentials.json"
     if not creds_file.exists():
-        print("[preflight] ERROR: No OAuth token and ~/.claude/.credentials.json not found")
+        print(
+            "[preflight] ERROR: No OAuth token and ~/.claude/.credentials.json not found"
+        )
         print("[preflight] Run 'claude /login' to authenticate, then try again")
         return False
 

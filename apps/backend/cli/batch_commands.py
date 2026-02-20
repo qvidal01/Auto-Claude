@@ -65,8 +65,8 @@ def handle_batch_create_command(batch_file: str, project_dir: str) -> bool:
         # Extract category tag like [sec-001] from title if present
         tag_match = re.match(r"^\[(\w+-\d+)\]\s*(.*)", task_title)
         if tag_match:
-            tag = tag_match.group(1)       # e.g. "sec-001"
-            title_rest = tag_match.group(2) # e.g. "Remove hardcoded API key..."
+            tag = tag_match.group(1)  # e.g. "sec-001"
+            title_rest = tag_match.group(2)  # e.g. "Remove hardcoded API key..."
             title_slug = re.sub(r"[^\w\-]", "-", title_rest.lower())
             title_slug = re.sub(r"-+", "-", title_slug).strip("-")[:50]
             spec_name = f"{spec_id}-[{tag}]-{title_slug}"

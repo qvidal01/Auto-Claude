@@ -4,6 +4,7 @@
 Run before any Auto-Claude command to detect and fix common issues.
 Usage: python preflight.py [--fix]
 """
+
 import json
 import subprocess
 import sys
@@ -26,14 +27,18 @@ YELLOW = "\033[93m"
 BLUE = "\033[94m"
 RESET = "\033[0m"
 
+
 def ok(msg):
     print(f"  {GREEN}✓{RESET} {msg}")
+
 
 def warn(msg):
     print(f"  {YELLOW}⚠{RESET} {msg}")
 
+
 def fail(msg):
     print(f"  {RED}✗{RESET} {msg}")
+
 
 def info(msg):
     print(f"  {BLUE}ℹ{RESET} {msg}")
@@ -161,7 +166,9 @@ class PreflightCheck:
             fail(f"venv not found at {VENV_PYTHON}")
             self.issues.append("missing_venv")
             if self.auto_fix:
-                info("Run: cd apps/backend && python3 -m venv .venv && pip install -r requirements.txt")
+                info(
+                    "Run: cd apps/backend && python3 -m venv .venv && pip install -r requirements.txt"
+                )
             return
 
         ok(f"venv exists at {VENV_PYTHON}")
@@ -169,8 +176,15 @@ class PreflightCheck:
         # Check key imports
         try:
             result = subprocess.run(
-                [str(VENV_PYTHON), "-c", "from core.client import create_client; print('OK')"],
-                capture_output=True, text=True, timeout=10, cwd=str(BACKEND_DIR)
+                [
+                    str(VENV_PYTHON),
+                    "-c",
+                    "from core.client import create_client; print('OK')",
+                ],
+                capture_output=True,
+                text=True,
+                timeout=10,
+                cwd=str(BACKEND_DIR),
             )
             if "OK" in result.stdout:
                 ok("Core imports working")
@@ -240,8 +254,11 @@ class PreflightCheck:
         print(f"\n{BLUE}[6/6] Checking git status{RESET}")
         try:
             result = subprocess.run(
-                ["git", "status", "--porcelain"], capture_output=True, text=True,
-                timeout=5, cwd=str(BACKEND_DIR)
+                ["git", "status", "--porcelain"],
+                capture_output=True,
+                text=True,
+                timeout=5,
+                cwd=str(BACKEND_DIR),
             )
             if result.stdout.strip():
                 lines = result.stdout.strip().split("\n")
@@ -252,9 +269,9 @@ class PreflightCheck:
             warn("Could not check git status")
 
     def run(self):
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print(f" Auto-Claude Preflight Check {'(+ Auto-Fix)' if self.auto_fix else ''}")
-        print(f"{'='*60}")
+        print(f"{'=' * 60}")
 
         self.check_env_file()
         self.check_ollama()
@@ -264,7 +281,7 @@ class PreflightCheck:
         self.check_git_status()
 
         # Summary
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         if not self.issues:
             print(f" {GREEN}All checks passed! Auto-Claude is ready.{RESET}")
         else:
@@ -277,7 +294,7 @@ class PreflightCheck:
                 print(f" {RED}Remaining: {', '.join(remaining)}{RESET}")
                 if not self.auto_fix:
                     print("\n Run with --fix to attempt auto-repair")
-        print(f"{'='*60}\n")
+        print(f"{'=' * 60}\n")
 
         return len(self.issues) - len(self.fixed) == 0
 
