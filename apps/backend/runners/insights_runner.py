@@ -467,6 +467,7 @@ Assistant:"""
 
 def main():
     from preflight_hook import run_preflight
+
     run_preflight()
 
     parser = argparse.ArgumentParser(description="Insights AI Chat Runner")

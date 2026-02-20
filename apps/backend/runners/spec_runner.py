@@ -117,6 +117,7 @@ from ui import Icons, highlight, muted, print_section, print_status
 def main():
     """CLI entry point."""
     from preflight_hook import run_preflight
+
     run_preflight()
 
     debug_section("spec_runner", "Spec Runner CLI")
