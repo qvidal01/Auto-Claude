@@ -104,9 +104,31 @@ def get_python():
 
 
 def find_project_dir():
-    """Walk up from cwd to find a directory with .auto-claude/."""
-    d = Path.cwd()
+    """Walk up from cwd to find a directory with .auto-claude/.
+
+    Prefer cwd if it is a git repo (has .git/), even if a parent directory
+    also has .auto-claude/.  This prevents accidentally targeting a home-dir
+    .auto-claude/ when the user is inside a project subdirectory.
+    """
+    cwd = Path.cwd()
+
+    # If cwd itself has .auto-claude/, use it immediately
+    if (cwd / ".auto-claude").is_dir():
+        return cwd
+
+    # If cwd is a git repo root, prefer it — discovery commands will create
+    # .auto-claude/ here rather than walking up to a parent.
+    if (cwd / ".git").exists():
+        return cwd
+
+    # Otherwise walk up, but stop before home directory to avoid picking up
+    # a global ~/.auto-claude/ that isn't a real project.
+    home = Path.home()
+    d = cwd.parent
     while d != d.parent:
+        if d == home:
+            # Only use home if it has .auto-claude/ AND cwd is literally ~
+            break
         if (d / ".auto-claude").is_dir():
             return d
         d = d.parent
@@ -175,8 +197,13 @@ def load_all_specs(project_dir):
 
 
 def prompt_yn(question, default=True):
+    if not sys.stdin.isatty():
+        return default
     hint = "Y/n" if default else "y/N"
-    raw = input(f"  {C_BOLD}{question}{C_RESET} [{hint}] ").strip().lower()
+    try:
+        raw = input(f"  {C_BOLD}{question}{C_RESET} [{hint}] ").strip().lower()
+    except EOFError:
+        return default
     if not raw:
         return default
     return raw in ("y", "yes")
@@ -348,7 +375,7 @@ def action_build_spec(project_dir, spec_id, generate_spec=True, run_qa=False):
     # Step 2: Build
     print(f"  {C_CYAN}Building spec {spec_id}...{C_RESET}")
     build_cmd = [python, str(RUN_PY), "--project-dir", str(project_dir),
-                 "--spec", spec_id, "--force"]
+                 "--spec", spec_id, "--auto-continue"]
     print(f"  {C_DIM}$ {' '.join(build_cmd)}{C_RESET}")
 
     try:
@@ -441,7 +468,7 @@ def action_qa_all(project_dir):
     for i, s in enumerate(targets, 1):
         print(f"  {C_CYAN}[{i}/{len(targets)}] QA for {s['id']}...{C_RESET}")
         qa_cmd = [python, str(RUN_PY), "--project-dir", str(project_dir),
-                  "--spec", s["id"], "--qa"]
+                  "--spec", s["id"], "--qa", "--auto-continue"]
         print(f"  {C_DIM}$ {' '.join(qa_cmd)}{C_RESET}")
         try:
             subprocess.run(qa_cmd, cwd=str(project_dir))
@@ -808,6 +835,11 @@ Examples:
         project_dir = args.project_dir.resolve()
     else:
         project_dir = find_project_dir()
+
+    # For discovery commands (ideation/roadmap/insights), use cwd if no
+    # .auto-claude/ dir exists yet — these commands *create* the directory.
+    if not project_dir and (args.ideation or args.roadmap or args.insights is not None):
+        project_dir = Path.cwd()
 
     if not project_dir:
         print(f"  {C_RED}Error: No .auto-claude/ directory found.{C_RESET}")
