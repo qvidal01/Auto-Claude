@@ -510,6 +510,7 @@ async def run_autonomous_agent(
     concurrency_error_context: str | None = (
         None  # Context to pass to agent after concurrency error
     )
+    stuck_subtask_ids_local: set[str] = set()  # In-memory tracking of stuck subtasks
 
     def _reset_concurrency_state() -> None:
         """Reset concurrency error tracking state after a successful session or non-concurrency error."""
@@ -550,6 +551,13 @@ async def run_autonomous_agent(
         # Get the next subtask to work on (planner sessions shouldn't bind to a subtask)
         next_subtask = None if first_run else get_next_subtask(spec_dir)
         subtask_id = next_subtask.get("id") if next_subtask else None
+
+        # Skip subtasks already marked as stuck in this session
+        if subtask_id and subtask_id in stuck_subtask_ids_local:
+            # Try to find a non-stuck subtask by marking this one in the plan
+            next_subtask = None
+            subtask_id = None
+
         phase_name = next_subtask.get("phase_name") if next_subtask else None
 
         # Update status for this session
@@ -719,6 +727,7 @@ async def run_autonomous_agent(
                         subtask_id,
                         f"File validation failed after {attempt_count} attempts: {error_msg}",
                     )
+                    stuck_subtask_ids_local.add(subtask_id)
                     print_status(
                         f"Subtask {subtask_id} marked as STUCK after {attempt_count} failed validation attempts",
                         "error",
@@ -728,6 +737,8 @@ async def run_autonomous_agent(
                             "Consider: update implementation plan with correct filenames"
                         )
                     )
+                    # Skip delay for stuck subtasks - move to next immediately
+                    continue
 
                 # Update status
                 status_manager.update(state=BuildState.ERROR)
@@ -871,6 +882,7 @@ async def run_autonomous_agent(
                 recovery_manager.mark_subtask_stuck(
                     subtask_id, f"Failed after {attempt_count} attempts"
                 )
+                stuck_subtask_ids_local.add(subtask_id)
                 print()
                 print_status(
                     f"Subtask {subtask_id} marked as STUCK after {attempt_count} attempts",
@@ -989,6 +1001,7 @@ async def run_autonomous_agent(
                             subtask_id,
                             f"Tool concurrency errors after {consecutive_concurrency_errors} retries",
                         )
+                        stuck_subtask_ids_local.add(subtask_id)
                         print_status(f"Subtask {subtask_id} marked as STUCK", "error")
 
                     status_manager.update(state=BuildState.ERROR)
