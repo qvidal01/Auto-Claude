@@ -173,6 +173,9 @@ _bmad-output/
 OPUS_ANALYSIS_AND_IDEAS.md
 /.github/agents
 
+# Local development directories
+aiqso_dev/
+
 # Auto Claude generated files
 .security-key
 /shared_docs

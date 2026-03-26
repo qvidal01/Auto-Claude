@@ -21,12 +21,15 @@ Usage:
 """
 
 import json
+import logging
 import shlex
 import subprocess
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 # =============================================================================
 # DATA CLASSES
@@ -201,7 +204,7 @@ class ServiceOrchestrator:
                     )
                 )
         except Exception:
-            pass
+            logger.debug("Failed to parse docker-compose services", exc_info=True)
 
     def _discover_monorepo_services(self) -> None:
         """Discover services in a monorepo structure."""
@@ -381,7 +384,7 @@ class ServiceOrchestrator:
                     timeout=60,
                 )
         except Exception:
-            pass
+            logger.debug("Failed to stop docker-compose services", exc_info=True)
 
     def _stop_local_services(self) -> None:
         """Stop local services."""
@@ -390,10 +393,11 @@ class ServiceOrchestrator:
                 proc.terminate()
                 proc.wait(timeout=10)
             except Exception:
+                logger.debug("Graceful stop failed for %s, force killing", name)
                 try:
                     proc.kill()
                 except Exception:
-                    pass
+                    logger.debug("Force kill also failed for %s", name, exc_info=True)
         self._processes.clear()
 
     def _get_docker_compose_cmd(self) -> list[str] | None:
@@ -408,7 +412,7 @@ class ServiceOrchestrator:
             if proc.returncode == 0:
                 return ["docker", "compose", "-f", str(self._compose_file)]
         except Exception:
-            pass
+            logger.debug("docker compose v2 not available", exc_info=True)
 
         # Try docker-compose v1
         try:
@@ -420,7 +424,7 @@ class ServiceOrchestrator:
             if proc.returncode == 0:
                 return ["docker-compose", "-f", str(self._compose_file)]
         except Exception:
-            pass
+            logger.debug("docker-compose v1 not available", exc_info=True)
 
         return None
 
@@ -462,6 +466,7 @@ class ServiceOrchestrator:
                 result = s.connect_ex(("localhost", port))
                 return result == 0
         except Exception:
+            logger.debug("Port check failed for %d", port, exc_info=True)
             return False
 
     def to_dict(self) -> dict[str, Any]:
