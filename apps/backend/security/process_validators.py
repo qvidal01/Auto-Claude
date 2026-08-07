@@ -97,9 +97,43 @@ def validate_pkill_command(command_string: str) -> ValidationResult:
     )
 
 
+    # Well-known signal numbers/names used with kill (e.g., kill -9, kill -TERM)
+KNOWN_SIGNAL_FLAGS = {
+    "-1",  # SIGHUP (ambiguous but traditional — blocked below as PID)
+    "-2",  # SIGINT
+    "-3",  # SIGQUIT
+    "-6",  # SIGABRT
+    "-9",  # SIGKILL
+    "-15",  # SIGTERM
+    "-SIGHUP",
+    "-SIGINT",
+    "-SIGQUIT",
+    "-SIGABRT",
+    "-SIGKILL",
+    "-SIGTERM",
+    "-SIGSTOP",
+    "-SIGCONT",
+    "-HUP",
+    "-INT",
+    "-QUIT",
+    "-ABRT",
+    "-KILL",
+    "-TERM",
+    "-STOP",
+    "-CONT",
+    "-USR1",
+    "-USR2",
+    "-s",  # kill -s SIGNAL — flag, not a PID
+}
+
+
 def validate_kill_command(command_string: str) -> ValidationResult:
     """
     Validate kill commands - allow killing by PID (user must know the PID).
+
+    Blocks:
+    - kill -1 / kill 0 (affects all processes)
+    - Negative PIDs (process group kills) that aren't signal flags
 
     Args:
         command_string: The full kill command string
@@ -117,6 +151,24 @@ def validate_kill_command(command_string: str) -> ValidationResult:
     for token in tokens[1:]:
         if token == "-1" or token == "0" or token == "-0":
             return False, "kill -1 and kill 0 are not allowed (affects all processes)"
+
+        # Block negative numbers that look like process group IDs
+        # (not signal flags like -9, -TERM, -s)
+        if (
+            token.startswith("-")
+            and token not in KNOWN_SIGNAL_FLAGS
+            and token.upper() not in KNOWN_SIGNAL_FLAGS
+        ):
+            # Check if it's a negative number (process group ID)
+            try:
+                pid = int(token)
+                if pid < 0:
+                    return (
+                        False,
+                        f"Negative PID '{token}' (process group kill) is not allowed",
+                    )
+            except ValueError:
+                pass  # Not a number — could be an unknown signal name, allow it
 
     return True, ""
 

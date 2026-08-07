@@ -372,6 +372,8 @@ def _validate_custom_mcp_server(server: dict) -> bool:
                 return False
             if not all(isinstance(arg, str) for arg in server["args"]):
                 return False
+            # Shell metacharacters that could enable injection through args
+            SHELL_METACHARACTERS = ("`", "$(", "${", "|", ";", "&&", "||")
             # Check for dangerous interpreter flags that allow code execution
             for arg in server["args"]:
                 if arg in DANGEROUS_FLAGS:
@@ -380,6 +382,14 @@ def _validate_custom_mcp_server(server: dict) -> bool:
                         f"Interpreter code execution flags are not allowed."
                     )
                     return False
+                # Reject args containing shell metacharacters
+                for meta in SHELL_METACHARACTERS:
+                    if meta in arg:
+                        logger.warning(
+                            f"Rejected MCP server arg containing shell metacharacter "
+                            f"'{meta}': {arg[:80]}"
+                        )
+                        return False
     elif server["type"] == "http":
         if not isinstance(server.get("url"), str) or not server["url"]:
             logger.warning("HTTP-type MCP server missing 'url' field")

@@ -63,7 +63,12 @@ def _extract_c_argument(command_string: str) -> str | None:
     return None
 
 
-def validate_shell_c_command(command_string: str) -> ValidationResult:
+MAX_SHELL_NESTING_DEPTH = 3
+
+
+def validate_shell_c_command(
+    command_string: str, _depth: int = 0
+) -> ValidationResult:
     """
     Validate commands inside bash/sh/zsh -c '...' strings.
 
@@ -72,10 +77,16 @@ def validate_shell_c_command(command_string: str) -> ValidationResult:
 
     Args:
         command_string: The full shell command (e.g., "bash -c 'npm test'")
+        _depth: Internal recursion depth counter (do not set manually)
 
     Returns:
         Tuple of (is_valid, error_message)
     """
+    if _depth >= MAX_SHELL_NESTING_DEPTH:
+        return (
+            False,
+            f"Shell nesting depth exceeds maximum ({MAX_SHELL_NESTING_DEPTH})",
+        )
     # Extract the command after -c
     inner_command = _extract_c_argument(command_string)
 
@@ -140,7 +151,7 @@ def validate_shell_c_command(command_string: str) -> ValidationResult:
             # Handle paths like /bin/bash or C:\Windows\System32\bash.exe
             base_cmd = _cross_platform_basename(first_cmd)
             if base_cmd in SHELL_INTERPRETERS:
-                valid, err = validate_shell_c_command(segment)
+                valid, err = validate_shell_c_command(segment, _depth + 1)
                 if not valid:
                     return False, f"Nested shell command not allowed: {err}"
 

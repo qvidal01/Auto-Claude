@@ -5,6 +5,7 @@ File System Validators
 Validators for file system operations (chmod, rm, init scripts).
 """
 
+import os
 import re
 import shlex
 
@@ -121,9 +122,17 @@ def validate_rm_command(command_string: str) -> ValidationResult:
         if token.startswith("-"):
             # Allow -r, -f, -rf, -fr, -v, -i
             continue
+
+        # Check against known dangerous path patterns
         for pattern in DANGEROUS_RM_PATTERNS:
             if re.match(pattern, token):
                 return False, f"rm target '{token}' is not allowed for safety"
+
+        # Block path traversal: reject any target containing '..' anywhere
+        # This catches ./../../sensitive, foo/../../../etc, etc.
+        resolved = os.path.normpath(token)
+        if ".." in resolved.split(os.sep):
+            return False, f"rm target '{token}' contains path traversal"
 
     return True, ""
 
